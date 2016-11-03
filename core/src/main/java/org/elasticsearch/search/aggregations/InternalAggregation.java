@@ -183,7 +183,7 @@ public abstract class InternalAggregation implements Aggregation, ToXContent, Na
             builder.map(this.metaData);
         }
         doXContentBody(builder, params);
-        builder.field("_type", this.getWriteableName());
+        builder.field(CommonFields._TYPE, this.getWriteableName());
 
         builder.endObject();
         return builder;
@@ -208,5 +208,6 @@ public abstract class InternalAggregation implements Aggregation, ToXContent, Na
         public static final String FROM_AS_STRING = "from_as_string";
         public static final String TO = "to";
         public static final String TO_AS_STRING = "to_as_string";
+        public static final String _TYPE = "_type";
     }
 }
