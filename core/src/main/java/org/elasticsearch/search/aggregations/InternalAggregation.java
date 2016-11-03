@@ -183,6 +183,8 @@ public abstract class InternalAggregation implements Aggregation, ToXContent, Na
             builder.map(this.metaData);
         }
         doXContentBody(builder, params);
+        builder.field("_type", this.getWriteableName());
+
         builder.endObject();
         return builder;
     }
