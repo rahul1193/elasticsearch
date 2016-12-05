@@ -145,6 +145,15 @@ public class XContentHelper {
     }
 
     @Deprecated
+    public static String convertToJson(Map<String, Object> map, boolean prettyPrint) throws IOException {
+        XContentBuilder builder = XContentFactory.jsonBuilder();
+        builder.map(map);
+        if (prettyPrint) {
+            builder.prettyPrint();
+        }
+        return builder.string();
+    }
+
     public static String convertToJson(BytesReference bytes, boolean reformatJson) throws IOException {
         return convertToJson(bytes, reformatJson, false);
     }
