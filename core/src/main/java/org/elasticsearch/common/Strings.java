@@ -957,4 +957,7 @@ public class Strings {
         }
     }
 
+    public static boolean isNotEmpty(String value) {
+        return !isEmpty(value);
+    }
 }
