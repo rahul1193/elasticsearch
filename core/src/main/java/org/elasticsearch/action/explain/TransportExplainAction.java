@@ -93,6 +93,7 @@ public class TransportExplainAction extends TransportSingleShardAction<ExplainRe
         ShardSearchLocalRequest shardSearchLocalRequest = new ShardSearchLocalRequest(shardId,
             new String[]{request.type()}, request.nowInMillis, request.filteringAlias());
         SearchContext context = searchService.createSearchContext(shardSearchLocalRequest, SearchService.NO_TIMEOUT, null);
+        SearchContext.setCurrent(context);
         Term uidTerm = new Term(UidFieldMapper.NAME, Uid.createUidAsBytes(request.type(), request.id()));
         Engine.GetResult result = null;
         try {
@@ -120,7 +121,7 @@ public class TransportExplainAction extends TransportSingleShardAction<ExplainRe
         } catch (IOException e) {
             throw new ElasticsearchException("Could not explain", e);
         } finally {
-            Releasables.close(result, context);
+            Releasables.close(result, context, SearchContext::removeCurrent);
         }
     }
 
