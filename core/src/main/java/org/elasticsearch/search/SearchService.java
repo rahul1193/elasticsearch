@@ -437,6 +437,7 @@ public class SearchService extends AbstractLifecycleComponent implements IndexEv
         if (context == null) {
             throw new SearchContextMissingException(id);
         }
+        SearchContext.setCurrent(context);
         return context;
     }
 
@@ -460,6 +461,7 @@ public class SearchService extends AbstractLifecycleComponent implements IndexEv
 
     final SearchContext createContext(ShardSearchRequest request, @Nullable Engine.Searcher searcher) throws IOException {
         final DefaultSearchContext context = createSearchContext(request, defaultSearchTimeout, searcher);
+        SearchContext.setCurrent(context);
         try {
             if (request.scroll() != null) {
                 context.scrollContext(new ScrollContext());
@@ -566,8 +568,10 @@ public class SearchService extends AbstractLifecycleComponent implements IndexEv
 
     private void cleanContext(SearchContext context) {
         try {
+            assert context == SearchContext.current();
             context.clearReleasables(Lifetime.PHASE);
             context.setTask(null);
+            SearchContext.removeCurrent();
         } finally {
             context.decRef();
         }
