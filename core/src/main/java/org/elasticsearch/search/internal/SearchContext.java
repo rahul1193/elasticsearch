@@ -85,6 +85,20 @@ public abstract class SearchContext extends AbstractRefCounted implements Releas
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private InnerHitsContext innerHitsContext;
 
+    private static final ThreadLocal<SearchContext> current = new ThreadLocal<>();
+
+    public static void setCurrent(SearchContext value) {
+        current.set(value);
+    }
+
+    public static void removeCurrent() {
+        current.remove();
+    }
+
+    public static SearchContext current() {
+        return current.get();
+    }
+
     protected SearchContext() {
         super("search_context");
     }
