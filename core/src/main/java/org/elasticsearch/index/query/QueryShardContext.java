@@ -345,15 +345,16 @@ public class QueryShardContext extends QueryRewriteContext {
      * provided script
      */
     public final SearchScript getSearchScript(Script script, ScriptContext context) {
-        failIfFrozen();
+        failIfFrozen(script.isCache());
         return scriptService.search(lookup(), script, context);
     }
+
     /**
      * Returns a lazily created {@link SearchScript} that is compiled immediately but can be pulled later once all
      * parameters are available.
      */
     public final Function<Map<String, Object>, SearchScript> getLazySearchScript(Script script, ScriptContext context) {
-        failIfFrozen();
+        failIfFrozen(script.isCache());
         CompiledScript compile = scriptService.compile(script, context, script.getOptions());
         return (p) -> scriptService.search(lookup(), compile, p);
     }
@@ -363,7 +364,7 @@ public class QueryShardContext extends QueryRewriteContext {
      * provided script
      */
     public final ExecutableScript getExecutableScript(Script script, ScriptContext context) {
-        failIfFrozen();
+        failIfFrozen(script.isCache());
         return scriptService.executable(script, context);
     }
 
@@ -372,9 +373,9 @@ public class QueryShardContext extends QueryRewriteContext {
      * parameters are available.
      */
     public final Function<Map<String, Object>, ExecutableScript> getLazyExecutableScript(Script script, ScriptContext context) {
-        failIfFrozen();
+        failIfFrozen(script.isCache());
         CompiledScript executable = scriptService.compile(script, context, script.getOptions());
-        return (p) ->  scriptService.executable(executable, p);
+        return (p) -> scriptService.executable(executable, p);
     }
 
     /**
@@ -388,14 +389,18 @@ public class QueryShardContext extends QueryRewriteContext {
     /**
      * This method fails if {@link #freezeContext()} is called before on this
      * context. This is used to <i>seal</i>.
-     *
+     * <p>
      * This methods and all methods that call it should be final to ensure that
      * setting the request as not cacheable and the freezing behaviour of this
      * class cannot be bypassed. This is important so we can trust when this
      * class says a request can be cached.
      */
     protected final void failIfFrozen() {
-        this.cachable = false;
+        failIfFrozen(false);
+    }
+
+    protected final void failIfFrozen(boolean cachable) {
+        this.cachable = cachable;
         if (frozen.get() == Boolean.TRUE) {
             throw new IllegalArgumentException("features that prevent cachability are disabled on this context");
         } else {
