@@ -93,7 +93,7 @@ public final class Script implements ToXContent, Writeable {
      */
     public static final ParseField PARAMS_PARSE_FIELD = new ParseField("params");
 
-    public static final ParseField CACHE_PARSE_FIELD = new ParseField("_cache");
+    public static final ParseField CACHEABLE_PARSE_FIELD = new ParseField("cacheable");
 
     /**
      * Helper class used by {@link ObjectParser} to store mutable {@link Script} variables and then
@@ -103,7 +103,7 @@ public final class Script implements ToXContent, Writeable {
         private ScriptType type;
         private String lang;
         private String idOrCode;
-        private boolean cache;
+        private boolean cacheable;
         private Map<String, String> options;
         private Map<String, Object> params;
 
@@ -190,8 +190,8 @@ public final class Script implements ToXContent, Writeable {
             this.params = params;
         }
 
-        private void setCache(boolean cache) {
-            this.cache = cache;
+        private void setCacheable(boolean cacheable) {
+            this.cacheable = cacheable;
         }
 
         /**
@@ -217,7 +217,7 @@ public final class Script implements ToXContent, Writeable {
                 throw new IllegalArgumentException("illegal compiler options [" + options + "] specified");
             }
 
-            return new Script(type, this.lang == null ? defaultLang : this.lang, idOrCode, options, params, cache);
+            return new Script(type, this.lang == null ? defaultLang : this.lang, idOrCode, options, params, cacheable);
         }
     }
 
@@ -231,7 +231,7 @@ public final class Script implements ToXContent, Writeable {
         PARSER.declareString(Builder::setLang, LANG_PARSE_FIELD);
         PARSER.declareField(Builder::setOptions, XContentParser::mapStrings, OPTIONS_PARSE_FIELD, ValueType.OBJECT);
         PARSER.declareField(Builder::setParams, XContentParser::map, PARAMS_PARSE_FIELD, ValueType.OBJECT);
-        PARSER.declareField(Builder::setCache, XContentParser::booleanValue, CACHE_PARSE_FIELD, ValueType.BOOLEAN);
+        PARSER.declareField(Builder::setCacheable, XContentParser::booleanValue, CACHEABLE_PARSE_FIELD, ValueType.BOOLEAN);
     }
 
     /**
@@ -338,7 +338,7 @@ public final class Script implements ToXContent, Writeable {
     private final String idOrCode;
     private final Map<String, String> options;
     private final Map<String, Object> params;
-    private final boolean cache;
+    private final boolean cacheable;
 
     /**
      * Constructor for simple script using the default language and default type.
@@ -374,13 +374,13 @@ public final class Script implements ToXContent, Writeable {
     }
 
 
-    public Script(ScriptType type, String lang, String idOrCode, Map<String, String> options, Map<String, Object> params, boolean cache) {
+    public Script(ScriptType type, String lang, String idOrCode, Map<String, String> options, Map<String, Object> params, boolean cacheable) {
         this.idOrCode = Objects.requireNonNull(idOrCode);
         this.type = Objects.requireNonNull(type);
         this.lang = Objects.requireNonNull(lang);
         this.options = Collections.unmodifiableMap(Objects.requireNonNull(options));
         this.params = Collections.unmodifiableMap(Objects.requireNonNull(params));
-        this.cache = cache;
+        this.cacheable = cacheable;
         if (type != ScriptType.INLINE && !options.isEmpty()) {
             throw new IllegalArgumentException(
                 "Compiler options [" + options + "] cannot be specified at runtime for [" + type + "] scripts.");
@@ -439,7 +439,7 @@ public final class Script implements ToXContent, Writeable {
             this.options = options;
             this.params = params;
         }
-        this.cache = in.readBoolean();
+        this.cacheable = in.readBoolean();
     }
 
     @Override
@@ -475,7 +475,7 @@ public final class Script implements ToXContent, Writeable {
                 out.writeBoolean(false);
             }
         }
-        out.writeBoolean(cache);
+        out.writeBoolean(cacheable);
     }
 
     /**
@@ -553,7 +553,7 @@ public final class Script implements ToXContent, Writeable {
             builder.field(PARAMS_PARSE_FIELD.getPreferredName(), params);
         }
 
-        builder.field(CACHE_PARSE_FIELD.getPreferredName(), cache);
+        builder.field(CACHEABLE_PARSE_FIELD.getPreferredName(), cacheable);
 
         builder.endObject();
 
@@ -596,8 +596,8 @@ public final class Script implements ToXContent, Writeable {
         return params;
     }
 
-    public boolean isCache() {
-        return cache;
+    public boolean isCacheable() {
+        return cacheable;
     }
 
     @Override
@@ -611,7 +611,7 @@ public final class Script implements ToXContent, Writeable {
         if (!lang.equals(script.lang)) return false;
         if (!idOrCode.equals(script.idOrCode)) return false;
         if (!options.equals(script.options)) return false;
-        return cache == script.cache && params.equals(script.params);
+        return cacheable == script.cacheable && params.equals(script.params);
 
     }
 
@@ -622,7 +622,7 @@ public final class Script implements ToXContent, Writeable {
         result = 31 * result + idOrCode.hashCode();
         result = 31 * result + options.hashCode();
         result = 31 * result + params.hashCode();
-        result = 31 * result + (cache ? 1 : 0);
+        result = 31 * result + (cacheable ? 1 : 0);
         return result;
     }
 
@@ -634,7 +634,7 @@ public final class Script implements ToXContent, Writeable {
             ", idOrCode='" + idOrCode + '\'' +
             ", options=" + options +
             ", params=" + params +
-            ", cache=" + cache +
+            ", cacheable=" + cacheable +
             '}';
     }
 }
