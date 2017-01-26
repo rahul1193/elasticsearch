@@ -139,6 +139,8 @@ public final class Script implements ToXContentObject, Writeable {
      */
     public static final ParseField PARAMS_PARSE_FIELD = new ParseField("params");
 
+    public static final ParseField CACHE_PARSE_FIELD = new ParseField("_cache");
+
     /**
      * Helper class used by {@link ObjectParser} to store mutable {@link Script} variables and then
      * construct an immutable {@link Script} object based on parsed XContent.
@@ -147,6 +149,7 @@ public final class Script implements ToXContentObject, Writeable {
         private ScriptType type;
         private String lang;
         private String idOrCode;
+        private boolean cache;
         private Map<String, String> options;
         private Map<String, Object> params;
 
@@ -233,8 +236,13 @@ public final class Script implements ToXContentObject, Writeable {
             this.params = params;
         }
 
+        private void setCache(boolean cache) {
+            this.cache = cache;
+        }
+
         /**
          * Validates the parameters and creates an {@link Script}.
+         *
          * @param defaultLang The default lang is not a compile-time constant and must be provided
          *                    at run-time this way in case a legacy default language is used from
          *                    previously stored queries.
@@ -302,7 +310,7 @@ public final class Script implements ToXContentObject, Writeable {
                 }
             }
 
-            return new Script(type, lang, idOrCode, options, params);
+            return new Script(type, lang, idOrCode, options, params, cache);
         }
     }
 
@@ -316,6 +324,7 @@ public final class Script implements ToXContentObject, Writeable {
         PARSER.declareString(Builder::setLang, LANG_PARSE_FIELD);
         PARSER.declareField(Builder::setOptions, XContentParser::mapStrings, OPTIONS_PARSE_FIELD, ValueType.OBJECT);
         PARSER.declareField(Builder::setParams, XContentParser::map, PARAMS_PARSE_FIELD, ValueType.OBJECT);
+        PARSER.declareField(Builder::setCache, XContentParser::booleanValue, CACHE_PARSE_FIELD, ValueType.BOOLEAN);
     }
 
     /**
@@ -414,6 +423,7 @@ public final class Script implements ToXContentObject, Writeable {
     private final String idOrCode;
     private final Map<String, String> options;
     private final Map<String, Object> params;
+    private final boolean cache;
 
     /**
      * Constructor for simple script using the default language and default type.
@@ -450,9 +460,15 @@ public final class Script implements ToXContentObject, Writeable {
      * @param params   The user-defined params to be bound for script execution.
      */
     public Script(ScriptType type, String lang, String idOrCode, Map<String, String> options, Map<String, Object> params) {
-        this.type = Objects.requireNonNull(type);
+        this(type, lang, idOrCode, options, params, false);
+    }
+
+
+    public Script(ScriptType type, String lang, String idOrCode, Map<String, String> options, Map<String, Object> params, boolean cache) {
         this.idOrCode = Objects.requireNonNull(idOrCode);
+        this.type = Objects.requireNonNull(type);
         this.params = Collections.unmodifiableMap(Objects.requireNonNull(params));
+        this.cache = cache;
 
         if (type == ScriptType.INLINE) {
             this.lang = Objects.requireNonNull(lang);
@@ -549,6 +565,7 @@ public final class Script implements ToXContentObject, Writeable {
                 this.options = null;
             }
         }
+        this.cache = in.readBoolean();
     }
 
     @Override
@@ -610,6 +627,7 @@ public final class Script implements ToXContentObject, Writeable {
                 out.writeBoolean(false);
             }
         }
+        out.writeBoolean(cache);
     }
 
     /**
@@ -689,6 +707,8 @@ public final class Script implements ToXContentObject, Writeable {
             builder.field(PARAMS_PARSE_FIELD.getPreferredName(), params);
         }
 
+        builder.field(CACHE_PARSE_FIELD.getPreferredName(), cache);
+
         builder.endObject();
 
         return builder;
@@ -733,6 +753,10 @@ public final class Script implements ToXContentObject, Writeable {
         return params;
     }
 
+    public boolean isCache() {
+        return cache;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -744,7 +768,7 @@ public final class Script implements ToXContentObject, Writeable {
         if (lang != null ? !lang.equals(script.lang) : script.lang != null) return false;
         if (!idOrCode.equals(script.idOrCode)) return false;
         if (options != null ? !options.equals(script.options) : script.options != null) return false;
-        return params.equals(script.params);
+        return cache == script.cache && params.equals(script.params);
 
     }
 
@@ -755,6 +779,7 @@ public final class Script implements ToXContentObject, Writeable {
         result = 31 * result + idOrCode.hashCode();
         result = 31 * result + (options != null ? options.hashCode() : 0);
         result = 31 * result + params.hashCode();
+        result = 31 * result + (cache ? 1 : 0);
         return result;
     }
 
@@ -766,6 +791,7 @@ public final class Script implements ToXContentObject, Writeable {
             ", idOrCode='" + idOrCode + '\'' +
             ", options=" + options +
             ", params=" + params +
+            ", cache=" + cache +
             '}';
     }
 }
