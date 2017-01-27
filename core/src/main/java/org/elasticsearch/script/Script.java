@@ -139,7 +139,7 @@ public final class Script implements ToXContentObject, Writeable {
      */
     public static final ParseField PARAMS_PARSE_FIELD = new ParseField("params");
 
-    public static final ParseField CACHEABLE_PARSE_FIELD = new ParseField("cacheable");
+    public static final ParseField CACHE_PARSE_FIELD = new ParseField("_cache");
 
     /**
      * Helper class used by {@link ObjectParser} to store mutable {@link Script} variables and then
@@ -324,7 +324,7 @@ public final class Script implements ToXContentObject, Writeable {
         PARSER.declareString(Builder::setLang, LANG_PARSE_FIELD);
         PARSER.declareField(Builder::setOptions, XContentParser::mapStrings, OPTIONS_PARSE_FIELD, ValueType.OBJECT);
         PARSER.declareField(Builder::setParams, XContentParser::map, PARAMS_PARSE_FIELD, ValueType.OBJECT);
-        PARSER.declareField(Builder::setCacheable, XContentParser::booleanValue, CACHEABLE_PARSE_FIELD, ValueType.BOOLEAN);
+        PARSER.declareField(Builder::setCacheable, XContentParser::booleanValue, CACHE_PARSE_FIELD, ValueType.BOOLEAN);
     }
 
     /**
@@ -707,7 +707,7 @@ public final class Script implements ToXContentObject, Writeable {
             builder.field(PARAMS_PARSE_FIELD.getPreferredName(), params);
         }
 
-        builder.field(CACHEABLE_PARSE_FIELD.getPreferredName(), cacheable);
+        builder.field(CACHE_PARSE_FIELD.getPreferredName(), cacheable);
 
         builder.endObject();
 
