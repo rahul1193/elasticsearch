@@ -400,7 +400,7 @@ public class QueryShardContext extends QueryRewriteContext {
     }
 
     protected final void failIfFrozen(boolean cachable) {
-        this.cachable = cachable;
+        this.cachable &= cachable;
         if (frozen.get() == Boolean.TRUE) {
             throw new IllegalArgumentException("features that prevent cachability are disabled on this context");
         } else {
