@@ -19,6 +19,10 @@
 
 package org.elasticsearch.index.shard;
 
+import org.apache.lucene.document.BigIntegerPoint;
+import org.apache.lucene.document.DoublePoint;
+import org.apache.lucene.document.FloatPoint;
+import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.search.*;
 
 import java.io.IOException;
@@ -34,9 +38,15 @@ public class SprQueryCachingPolicy implements QueryCachingPolicy {
     public static final List<String> DEFAULT_CLASSES = Collections.unmodifiableList(Arrays.asList(getSimpleName(TermQuery.class),
         getSimpleName(PhraseQuery.class),
         getSimpleName(LegacyNumericRangeQuery.class),
+        getSimpleName(BigIntegerPoint.class),
+        getSimpleName(LongPoint.class),
+        getSimpleName(FloatPoint.class),
+        getSimpleName(DoublePoint.class),
         getSimpleName(PointRangeQuery.class)));
 
     /**
+     * NOTE : policy returns should cache true for any class passed via leafClassesToCache or any of anonymous or local classes
+     * <p>
      * leafClasses to cache expect lower case simple name of queries {@link Class#getSimpleName()}
      */
     private final Set<String> leafClassesToCache;
@@ -56,10 +66,18 @@ public class SprQueryCachingPolicy implements QueryCachingPolicy {
 
     @Override
     public boolean shouldCache(Query query) throws IOException {
-        return leafClassesToCache.contains(query.getClass().getSimpleName().toLowerCase(Locale.ROOT));
+        Class<? extends Query> clz = query.getClass();
+        if (clz.isAnonymousClass()) {
+            return leafClassesToCache.contains(getSimpleNameInLowerCase(clz.getEnclosingClass()));
+        }
+        return leafClassesToCache.contains(getSimpleNameInLowerCase(clz));
     }
 
     private static String getSimpleName(Class<?> clz) {
         return clz.getSimpleName();
+    }
+
+    private static String getSimpleNameInLowerCase(Class<?> clz) {
+        return getSimpleName(clz).toLowerCase(Locale.ROOT);
     }
 }
