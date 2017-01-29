@@ -21,14 +21,8 @@ package org.elasticsearch.indices;
 
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BulkScorer;
-import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.LRUQueryCache;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryCache;
-import org.apache.lucene.search.QueryCachingPolicy;
-import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.Weight;
+import org.apache.lucene.search.*;
+import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.lucene.ShardCoreKeyMap;
 import org.elasticsearch.common.settings.Setting;
@@ -49,13 +43,13 @@ import java.util.function.Predicate;
 
 public class IndicesQueryCache extends AbstractComponent implements QueryCache, Closeable {
 
-    public static final Setting<ByteSizeValue> INDICES_CACHE_QUERY_SIZE_SETTING = 
-            Setting.memorySizeSetting("indices.queries.cache.size", "10%", Property.NodeScope);
-    public static final Setting<Integer> INDICES_CACHE_QUERY_COUNT_SETTING = 
-            Setting.intSetting("indices.queries.cache.count", 10000, 1, Property.NodeScope);
+    public static final Setting<ByteSizeValue> INDICES_CACHE_QUERY_SIZE_SETTING =
+        Setting.memorySizeSetting("indices.queries.cache.size", "10%", Property.NodeScope);
+    public static final Setting<Integer> INDICES_CACHE_QUERY_COUNT_SETTING =
+        Setting.intSetting("indices.queries.cache.count", 10000, 1, Property.NodeScope);
     // enables caching on all segments instead of only the larger ones, for testing only
-    public static final Setting<Boolean> INDICES_QUERIES_CACHE_ALL_SEGMENTS_SETTING = 
-            Setting.boolSetting("indices.queries.cache.all_segments", false, Property.NodeScope);
+    public static final Setting<Boolean> INDICES_QUERIES_CACHE_ALL_SEGMENTS_SETTING =
+        Setting.boolSetting("indices.queries.cache.all_segments", false, Property.NodeScope);
 
     private final LRUQueryCache cache;
     private final ShardCoreKeyMap shardKeyMap = new ShardCoreKeyMap();
@@ -72,7 +66,7 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
         final ByteSizeValue size = INDICES_CACHE_QUERY_SIZE_SETTING.get(settings);
         final int count = INDICES_CACHE_QUERY_COUNT_SETTING.get(settings);
         logger.debug("using [node] query cache with size [{}] max filter count [{}]",
-                size, count);
+            size, count);
         if (INDICES_QUERIES_CACHE_ALL_SEGMENTS_SETTING.get(settings)) {
             cache = new ElasticsearchLRUQueryCache(count, size.getBytes(), context -> true);
         } else {
@@ -81,7 +75,9 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
         sharedRamBytesUsed = 0;
     }
 
-    /** Get usage statistics for the given shard. */
+    /**
+     * Get usage statistics for the given shard.
+     */
     public QueryCacheStats getStats(ShardId shard) {
         final Map<ShardId, QueryCacheStats> stats = new HashMap<>();
         for (Map.Entry<ShardId, Stats> entry : shardStats.entrySet()) {
@@ -101,8 +97,8 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
             totalSize += s.getCacheSize();
         }
         final double weight = totalSize == 0
-                ? 1d / stats.size()
-                : shardStats.getCacheSize() / totalSize;
+            ? 1d / stats.size()
+            : shardStats.getCacheSize() / totalSize;
         final long additionalRamBytesUsed = Math.round(weight * sharedRamBytesUsed);
         shardStats.add(new QueryCacheStats(additionalRamBytesUsed, 0, 0, 0, 0));
         return shardStats;
@@ -162,7 +158,9 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
         }
     }
 
-    /** Clear all entries that belong to the given index. */
+    /**
+     * Clear all entries that belong to the given index.
+     */
     public void clearIndex(String index) {
         final Set<Object> coreCacheKeys = shardKeyMap.getCoreKeysForIndex(index);
         for (Object coreKey : coreCacheKeys) {
@@ -247,6 +245,21 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
                 shardStats.put(shardId, stats);
             }
             return stats;
+        }
+
+        @Override
+        public Weight doCache(Weight weight, QueryCachingPolicy policy) {
+            try {
+                /**
+                 *  short circuiting to avoid all locks and checks at {@link CachingWrapperWeight}
+                 */
+                if (policy.shouldCache(weight.getQuery())) {
+                    return super.doCache(weight, policy);
+                }
+            } catch (IOException e) {
+                throw ExceptionsHelper.convertToElastic(e);
+            }
+            return weight;
         }
 
         // It's ok to not protect these callbacks by a lock since it is

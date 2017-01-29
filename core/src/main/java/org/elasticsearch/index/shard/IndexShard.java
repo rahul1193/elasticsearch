@@ -266,7 +266,9 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             bigArrays);
         // the query cache is a node-level thing, however we want the most popular filters
         // to be computed on a per-shard basis
-        if (IndexModule.INDEX_QUERY_CACHE_EVERYTHING_SETTING.get(settings)) {
+        if (IndexModule.INDEX_QUERY_CACHE_USE_SPR_POLICY.get(settings)) {
+            cachingPolicy = new SprQueryCachingPolicy(IndexModule.INDEX_QUERY_CACHE_LEAF_QUERY_CLASSES.get(settings));
+        } else if (IndexModule.INDEX_QUERY_CACHE_EVERYTHING_SETTING.get(settings)) {
             cachingPolicy = QueryCachingPolicy.ALWAYS_CACHE;
         } else {
             QueryCachingPolicy cachingPolicy = new UsageTrackingQueryCachingPolicy();
@@ -848,13 +850,13 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
      * gets a {@link Store.MetadataSnapshot} for the current directory. This method is safe to call in all lifecycle of the index shard,
      * without having to worry about the current state of the engine and concurrent flushes.
      *
-     * @throws org.apache.lucene.index.IndexNotFoundException     if no index is found in the current directory
-     * @throws CorruptIndexException      if the lucene index is corrupted. This can be caused by a checksum mismatch or an
-     *                                    unexpected exception when opening the index reading the segments file.
-     * @throws IndexFormatTooOldException if the lucene index is too old to be opened.
-     * @throws IndexFormatTooNewException if the lucene index is too new to be opened.
-     * @throws FileNotFoundException      if one or more files referenced by a commit are not present.
-     * @throws NoSuchFileException        if one or more files referenced by a commit are not present.
+     * @throws org.apache.lucene.index.IndexNotFoundException if no index is found in the current directory
+     * @throws CorruptIndexException                          if the lucene index is corrupted. This can be caused by a checksum mismatch or an
+     *                                                        unexpected exception when opening the index reading the segments file.
+     * @throws IndexFormatTooOldException                     if the lucene index is too old to be opened.
+     * @throws IndexFormatTooNewException                     if the lucene index is too new to be opened.
+     * @throws FileNotFoundException                          if one or more files referenced by a commit are not present.
+     * @throws NoSuchFileException                            if one or more files referenced by a commit are not present.
      */
     public Store.MetadataSnapshot snapshotStoreMetadata() throws IOException {
         IndexCommit indexCommit = null;
