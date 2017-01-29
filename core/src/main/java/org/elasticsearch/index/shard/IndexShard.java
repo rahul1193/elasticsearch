@@ -266,7 +266,9 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             bigArrays);
         // the query cache is a node-level thing, however we want the most popular filters
         // to be computed on a per-shard basis
-        if (IndexModule.INDEX_QUERY_CACHE_EVERYTHING_SETTING.get(settings)) {
+        if (IndexModule.INDEX_QUERY_CACHE_USE_SPR_POLICY.get(settings)) {
+            cachingPolicy = new SprQueryCachingPolicy(IndexModule.INDEX_QUERY_CACHE_LEAF_QUERY_CLASSES.get(settings));
+        } else if (IndexModule.INDEX_QUERY_CACHE_EVERYTHING_SETTING.get(settings)) {
             cachingPolicy = QueryCachingPolicy.ALWAYS_CACHE;
         } else {
             QueryCachingPolicy cachingPolicy = new UsageTrackingQueryCachingPolicy();

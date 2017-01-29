@@ -35,10 +35,7 @@ import org.elasticsearch.index.cache.query.IndexQueryCache;
 import org.elasticsearch.index.cache.query.QueryCache;
 import org.elasticsearch.index.engine.EngineFactory;
 import org.elasticsearch.index.mapper.MapperService;
-import org.elasticsearch.index.shard.IndexEventListener;
-import org.elasticsearch.index.shard.IndexSearcherWrapper;
-import org.elasticsearch.index.shard.IndexingOperationListener;
-import org.elasticsearch.index.shard.SearchOperationListener;
+import org.elasticsearch.index.shard.*;
 import org.elasticsearch.index.similarity.BM25SimilarityProvider;
 import org.elasticsearch.index.similarity.SimilarityProvider;
 import org.elasticsearch.index.similarity.SimilarityService;
@@ -105,6 +102,13 @@ public final class IndexModule {
     // Do not document.
     public static final Setting<Boolean> INDEX_QUERY_CACHE_TERM_QUERIES_SETTING =
         Setting.boolSetting("index.queries.cache.term_queries", false, Property.IndexScope);
+
+    public static final Setting<Boolean> INDEX_QUERY_CACHE_USE_SPR_POLICY =
+        Setting.boolSetting("index.queries.cache.use.spr.policy", false, Property.IndexScope);
+
+    public static final Setting<List<String>> INDEX_QUERY_CACHE_LEAF_QUERY_CLASSES =
+        Setting.listSetting("index.queries.cache.leaf.query.classes",
+            SprQueryCachingPolicy.DEFAULT_CLASSES, (s -> s.toLowerCase(Locale.ROOT)), Property.IndexScope);
 
     private final IndexSettings indexSettings;
     private final IndexStoreConfig indexStoreConfig;
