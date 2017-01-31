@@ -21,44 +21,57 @@ package com.spr.elasticsearch.indices;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.Accountable;
+import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.indices.IndicesQueryCache;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 /**
  * @author Utkarsh
  */
 public class SprLRUQueryCache extends LRUQueryCache {
 
+    private final Logger logger;
     private final Cache<LeafCacheKey, DocIdSet> cache;
+    private final Function<Object, IndicesQueryCache.Stats> shardStatsSupplier;
 
-    // these variables are volatile so that we do not need to sync reads
-    // but increments need to be performed under the lock
-    private volatile long hitCount;
-    private volatile long missCount;
-    private volatile long cacheCount;
-
-    public SprLRUQueryCache(int maxSize) {
+    public SprLRUQueryCache(Settings settings, int maxSize, Function<Object, IndicesQueryCache.Stats> shardStatsSupplier) {
         super(maxSize, Long.MAX_VALUE, leafReaderContext -> true);
         assert maxSize > 0;
-        cache = Caffeine.newBuilder().maximumSize(maxSize).build();
+        logger = Loggers.getLogger(getClass(), settings);
+        cache = Caffeine.newBuilder().maximumSize(maxSize).recordStats().build();
+        this.shardStatsSupplier = shardStatsSupplier;
     }
 
     @Override
     protected void onHit(Object readerCoreKey, Query query) {
+        IndicesQueryCache.Stats shardStats = this.shardStatsSupplier.apply(readerCoreKey);
+        if (shardStats == null) {
+            logger.debug("shard stats is null for key {}", readerCoreKey);
+            return;
+        }
+        shardStats.incrementHitCount();
         // noop
     }
 
     @Override
     protected void onMiss(Object readerCoreKey, Query query) {
         // noop
+        final IndicesQueryCache.Stats shardStats = this.shardStatsSupplier.apply(readerCoreKey);
+        if (shardStats == null) {
+            logger.debug("shard stats is null for key {}", readerCoreKey);
+            return;
+        }
+        shardStats.incrementMissCount();
     }
 
     @Override
@@ -88,12 +101,26 @@ public class SprLRUQueryCache extends LRUQueryCache {
 
     @Override
     public void clearCoreCacheKey(Object coreKey) {
-        // noop
+        Set<LeafCacheKey> leafCacheKeys = cache.asMap().keySet();
+        List<LeafCacheKey> keysToRemove = new ArrayList<>();
+        for (LeafCacheKey leafCacheKey : leafCacheKeys) {
+            if (leafCacheKey.leaf.equals(coreKey)) {
+                keysToRemove.add(leafCacheKey);
+            }
+        }
+        cache.invalidateAll(keysToRemove);
     }
 
     @Override
     public void clearQuery(Query query) {
-        // noop
+        Set<LeafCacheKey> leafCacheKeys = cache.asMap().keySet();
+        List<LeafCacheKey> keysToRemove = new ArrayList<>();
+        for (LeafCacheKey leafCacheKey : leafCacheKeys) {
+            if (leafCacheKey.query.equals(query)) {
+                keysToRemove.add(leafCacheKey);
+            }
+        }
+        cache.invalidateAll(keysToRemove);
     }
 
     @Override
@@ -213,15 +240,15 @@ public class SprLRUQueryCache extends LRUQueryCache {
                 policy.onUse(getQuery());
             }
 
+            if (policy.shouldCache(in.getQuery()) == false) {
+                return in.scorer(context);
+            }
+
             DocIdSet docIdSet = get(in.getQuery(), context);
 
             if (docIdSet == null) {
-                if (policy.shouldCache(in.getQuery())) {
-                    docIdSet = cache(context);
-                    put(in.getQuery(), context, docIdSet);
-                } else {
-                    return in.scorer(context);
-                }
+                docIdSet = cache(context);
+                put(in.getQuery(), context, docIdSet);
             }
 
             assert docIdSet != null;
