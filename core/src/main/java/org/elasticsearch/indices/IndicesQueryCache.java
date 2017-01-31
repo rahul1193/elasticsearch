@@ -19,6 +19,7 @@
 
 package org.elasticsearch.indices;
 
+import com.spr.elasticsearch.indices.SprLRUQueryCache;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
@@ -43,6 +44,8 @@ import java.util.function.Predicate;
 
 public class IndicesQueryCache extends AbstractComponent implements QueryCache, Closeable {
 
+    public static final Setting<Boolean> INDICES_QUERIES_CACHE_SPR_CACHE_SETTING =
+        Setting.boolSetting("indices.queries.cache.spr_cache", true, Property.NodeScope);
     public static final Setting<ByteSizeValue> INDICES_CACHE_QUERY_SIZE_SETTING =
         Setting.memorySizeSetting("indices.queries.cache.size", "10%", Property.NodeScope);
     public static final Setting<Integer> INDICES_CACHE_QUERY_COUNT_SETTING =
@@ -67,7 +70,9 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
         final int count = INDICES_CACHE_QUERY_COUNT_SETTING.get(settings);
         logger.debug("using [node] query cache with size [{}] max filter count [{}]",
             size, count);
-        if (INDICES_QUERIES_CACHE_ALL_SEGMENTS_SETTING.get(settings)) {
+        if (INDICES_QUERIES_CACHE_SPR_CACHE_SETTING.get(settings)) {
+            cache = new SprLRUQueryCache(count);
+        } else if (INDICES_QUERIES_CACHE_ALL_SEGMENTS_SETTING.get(settings)) {
             cache = new ElasticsearchLRUQueryCache(count, size.getBytes(), context -> true);
         } else {
             cache = new ElasticsearchLRUQueryCache(count, size.getBytes());
