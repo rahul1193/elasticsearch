@@ -19,6 +19,7 @@
 
 package org.elasticsearch.indices;
 
+import com.spr.elasticsearch.indices.CacheKeyLRUQueryCache;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BulkScorer;
@@ -50,6 +51,8 @@ import java.util.function.Predicate;
 
 public class IndicesQueryCache extends AbstractComponent implements QueryCache, Closeable {
 
+    public static final Setting<Boolean> INDICES_QUERIES_CACHE_CACHEABLE_SETTING =
+        Setting.boolSetting("indices.queries.cache.cacheable", true, Property.NodeScope);
     public static final Setting<ByteSizeValue> INDICES_CACHE_QUERY_SIZE_SETTING =
         Setting.memorySizeSetting("indices.queries.cache.size", "10%", Property.NodeScope);
     public static final Setting<Integer> INDICES_CACHE_QUERY_COUNT_SETTING =
@@ -73,8 +76,10 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
         final ByteSizeValue size = INDICES_CACHE_QUERY_SIZE_SETTING.get(settings);
         final int count = INDICES_CACHE_QUERY_COUNT_SETTING.get(settings);
         logger.debug("using [node] query cache with size [{}] max filter count [{}]",
-                size, count);
-        if (INDICES_QUERIES_CACHE_ALL_SEGMENTS_SETTING.get(settings)) {
+            size, count);
+        if (INDICES_QUERIES_CACHE_CACHEABLE_SETTING.get(settings)) {
+            cache = new CacheKeyLRUQueryCache(settings, count, this::getOrCreateStats);
+        } else if (INDICES_QUERIES_CACHE_ALL_SEGMENTS_SETTING.get(settings)) {
             cache = new ElasticsearchLRUQueryCache(count, size.getBytes(), context -> true);
         } else {
             cache = new ElasticsearchLRUQueryCache(count, size.getBytes());
@@ -193,13 +198,13 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
         cache.clear();
     }
 
-    private static class Stats implements Cloneable {
+    public static class Stats implements Cloneable {
 
-        volatile long ramBytesUsed;
-        volatile long hitCount;
-        volatile long missCount;
-        volatile long cacheCount;
-        volatile long cacheSize;
+        public volatile long ramBytesUsed;
+        public volatile long hitCount;
+        public volatile long missCount;
+        public volatile long cacheCount;
+        public volatile long cacheSize;
 
         QueryCacheStats toQueryCacheStats() {
             return new QueryCacheStats(ramBytesUsed, hitCount, missCount, cacheCount, cacheSize);
@@ -226,6 +231,17 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
     public void onClose(ShardId shardId) {
         assert empty(shardStats.get(shardId));
         shardStats.remove(shardId);
+    }
+
+
+    private Stats getOrCreateStats(Object coreKey) {
+        final ShardId shardId = shardKeyMap.getShardId(coreKey);
+        Stats stats = shardStats.get(shardId);
+        if (stats == null) {
+            stats = new Stats();
+            shardStats.put(shardId, stats);
+        }
+        return stats;
     }
 
     private class ElasticsearchLRUQueryCache extends XLRUQueryCache {

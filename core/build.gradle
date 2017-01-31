@@ -57,6 +57,8 @@ dependencies {
 
   compile 'org.elasticsearch:securesm:1.1'
 
+  compile 'com.github.ben-manes.caffeine:caffeine:2.3.5'
+
   // utilities
   compile 'net.sf.jopt-simple:jopt-simple:5.0.2'
   compile 'com.carrotsearch:hppc:0.7.1'

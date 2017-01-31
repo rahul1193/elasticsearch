@@ -19,6 +19,7 @@
 
 package org.elasticsearch.index;
 
+import com.spr.elasticsearch.index.query.ParsedQueryCache;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.logging.log4j.util.Supplier;
 import org.apache.lucene.index.IndexReader;
@@ -73,13 +74,7 @@ import org.elasticsearch.threadpool.ThreadPool;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -99,6 +94,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
     private final IndexStore indexStore;
     private final IndexSearcherWrapper searcherWrapper;
     private final IndexCache indexCache;
+    private final ParsedQueryCache parsedQueryCache;
     private final MapperService mapperService;
     private final NamedXContentRegistry xContentRegistry;
     private final SimilarityService similarityService;
@@ -131,6 +127,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                         ClusterService clusterService,
                         Client client,
                         QueryCache queryCache,
+                        ParsedQueryCache parsedQueryCache,
                         IndexStore indexStore,
                         IndexEventListener eventListener,
                         IndexModule.IndexSearcherWrapperFactory wrapperFactory,
@@ -163,6 +160,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         this.warmer = new IndexWarmer(indexSettings.getSettings(), threadPool,
             bitsetFilterCache.createListener(threadPool));
         this.indexCache = new IndexCache(indexSettings, queryCache, bitsetFilterCache);
+        this.parsedQueryCache = parsedQueryCache;
         this.engineFactory = engineFactory;
         // initialize this last -- otherwise if the wrapper requires any other member to be non-null we fail with an NPE
         this.searcherWrapper = wrapperFactory.newWrapper(this);
@@ -216,6 +214,10 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
 
     public IndexCache cache() {
         return indexCache;
+    }
+
+    public Optional<ParsedQueryCache> parsedQueryCache() {
+        return Optional.ofNullable(parsedQueryCache);
     }
 
     public IndexFieldDataService fieldData() {
@@ -468,7 +470,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
             shardId, indexSettings, indexCache.bitsetFilterCache(), indexFieldData, mapperService(),
                 similarityService(), scriptService, xContentRegistry,
                 client, indexReader,
-            nowInMillis);
+            nowInMillis, parsedQueryCache);
     }
 
     /**
