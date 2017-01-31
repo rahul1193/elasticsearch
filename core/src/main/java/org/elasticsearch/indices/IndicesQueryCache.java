@@ -71,7 +71,7 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
         logger.debug("using [node] query cache with size [{}] max filter count [{}]",
             size, count);
         if (INDICES_QUERIES_CACHE_SPR_CACHE_SETTING.get(settings)) {
-            cache = new SprLRUQueryCache(settings, count, o -> IndicesQueryCache.this.getOrCreateStats(o));
+            cache = new SprLRUQueryCache(settings, count, this::getOrCreateStats);
         } else if (INDICES_QUERIES_CACHE_ALL_SEGMENTS_SETTING.get(settings)) {
             cache = new ElasticsearchLRUQueryCache(count, size.getBytes(), context -> true);
         } else {
@@ -191,22 +191,14 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
 
     public static class Stats implements Cloneable {
 
-        volatile long ramBytesUsed;
-        volatile long hitCount;
-        volatile long missCount;
-        volatile long cacheCount;
-        volatile long cacheSize;
+        public volatile long ramBytesUsed;
+        public volatile long hitCount;
+        public volatile long missCount;
+        public volatile long cacheCount;
+        public volatile long cacheSize;
 
         QueryCacheStats toQueryCacheStats() {
             return new QueryCacheStats(ramBytesUsed, hitCount, missCount, cacheCount, cacheSize);
-        }
-
-        public void incrementHitCount() {
-            hitCount++;
-        }
-
-        public void incrementMissCount() {
-            missCount++;
         }
     }
 
