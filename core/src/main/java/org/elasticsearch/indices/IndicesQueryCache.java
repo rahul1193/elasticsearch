@@ -71,7 +71,7 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
         logger.debug("using [node] query cache with size [{}] max filter count [{}]",
             size, count);
         if (INDICES_QUERIES_CACHE_SPR_CACHE_SETTING.get(settings)) {
-            cache = new SprLRUQueryCache(count);
+            cache = new SprLRUQueryCache(settings, count, o -> IndicesQueryCache.this.getOrCreateStats(o));
         } else if (INDICES_QUERIES_CACHE_ALL_SEGMENTS_SETTING.get(settings)) {
             cache = new ElasticsearchLRUQueryCache(count, size.getBytes(), context -> true);
         } else {
@@ -189,7 +189,7 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
         cache.clear();
     }
 
-    private static class Stats implements Cloneable {
+    public static class Stats implements Cloneable {
 
         volatile long ramBytesUsed;
         volatile long hitCount;
@@ -199,6 +199,14 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
 
         QueryCacheStats toQueryCacheStats() {
             return new QueryCacheStats(ramBytesUsed, hitCount, missCount, cacheCount, cacheSize);
+        }
+
+        public void incrementHitCount() {
+            hitCount++;
+        }
+
+        public void incrementMissCount() {
+            missCount++;
         }
     }
 
@@ -222,6 +230,17 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
     public void onClose(ShardId shardId) {
         assert empty(shardStats.get(shardId));
         shardStats.remove(shardId);
+    }
+
+
+    private Stats getOrCreateStats(Object coreKey) {
+        final ShardId shardId = shardKeyMap.getShardId(coreKey);
+        Stats stats = shardStats.get(shardId);
+        if (stats == null) {
+            stats = new Stats();
+            shardStats.put(shardId, stats);
+        }
+        return stats;
     }
 
     private class ElasticsearchLRUQueryCache extends LRUQueryCache {
