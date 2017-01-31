@@ -21,17 +21,21 @@ package com.spr.elasticsearch.indices;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.RemovalCause;
+import com.github.benmanes.caffeine.cache.RemovalListener;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.indices.IndicesQueryCache;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
@@ -39,6 +43,10 @@ import java.util.function.Function;
  * @author Utkarsh
  */
 public class SprLRUQueryCache extends LRUQueryCache {
+
+    private static final long HASHTABLE_RAM_BYTES_PER_ENTRY =
+        2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF // key + value
+            * 2;
 
     private final Logger logger;
     private final Cache<LeafCacheKey, DocIdSet> cache;
@@ -48,8 +56,12 @@ public class SprLRUQueryCache extends LRUQueryCache {
         super(maxSize, Long.MAX_VALUE, leafReaderContext -> true);
         assert maxSize > 0;
         logger = Loggers.getLogger(getClass(), settings);
-        cache = Caffeine.newBuilder().maximumSize(maxSize).recordStats().build();
         this.shardStatsSupplier = shardStatsSupplier;
+        cache = Caffeine.newBuilder()
+            .maximumSize(maxSize)
+            .removalListener(new SprCacheRemovalListener(settings, shardStatsSupplier))
+            .executor(Runnable::run)
+            .build();
     }
 
     @Override
@@ -59,7 +71,7 @@ public class SprLRUQueryCache extends LRUQueryCache {
             logger.debug("shard stats is null for key {}", readerCoreKey);
             return;
         }
-        shardStats.incrementHitCount();
+        shardStats.hitCount++;
         // noop
     }
 
@@ -71,7 +83,7 @@ public class SprLRUQueryCache extends LRUQueryCache {
             logger.debug("shard stats is null for key {}", readerCoreKey);
             return;
         }
-        shardStats.incrementMissCount();
+        shardStats.missCount++;
     }
 
     @Override
@@ -86,7 +98,12 @@ public class SprLRUQueryCache extends LRUQueryCache {
 
     @Override
     protected void onDocIdSetCache(Object readerCoreKey, long ramBytesUsed) {
-        // noop
+        IndicesQueryCache.Stats shardStats = this.shardStatsSupplier.apply(readerCoreKey);
+        if (shardStats != null) {
+            shardStats.cacheSize++;
+            shardStats.cacheCount++;
+            shardStats.ramBytesUsed += ramBytesUsed;
+        }
     }
 
     @Override
@@ -125,7 +142,15 @@ public class SprLRUQueryCache extends LRUQueryCache {
 
     @Override
     public void clear() {
+        ConcurrentMap<LeafCacheKey, DocIdSet> map = cache.asMap();
         cache.invalidateAll();
+        for (LeafCacheKey leafCacheKey : map.keySet()) {
+            IndicesQueryCache.Stats shardStats = this.shardStatsSupplier.apply(leafCacheKey);
+            if (shardStats != null) {
+                shardStats.ramBytesUsed = 0;
+                shardStats.cacheSize = 0;
+            }
+        }
     }
 
     @Override
@@ -175,6 +200,7 @@ public class SprLRUQueryCache extends LRUQueryCache {
         assert query instanceof ConstantScoreQuery == false;
         final Object key = context.reader().getCoreCacheKey();
         cache.put(LeafCacheKey.of(key, query), set);
+        onDocIdSetCache(key, HASHTABLE_RAM_BYTES_PER_ENTRY + set.ramBytesUsed());
     }
 
     private static class LeafCacheKey {
@@ -291,5 +317,45 @@ public class SprLRUQueryCache extends LRUQueryCache {
             return new DefaultBulkScorer(new ConstantScoreScorer(this, 0f, disi));
         }
 
+    }
+
+    private static final class SprCacheRemovalListener implements RemovalListener<LeafCacheKey, DocIdSet> {
+
+        private final Function<Object, IndicesQueryCache.Stats> statsSupplier;
+        private final Logger logger;
+
+        SprCacheRemovalListener(Settings settings, Function<Object, IndicesQueryCache.Stats> statsSupplier) {
+            logger = Loggers.getLogger(getClass(), settings);
+            this.statsSupplier = statsSupplier;
+        }
+
+        @Override
+        public void onRemoval(LeafCacheKey key, DocIdSet removed, RemovalCause cause) {
+            if (key == null) {
+                return;
+            }
+            IndicesQueryCache.Stats stats = this.statsSupplier.apply(key.leaf);
+            if (stats == null) {
+                logger.error("stats is null for key  {}", key);
+                return;
+            } else {
+                logger.debug("cache is removed for key {}", key);
+            }
+            switch (cause) {
+                case COLLECTED:
+                case EXPIRED:
+                case SIZE:
+                    stats.cacheCount--;
+                    break;
+                case EXPLICIT:
+                case REPLACED:
+                    stats.cacheSize--;
+                    stats.cacheCount--;
+                    break;
+            }
+            if (removed != null) {
+                stats.ramBytesUsed -= HASHTABLE_RAM_BYTES_PER_ENTRY + removed.ramBytesUsed();
+            }
+        }
     }
 }
