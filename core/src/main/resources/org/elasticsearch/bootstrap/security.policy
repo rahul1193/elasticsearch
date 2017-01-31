@@ -91,6 +91,12 @@ grant {
   permission java.lang.RuntimePermission "modifyThread";
   permission java.lang.RuntimePermission "modifyThreadGroup";
 
+  // needed by Caffeine
+  permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";
+  permission java.lang.RuntimePermission "accessDeclaredMembers";
+  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
+  permission org.elasticsearch.ThreadPermission "modifyArbitraryThreadGroup";
+
   // needed by ExceptionSerializationTests and RestTestCase for
   // some hackish things they do. otherwise only needed by groovy
   // (TODO: clean this up?)
