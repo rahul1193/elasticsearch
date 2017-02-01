@@ -78,8 +78,6 @@ dependencies {
   // precentil ranks aggregation
   compile 'org.hdrhistogram:HdrHistogram:2.1.6'
 
-  compile 'com.github.ben-manes.caffeine:caffeine:2.3.5'
-
   // lucene spatial
   compile "org.locationtech.spatial4j:spatial4j:${versions.spatial4j}", optional
   compile "com.vividsolutions:jts:${versions.jts}", optional
