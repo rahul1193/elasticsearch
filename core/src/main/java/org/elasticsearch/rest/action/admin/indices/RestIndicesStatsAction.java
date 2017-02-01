@@ -73,6 +73,7 @@ public class RestIndicesStatsAction extends BaseRestHandler {
         metrics.put("flush", r -> r.flush(true));
         metrics.put("warmer", r -> r.warmer(true));
         metrics.put("query_cache", r -> r.queryCache(true));
+        metrics.put("parsed_query_cache", r -> r.parsedQueryCache(true));
         metrics.put("segments", r -> r.segments(true));
         metrics.put("fielddata", r -> r.fieldData(true));
         metrics.put("completion", r -> r.completion(true));
