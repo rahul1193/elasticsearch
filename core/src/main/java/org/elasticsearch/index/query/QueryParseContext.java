@@ -23,9 +23,12 @@ import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.ParsingException;
 import org.elasticsearch.common.logging.DeprecationLogger;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry.UnknownNamedObjectException;
 import org.elasticsearch.common.xcontent.XContentLocation;
 import org.elasticsearch.common.xcontent.XContentParser;
+import org.elasticsearch.index.IndexSettings;
+import org.elasticsearch.index.IndexSettings;
 import org.elasticsearch.script.Script;
 
 import java.io.IOException;
@@ -36,20 +39,39 @@ public class QueryParseContext {
 
     private static final DeprecationLogger DEPRECATION_LOGGER = new DeprecationLogger(Loggers.getLogger(QueryParseContext.class));
 
-    private static final ParseField CACHE = new ParseField("_cache").withAllDeprecated("Elasticsearch makes its own caching decisions");
+    static final ParseField CACHE = new ParseField("_cache").withAllDeprecated("Elasticsearch makes its own caching decisions");
     private static final ParseField CACHE_KEY = new ParseField("_cache_key").withAllDeprecated("Filters are always used as cache keys");
+
+    enum CacheStrategy { KEY, ANY, SHA }
+
+    public static final Setting<CacheStrategy> CACHE_STRATEGY_SETTING = new Setting<>("cache.strategy", o -> CacheStrategy.KEY.name(), s -> {
+        CacheStrategy strategy = CacheStrategy.KEY;
+        try {
+            strategy = CacheStrategy.valueOf(s.toUpperCase());
+        } catch (Throwable t) {
+            // Use default
+        }
+        return strategy;
+    });
 
     private final XContentParser parser;
     private final String defaultScriptLanguage;
+    private final CacheStrategy cacheStrategy;
 
     public QueryParseContext(XContentParser parser) {
-        this(Script.DEFAULT_SCRIPT_LANG, parser);
+        this(Script.DEFAULT_SCRIPT_LANG, parser, null);
     }
 
     //TODO this constructor can be removed from master branch
-    public QueryParseContext(String defaultScriptLanguage, XContentParser parser) {
+    public QueryParseContext(String defaultScriptLanguage, XContentParser parser, IndexSettings indexSettings) {
         this.parser = Objects.requireNonNull(parser, "parser cannot be null");
         this.defaultScriptLanguage = defaultScriptLanguage;
+
+        if (indexSettings != null) {
+            this.cacheStrategy = CACHE_STRATEGY_SETTING.get(indexSettings.getSettings());
+        } else {
+            this.cacheStrategy = CacheStrategy.KEY;
+        }
     }
 
     public XContentParser parser() {
@@ -58,6 +80,10 @@ public class QueryParseContext {
 
     public boolean isDeprecatedSetting(String setting) {
         return CACHE.match(setting) || CACHE_KEY.match(setting);
+    }
+
+    public CacheStrategy getCacheStrategy() {
+        return cacheStrategy;
     }
 
     /**
@@ -110,7 +136,7 @@ public class QueryParseContext {
         Optional<QueryBuilder> result;
         try {
             @SuppressWarnings("unchecked")
-            Optional<QueryBuilder> resultCast = (Optional<QueryBuilder>) parser.namedObject(Optional.class, queryName, this); 
+            Optional<QueryBuilder> resultCast = (Optional<QueryBuilder>) parser.namedObject(Optional.class, queryName, this);
             result = resultCast;
         } catch (UnknownNamedObjectException e) {
             // Preserve the error message from 5.0 until we have a compellingly better message so we don't break BWC.

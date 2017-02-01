@@ -175,6 +175,15 @@ public class IndicesStatsRequest extends BroadcastRequest<IndicesStatsRequest> {
         return flags.isSet(Flag.QueryCache);
     }
 
+    public IndicesStatsRequest parsedQueryCache(boolean parsedQueryCache) {
+        flags.set(Flag.ParsedQueryCache, parsedQueryCache);
+        return this;
+    }
+
+    public boolean parsedQueryCache() {
+        return flags.isSet(Flag.ParsedQueryCache);
+    }
+
     public IndicesStatsRequest fieldData(boolean fieldData) {
         flags.set(Flag.FieldData, fieldData);
         return this;

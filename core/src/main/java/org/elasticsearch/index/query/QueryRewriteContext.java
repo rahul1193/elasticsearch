@@ -106,7 +106,7 @@ public class QueryRewriteContext {
      */
     public QueryParseContext newParseContextWithLegacyScriptLanguage(XContentParser parser) {
         String defaultScriptLanguage = ScriptSettings.getLegacyDefaultLang(indexSettings.getNodeSettings());
-        return new QueryParseContext(defaultScriptLanguage, parser);
+        return new QueryParseContext(defaultScriptLanguage, parser, indexSettings);
     }
 
     public long nowInMillis() {
