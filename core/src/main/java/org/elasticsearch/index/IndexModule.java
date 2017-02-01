@@ -19,6 +19,7 @@
 
 package org.elasticsearch.index;
 
+import com.spr.elasticsearch.index.query.ParsedQueryCache;
 import org.apache.lucene.util.SetOnce;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.service.ClusterService;
@@ -65,15 +66,15 @@ import java.util.function.Function;
 /**
  * IndexModule represents the central extension point for index level custom implementations like:
  * <ul>
- *     <li>{@link SimilarityProvider} - New {@link SimilarityProvider} implementations can be registered through
- *     {@link #addSimilarity(String, BiFunction)}while existing Providers can be referenced through Settings under the
- *     {@link IndexModule#SIMILARITY_SETTINGS_PREFIX} prefix along with the "type" value.  For example, to reference the
- *     {@link BM25SimilarityProvider}, the configuration <tt>"index.similarity.my_similarity.type : "BM25"</tt> can be used.</li>
- *      <li>{@link IndexStore} - Custom {@link IndexStore} instances can be registered via {@link #addIndexStore(String, BiFunction)}</li>
- *      <li>{@link IndexEventListener} - Custom {@link IndexEventListener} instances can be registered via
- *      {@link #addIndexEventListener(IndexEventListener)}</li>
- *      <li>Settings update listener - Custom settings update listener can be registered via
- *      {@link #addSettingsUpdateConsumer(Setting, Consumer)}</li>
+ * <li>{@link SimilarityProvider} - New {@link SimilarityProvider} implementations can be registered through
+ * {@link #addSimilarity(String, BiFunction)}while existing Providers can be referenced through Settings under the
+ * {@link IndexModule#SIMILARITY_SETTINGS_PREFIX} prefix along with the "type" value.  For example, to reference the
+ * {@link BM25SimilarityProvider}, the configuration <tt>"index.similarity.my_similarity.type : "BM25"</tt> can be used.</li>
+ * <li>{@link IndexStore} - Custom {@link IndexStore} instances can be registered via {@link #addIndexStore(String, BiFunction)}</li>
+ * <li>{@link IndexEventListener} - Custom {@link IndexEventListener} instances can be registered via
+ * {@link #addIndexEventListener(IndexEventListener)}</li>
+ * <li>Settings update listener - Custom settings update listener can be registered via
+ * {@link #addSettingsUpdateConsumer(Setting, Consumer)}</li>
  * </ul>
  */
 public final class IndexModule {
@@ -81,18 +82,20 @@ public final class IndexModule {
     public static final Setting<String> INDEX_STORE_TYPE_SETTING =
         new Setting<>("index.store.type", "", Function.identity(), Property.IndexScope, Property.NodeScope);
 
-    /** On which extensions to load data into the file-system cache upon opening of files.
-     *  This only works with the mmap directory, and even in that case is still
-     *  best-effort only. */
+    /**
+     * On which extensions to load data into the file-system cache upon opening of files.
+     * This only works with the mmap directory, and even in that case is still
+     * best-effort only.
+     */
     public static final Setting<List<String>> INDEX_STORE_PRE_LOAD_SETTING =
-            Setting.listSetting("index.store.preload", Collections.emptyList(), Function.identity(),
-                    Property.IndexScope, Property.NodeScope);
+        Setting.listSetting("index.store.preload", Collections.emptyList(), Function.identity(),
+            Property.IndexScope, Property.NodeScope);
 
     public static final String SIMILARITY_SETTINGS_PREFIX = "index.similarity";
 
     // whether to use the query cache
     public static final Setting<Boolean> INDEX_QUERY_CACHE_ENABLED_SETTING =
-            Setting.boolSetting("index.queries.cache.enabled", true, Property.IndexScope);
+        Setting.boolSetting("index.queries.cache.enabled", true, Property.IndexScope);
 
     // for test purposes only
     public static final Setting<Boolean> INDEX_QUERY_CACHE_EVERYTHING_SETTING =
@@ -244,13 +247,13 @@ public final class IndexModule {
      *     indexModule.addIndexStore("my_store_type", MyStore::new);
      * </pre>
      *
-     * @param type the type to register
+     * @param type     the type to register
      * @param provider the instance provider / factory method
      */
     public void addIndexStore(String type, BiFunction<IndexSettings, IndexStoreConfig, IndexStore> provider) {
         ensureNotFrozen();
         if (storeTypes.containsKey(type)) {
-            throw new IllegalArgumentException("key [" + type +"] already registered");
+            throw new IllegalArgumentException("key [" + type + "] already registered");
         }
         storeTypes.put(type, provider);
     }
@@ -259,7 +262,7 @@ public final class IndexModule {
     /**
      * Registers the given {@link SimilarityProvider} with the given name
      *
-     * @param name Name of the SimilarityProvider
+     * @param name       Name of the SimilarityProvider
      * @param similarity SimilarityProvider to register
      */
     public void addSimilarity(String name, BiFunction<String, Settings, SimilarityProvider> similarity) {
@@ -308,6 +311,7 @@ public final class IndexModule {
         public String getSettingsKey() {
             return this.name().toLowerCase(Locale.ROOT);
         }
+
         /**
          * Returns true iff this settings matches the type.
          */
@@ -327,10 +331,10 @@ public final class IndexModule {
     }
 
     public IndexService newIndexService(NodeEnvironment environment, NamedXContentRegistry xContentRegistry,
-            IndexService.ShardStoreDeleter shardStoreDeleter, CircuitBreakerService circuitBreakerService, BigArrays bigArrays,
-            ThreadPool threadPool, ScriptService scriptService,
-            ClusterService clusterService, Client client, IndicesQueryCache indicesQueryCache, MapperRegistry mapperRegistry,
-            IndicesFieldDataCache indicesFieldDataCache) throws IOException {
+                                        IndexService.ShardStoreDeleter shardStoreDeleter, CircuitBreakerService circuitBreakerService, BigArrays bigArrays,
+                                        ThreadPool threadPool, ScriptService scriptService,
+                                        ClusterService clusterService, Client client, IndicesQueryCache indicesQueryCache, ParsedQueryCache parsedQueryCache, MapperRegistry mapperRegistry,
+                                        IndicesFieldDataCache indicesFieldDataCache) throws IOException {
         final IndexEventListener eventListener = freeze();
         IndexSearcherWrapperFactory searcherWrapperFactory = indexSearcherWrapper.get() == null
             ? (shard) -> null : indexSearcherWrapper.get();
@@ -363,10 +367,10 @@ public final class IndexModule {
         } else {
             queryCache = new DisabledQueryCache(indexSettings);
         }
-        return new IndexService(indexSettings, environment, xContentRegistry, new SimilarityService(indexSettings, similarities),
-                shardStoreDeleter, analysisRegistry, engineFactory.get(), circuitBreakerService, bigArrays, threadPool, scriptService,
-                clusterService, client, queryCache, store, eventListener, searcherWrapperFactory, mapperRegistry,
-                indicesFieldDataCache, searchOperationListeners, indexOperationListeners);
+        return new IndexService(indexSettings, environment, xContentRegistry, new SimilarityService(indexSettings, similarities), shardStoreDeleter,
+            analysisRegistry, engineFactory.get(), circuitBreakerService, bigArrays, threadPool, scriptService,
+            clusterService, client, queryCache, parsedQueryCache, store, eventListener, searcherWrapperFactory, mapperRegistry, indicesFieldDataCache,
+            searchOperationListeners, indexOperationListeners);
     }
 
     /**
@@ -376,7 +380,9 @@ public final class IndexModule {
     public MapperService newIndexMapperService(NamedXContentRegistry xContentRegistry, MapperRegistry mapperRegistry) throws IOException {
         return new MapperService(indexSettings, analysisRegistry.build(indexSettings), xContentRegistry,
             new SimilarityService(indexSettings, similarities), mapperRegistry,
-            () -> { throw new UnsupportedOperationException("no index query shard context available"); });
+            () -> {
+                throw new UnsupportedOperationException("no index query shard context available");
+            });
     }
 
     /**

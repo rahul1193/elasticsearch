@@ -114,7 +114,7 @@ public class QueryRewriteContext implements ParseFieldMatcherSupplier {
      */
     public QueryParseContext newParseContextWithLegacyScriptLanguage(XContentParser parser) {
         String defaultScriptLanguage = ScriptSettings.getLegacyDefaultLang(indexSettings.getNodeSettings());
-        return new QueryParseContext(defaultScriptLanguage, parser, indexSettings.getParseFieldMatcher());
+        return new QueryParseContext(defaultScriptLanguage, parser, indexSettings.getParseFieldMatcher(), indexSettings);
     }
 
     public long nowInMillis() {

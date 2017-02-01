@@ -29,6 +29,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.indices.IndicesQueryCache;
@@ -42,24 +43,24 @@ import java.util.function.Function;
 /**
  * @author Utkarsh
  */
-public class SprLRUQueryCache extends LRUQueryCache {
+public class CacheKeyLRUQueryCache extends LRUQueryCache {
 
     private static final long HASHTABLE_RAM_BYTES_PER_ENTRY =
         2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF // key + value
-            * 2;
+            * 2; // hash tables need to be oversized to avoid collisions, assume 2x capacity
 
     private final Logger logger;
     private final Cache<LeafCacheKey, DocIdSet> cache;
     private final Function<Object, IndicesQueryCache.Stats> shardStatsSupplier;
 
-    public SprLRUQueryCache(Settings settings, int maxSize, Function<Object, IndicesQueryCache.Stats> shardStatsSupplier) {
+    public CacheKeyLRUQueryCache(Settings settings, int maxSize, Function<Object, IndicesQueryCache.Stats> shardStatsSupplier) {
         super(maxSize, Long.MAX_VALUE, leafReaderContext -> true);
         assert maxSize > 0;
         logger = Loggers.getLogger(getClass(), settings);
         this.shardStatsSupplier = shardStatsSupplier;
         cache = Caffeine.newBuilder()
             .maximumSize(maxSize)
-            .removalListener(new SprCacheRemovalListener(settings, shardStatsSupplier))
+            .removalListener(new CacheRemovalListener(settings, shardStatsSupplier))
             .executor(Runnable::run)
             .build();
     }
@@ -72,12 +73,10 @@ public class SprLRUQueryCache extends LRUQueryCache {
             return;
         }
         shardStats.hitCount++;
-        // noop
     }
 
     @Override
     protected void onMiss(Object readerCoreKey, Query query) {
-        // noop
         final IndicesQueryCache.Stats shardStats = this.shardStatsSupplier.apply(readerCoreKey);
         if (shardStats == null) {
             logger.debug("shard stats is null for key {}", readerCoreKey);
@@ -133,7 +132,7 @@ public class SprLRUQueryCache extends LRUQueryCache {
         Set<LeafCacheKey> leafCacheKeys = cache.asMap().keySet();
         List<LeafCacheKey> keysToRemove = new ArrayList<>();
         for (LeafCacheKey leafCacheKey : leafCacheKeys) {
-            if (leafCacheKey.query.equals(query)) {
+            if (leafCacheKey.cacheKey.equals(query)) {
                 keysToRemove.add(leafCacheKey);
             }
         }
@@ -155,6 +154,14 @@ public class SprLRUQueryCache extends LRUQueryCache {
 
     @Override
     public Weight doCache(Weight weight, QueryCachingPolicy policy) {
+        try {
+            if (!policy.shouldCache(weight.getQuery())) {
+                return weight;
+            }
+        } catch (IOException e) {
+            throw ExceptionsHelper.convertToElastic(e);
+        }
+
         while (weight instanceof CachingWrapperWeight) {
             weight = ((CachingWrapperWeight) weight).in;
         }
@@ -182,52 +189,54 @@ public class SprLRUQueryCache extends LRUQueryCache {
         return super.cacheImpl(scorer, maxDoc);
     }
 
-    DocIdSet get(Query key, LeafReaderContext context) {
-        assert key instanceof BoostQuery == false;
-        assert key instanceof ConstantScoreQuery == false;
-        final Object readerKey = context.reader().getCoreCacheKey();
-        final DocIdSet cached = cache.getIfPresent(LeafCacheKey.of(readerKey, key));
+    DocIdSet get(Query query, LeafReaderContext context) {
+        assert query instanceof BooleanQuery;
+        assert ((BooleanQuery) query).getCacheKey() != null;
+        final Object leaf = context.reader().getCoreCacheKey();
+        final String key = ((BooleanQuery) query).getCacheKey();
+        final DocIdSet cached = cache.getIfPresent(LeafCacheKey.of(leaf, key));
         if (cached == null) {
-            onMiss(readerKey, key);
+            onMiss(leaf, query);
         } else {
-            onHit(readerKey, key);
+            onHit(leaf, query);
         }
         return cached;
     }
 
     void put(Query query, LeafReaderContext context, DocIdSet set) {
-        assert query instanceof BoostQuery == false;
-        assert query instanceof ConstantScoreQuery == false;
-        final Object key = context.reader().getCoreCacheKey();
-        cache.put(LeafCacheKey.of(key, query), set);
-        onDocIdSetCache(key, HASHTABLE_RAM_BYTES_PER_ENTRY + set.ramBytesUsed());
+        assert query instanceof BooleanQuery;
+        assert ((BooleanQuery) query).getCacheKey() != null;
+        final Object leaf = context.reader().getCoreCacheKey();
+        final String key = ((BooleanQuery) query).getCacheKey();
+        cache.put(LeafCacheKey.of(leaf, key), set);
+        onDocIdSetCache(leaf, HASHTABLE_RAM_BYTES_PER_ENTRY + set.ramBytesUsed());
     }
 
     private static class LeafCacheKey {
 
         private final Object leaf;
-        private final Query query;
+        private final String cacheKey;
 
 
-        private LeafCacheKey(Object leaf, Query query) {
+        private LeafCacheKey(Object leaf, String cacheKey) {
             this.leaf = leaf;
-            this.query = query;
+            this.cacheKey = cacheKey;
         }
 
-        private static LeafCacheKey of(Object leaf, Query query) {
-            return new LeafCacheKey(leaf, query);
+        private static LeafCacheKey of(Object leaf, String cacheKey) {
+            return new LeafCacheKey(leaf, cacheKey);
         }
 
         @Override
         public int hashCode() {
             int h = System.identityHashCode(leaf);
-            h = 31 * h + query.hashCode();
+            h = 31 * h + cacheKey.hashCode();
             return h;
         }
 
         @Override
         public boolean equals(Object obj) {
-            return obj == this || (obj instanceof LeafCacheKey && leaf == ((LeafCacheKey) obj).leaf && query.equals(((LeafCacheKey) obj).query));
+            return obj == this || (obj instanceof LeafCacheKey && leaf == ((LeafCacheKey) obj).leaf && cacheKey.equals(((LeafCacheKey) obj).cacheKey));
         }
     }
 
@@ -266,7 +275,7 @@ public class SprLRUQueryCache extends LRUQueryCache {
                 policy.onUse(getQuery());
             }
 
-            if (policy.shouldCache(in.getQuery()) == false) {
+            if (!policy.shouldCache(in.getQuery())) {
                 return in.scorer(context);
             }
 
@@ -319,12 +328,12 @@ public class SprLRUQueryCache extends LRUQueryCache {
 
     }
 
-    private static final class SprCacheRemovalListener implements RemovalListener<LeafCacheKey, DocIdSet> {
+    private static final class CacheRemovalListener implements RemovalListener<LeafCacheKey, DocIdSet> {
 
         private final Function<Object, IndicesQueryCache.Stats> statsSupplier;
         private final Logger logger;
 
-        SprCacheRemovalListener(Settings settings, Function<Object, IndicesQueryCache.Stats> statsSupplier) {
+        CacheRemovalListener(Settings settings, Function<Object, IndicesQueryCache.Stats> statsSupplier) {
             logger = Loggers.getLogger(getClass(), settings);
             this.statsSupplier = statsSupplier;
         }
