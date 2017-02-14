@@ -101,7 +101,7 @@ public abstract class AbstractSearchScript extends AbstractExecutableScript impl
         return lookup.fields();
     }
 
-    void setLookup(LeafSearchLookup lookup) {
+    protected void setLookup(LeafSearchLookup lookup) {
         this.lookup = lookup;
     }
 
