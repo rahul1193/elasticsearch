@@ -24,10 +24,7 @@ import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.text.Text;
-import org.elasticsearch.common.xcontent.XContentFactory;
-import org.elasticsearch.common.xcontent.XContentHelper;
-import org.elasticsearch.common.xcontent.XContentObject;
-import org.elasticsearch.common.xcontent.XContentParser;
+import org.elasticsearch.common.xcontent.*;
 import org.joda.time.DateTime;
 
 import java.io.IOException;
@@ -91,7 +88,7 @@ public class XContentObjectImpl implements XContentObject {
             return null;
         }
         if (value instanceof Number) {
-            return ((Number)value).doubleValue();
+            return ((Number) value).doubleValue();
         }
         try {
             return Double.parseDouble(value.toString());
@@ -126,7 +123,7 @@ public class XContentObjectImpl implements XContentObject {
             return null;
         }
         if (value instanceof Number) {
-            return ((Number)value).floatValue();
+            return ((Number) value).floatValue();
         }
         try {
             return Float.parseFloat(value.toString());
@@ -156,7 +153,7 @@ public class XContentObjectImpl implements XContentObject {
             return null;
         }
         if (value instanceof Number) {
-            return ((Number)value).longValue();
+            return ((Number) value).longValue();
         }
         try {
             return Long.parseLong(value.toString());
@@ -181,7 +178,7 @@ public class XContentObjectImpl implements XContentObject {
             return null;
         }
         if (value instanceof Number) {
-            return ((Number)value).intValue();
+            return ((Number) value).intValue();
         }
         try {
             return Integer.parseInt(value.toString());
@@ -300,7 +297,10 @@ public class XContentObjectImpl implements XContentObject {
 
     @Override
     public XContentParser getAsXContentParser(String key) throws IOException {
-        return XContentHelper.createParser(new Text(getAsJson(key)).bytes());
+        /**
+         * empty named registry as this is not used currently, need to pass in all named regi
+         */
+        return XContentHelper.createParser(NamedXContentRegistry.EMPTY, new Text(getAsJson(key)).bytes());
     }
 
     @Override
@@ -311,11 +311,9 @@ public class XContentObjectImpl implements XContentObject {
         }
         if (this.internalMap.get(key) instanceof String) {
             return new DateTime(get(key));
-        }
-        else if (this.internalMap.get(key) instanceof Number) {
+        } else if (this.internalMap.get(key) instanceof Number) {
             return new DateTime(getAsLong(key));
-        }
-        else {
+        } else {
             throw new XContentObjectValueException(DateTime.class, key, value);
         }
 
@@ -335,6 +333,7 @@ public class XContentObjectImpl implements XContentObject {
             throw new XContentObjectValueException(String[].class, key, value);
         }
     }
+
     @Override
     public List<Object> getAsObjects(String key) {
         Object value = internalMap.get(key);
@@ -345,15 +344,14 @@ public class XContentObjectImpl implements XContentObject {
             }
             //noinspection unchecked
             return (List<Object>) value;
-        }
-        catch (ClassCastException e) {
+        } catch (ClassCastException e) {
             throw new XContentObjectValueException(Object[].class, key, value);
         }
     }
 
 
     @Override
-    public String toJson()  {
+    public String toJson() {
         try {
             return XContentHelper.convertToJson(internalMap, true);
         } catch (IOException e) {
@@ -364,8 +362,8 @@ public class XContentObjectImpl implements XContentObject {
     @Override
     public boolean isNull(String key) {
         return !internalMap.containsKey(key) ||
-                internalMap.get(key) == null ||
-                internalMap.get(key).equals("null");
+            internalMap.get(key) == null ||
+            internalMap.get(key).equals("null");
     }
 
     @Override
@@ -434,9 +432,8 @@ public class XContentObjectImpl implements XContentObject {
                 //noinspection unchecked
                 results.put(entry.getKey(), new XContentObjectImpl(this, entry.getValue(), version));
             }
-        }
-        catch (ClassCastException e) {
-            throw new XContentObjectValueException(Map.class, key,  value, e);
+        } catch (ClassCastException e) {
+            throw new XContentObjectValueException(Map.class, key, value, e);
         }
         return results;
     }
@@ -456,9 +453,8 @@ public class XContentObjectImpl implements XContentObject {
             @SuppressWarnings("unchecked")
             Map<String, V> map = (Map<String, V>) value;
             return map;
-        }
-        catch (ClassCastException e) {
-            throw new XContentObjectValueException(List.class, key,  value, e);
+        } catch (ClassCastException e) {
+            throw new XContentObjectValueException(List.class, key, value, e);
         }
     }
 
@@ -491,9 +487,8 @@ public class XContentObjectImpl implements XContentObject {
                 transformed.add(new XContentObjectImpl(parent, map, version));
             }
             return transformed;
-        }
-        catch (ClassCastException e) {
-            throw new XContentObjectValueException(List.class, key,  value, e);
+        } catch (ClassCastException e) {
+            throw new XContentObjectValueException(List.class, key, value, e);
         }
     }
 
