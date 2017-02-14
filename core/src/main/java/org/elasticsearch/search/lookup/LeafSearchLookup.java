@@ -39,7 +39,7 @@ public class LeafSearchLookup {
     final Map<String, Object> asMap;
 
     public LeafSearchLookup(LeafReaderContext ctx, LeafDocLookup docMap, SourceLookup sourceLookup,
-            LeafFieldsLookup fieldsLookup, LeafIndexLookup indexLookup, Map<String, Object> topLevelMap) {
+                            LeafFieldsLookup fieldsLookup, LeafIndexLookup indexLookup, Map<String, Object> topLevelMap) {
         this.ctx = ctx;
         this.docMap = docMap;
         this.sourceLookup = sourceLookup;
@@ -74,6 +74,10 @@ public class LeafSearchLookup {
 
     public LeafDocLookup doc() {
         return this.docMap;
+    }
+
+    public LeafReaderContext context() {
+        return this.ctx;
     }
 
     public void setDocument(int docId) {
