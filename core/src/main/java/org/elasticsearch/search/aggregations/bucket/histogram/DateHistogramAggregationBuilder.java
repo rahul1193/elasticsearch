@@ -115,6 +115,10 @@ public class DateHistogramAggregationBuilder
 
         PARSER.declareField(DateHistogramAggregationBuilder::order, DateHistogramAggregationBuilder::parseOrder,
             Histogram.ORDER_FIELD, ObjectParser.ValueType.OBJECT);
+
+        PARSER.declareBoolean(DateHistogramAggregationBuilder::reversePostTimeZone, Histogram.REVERSE_POST_TZ);
+        PARSER.declareBoolean(DateHistogramAggregationBuilder::preZoneAdjustLargeInterval, Histogram.PRE_ZONE_ADJUST_LARGE_INTERVAL);
+
     }
 
     public static DateHistogramAggregationBuilder parse(String aggregationName, QueryParseContext context) throws IOException {
@@ -128,6 +132,8 @@ public class DateHistogramAggregationBuilder
     private InternalOrder order = (InternalOrder) Histogram.Order.KEY_ASC;
     private boolean keyed = false;
     private long minDocCount = 0;
+    private boolean reversePostTimeZone;
+    private boolean preZoneAdjustLargeInterval;
 
     /**
      * Create a new builder with the given name.
@@ -319,6 +325,16 @@ public class DateHistogramAggregationBuilder
                 "[minDocCount] must be greater than or equal to 0. Found [" + minDocCount + "] in [" + name + "]");
         }
         this.minDocCount = minDocCount;
+        return this;
+    }
+
+    public DateHistogramAggregationBuilder reversePostTimeZone(boolean reversePostTimeZone) {
+        this.reversePostTimeZone = reversePostTimeZone;
+        return this;
+    }
+
+    public DateHistogramAggregationBuilder preZoneAdjustLargeInterval(boolean preZoneAdjustLargeInterval) {
+        this.preZoneAdjustLargeInterval = preZoneAdjustLargeInterval;
         return this;
     }
 
