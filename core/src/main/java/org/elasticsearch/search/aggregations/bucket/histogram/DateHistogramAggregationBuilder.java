@@ -32,14 +32,8 @@ import org.elasticsearch.common.xcontent.XContentParser.Token;
 import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.search.aggregations.AggregatorFactories.Builder;
 import org.elasticsearch.search.aggregations.AggregatorFactory;
-import org.elasticsearch.search.aggregations.support.ValueType;
-import org.elasticsearch.search.aggregations.support.ValuesSource;
+import org.elasticsearch.search.aggregations.support.*;
 import org.elasticsearch.search.aggregations.support.ValuesSource.Numeric;
-import org.elasticsearch.search.aggregations.support.ValuesSourceAggregationBuilder;
-import org.elasticsearch.search.aggregations.support.ValuesSourceAggregatorFactory;
-import org.elasticsearch.search.aggregations.support.ValuesSourceConfig;
-import org.elasticsearch.search.aggregations.support.ValuesSourceParserHelper;
-import org.elasticsearch.search.aggregations.support.ValuesSourceType;
 import org.elasticsearch.search.internal.SearchContext;
 
 import java.io.IOException;
@@ -98,12 +92,17 @@ public class DateHistogramAggregationBuilder
             }
         }, Histogram.INTERVAL_FIELD, ObjectParser.ValueType.LONG);
 
-        PARSER.declareField(DateHistogramAggregationBuilder::offset, p -> {
+        PARSER.declareField(DateHistogramAggregationBuilder::offset, (XContentParser p) -> {
+            long value;
             if (p.currentToken() == XContentParser.Token.VALUE_NUMBER) {
-                return p.longValue();
+                value = p.longValue();
             } else {
-                return DateHistogramAggregationBuilder.parseStringOffset(p.text());
+                value = DateHistogramAggregationBuilder.parseStringOffset(p.text());
             }
+            if ("pre_offset".equals(p.currentName())) {
+                return -value;
+            }
+            return value;
         }, Histogram.OFFSET_FIELD, ObjectParser.ValueType.LONG);
 
         PARSER.declareBoolean(DateHistogramAggregationBuilder::keyed, Histogram.KEYED_FIELD);
@@ -114,7 +113,7 @@ public class DateHistogramAggregationBuilder
                 ExtendedBounds.EXTENDED_BOUNDS_FIELD, ObjectParser.ValueType.OBJECT);
 
         PARSER.declareField(DateHistogramAggregationBuilder::order, DateHistogramAggregationBuilder::parseOrder,
-                Histogram.ORDER_FIELD, ObjectParser.ValueType.OBJECT);
+            Histogram.ORDER_FIELD, ObjectParser.ValueType.OBJECT);
     }
 
     public static DateHistogramAggregationBuilder parse(String aggregationName, QueryParseContext context) throws IOException {
@@ -207,8 +206,10 @@ public class DateHistogramAggregationBuilder
         return this;
     }
 
-    /** Set the offset on this builder, as a time value, and
-     *  return the builder so that calls can be chained. */
+    /**
+     * Set the offset on this builder, as a time value, and
+     * return the builder so that calls can be chained.
+     */
     public DateHistogramAggregationBuilder offset(String offset) {
         if (offset == null) {
             throw new IllegalArgumentException("[offset] must not be null: [" + name + "]");
@@ -219,22 +220,26 @@ public class DateHistogramAggregationBuilder
     static long parseStringOffset(String offset) {
         if (offset.charAt(0) == '-') {
             return -TimeValue
-                    .parseTimeValue(offset.substring(1), null, DateHistogramAggregationBuilder.class.getSimpleName() + ".parseOffset")
-                    .millis();
+                .parseTimeValue(offset.substring(1), null, DateHistogramAggregationBuilder.class.getSimpleName() + ".parseOffset")
+                .millis();
         }
         int beginIndex = offset.charAt(0) == '+' ? 1 : 0;
         return TimeValue
-                .parseTimeValue(offset.substring(beginIndex), null, DateHistogramAggregationBuilder.class.getSimpleName() + ".parseOffset")
-                .millis();
+            .parseTimeValue(offset.substring(beginIndex), null, DateHistogramAggregationBuilder.class.getSimpleName() + ".parseOffset")
+            .millis();
     }
 
-    /** Return extended bounds for this histogram, or {@code null} if none are set. */
+    /**
+     * Return extended bounds for this histogram, or {@code null} if none are set.
+     */
     public ExtendedBounds extendedBounds() {
         return extendedBounds;
     }
 
-    /** Set extended bounds on this histogram, so that buckets would also be
-     *  generated on intervals that did not match any documents. */
+    /**
+     * Set extended bounds on this histogram, so that buckets would also be
+     * generated on intervals that did not match any documents.
+     */
     public DateHistogramAggregationBuilder extendedBounds(ExtendedBounds extendedBounds) {
         if (extendedBounds == null) {
             throw new IllegalArgumentException("[extendedBounds] must not be null: [" + name + "]");
@@ -243,13 +248,17 @@ public class DateHistogramAggregationBuilder
         return this;
     }
 
-    /** Return the order to use to sort buckets of this histogram. */
+    /**
+     * Return the order to use to sort buckets of this histogram.
+     */
     public Histogram.Order order() {
         return order;
     }
 
-    /** Set a new order on this builder and return the builder so that calls
-     *  can be chained. */
+    /**
+     * Set a new order on this builder and return the builder so that calls
+     * can be chained.
+     */
     public DateHistogramAggregationBuilder order(Histogram.Order order) {
         if (order == null) {
             throw new IllegalArgumentException("[order] must not be null: [" + name + "]");
@@ -258,31 +267,39 @@ public class DateHistogramAggregationBuilder
         return this;
     }
 
-    /** Return whether buckets should be returned as a hash. In case
-     *  {@code keyed} is false, buckets will be returned as an array. */
+    /**
+     * Return whether buckets should be returned as a hash. In case
+     * {@code keyed} is false, buckets will be returned as an array.
+     */
     public boolean keyed() {
         return keyed;
     }
 
-    /** Set whether to return buckets as a hash or as an array, and return the
-     *  builder so that calls can be chained. */
+    /**
+     * Set whether to return buckets as a hash or as an array, and return the
+     * builder so that calls can be chained.
+     */
     public DateHistogramAggregationBuilder keyed(boolean keyed) {
         this.keyed = keyed;
         return this;
     }
 
-    /** Return the minimum count of documents that buckets need to have in order
-     *  to be included in the response. */
+    /**
+     * Return the minimum count of documents that buckets need to have in order
+     * to be included in the response.
+     */
     public long minDocCount() {
         return minDocCount;
     }
 
-    /** Set the minimum count of matching documents that buckets need to have
-     *  and return this builder so that calls can be chained. */
+    /**
+     * Set the minimum count of matching documents that buckets need to have
+     * and return this builder so that calls can be chained.
+     */
     public DateHistogramAggregationBuilder minDocCount(long minDocCount) {
         if (minDocCount < 0) {
             throw new IllegalArgumentException(
-                    "[minDocCount] must be greater than or equal to 0. Found [" + minDocCount + "] in [" + name + "]");
+                "[minDocCount] must be greater than or equal to 0. Found [" + minDocCount + "] in [" + name + "]");
         }
         this.minDocCount = minDocCount;
         return this;
@@ -363,12 +380,12 @@ public class DateHistogramAggregationBuilder
     protected boolean innerEquals(Object obj) {
         DateHistogramAggregationBuilder other = (DateHistogramAggregationBuilder) obj;
         return Objects.equals(order, other.order)
-                && Objects.equals(keyed, other.keyed)
-                && Objects.equals(minDocCount, other.minDocCount)
-                && Objects.equals(interval, other.interval)
-                && Objects.equals(dateHistogramInterval, other.dateHistogramInterval)
-                && Objects.equals(offset, other.offset)
-                && Objects.equals(extendedBounds, other.extendedBounds);
+            && Objects.equals(keyed, other.keyed)
+            && Objects.equals(minDocCount, other.minDocCount)
+            && Objects.equals(interval, other.interval)
+            && Objects.equals(dateHistogramInterval, other.dateHistogramInterval)
+            && Objects.equals(offset, other.offset)
+            && Objects.equals(extendedBounds, other.extendedBounds);
     }
 
     // similar to the parsing oh histogram orders, but also accepts _time as an alias for _key
@@ -384,7 +401,7 @@ public class DateHistogramAggregationBuilder
                 boolean asc = "asc".equals(dir);
                 if (!asc && !"desc".equals(dir)) {
                     throw new ParsingException(parser.getTokenLocation(), "Unknown order direction: [" + dir
-                            + "]. Should be either [asc] or [desc]");
+                        + "]. Should be either [asc] or [desc]");
                 }
                 order = resolveOrder(currentFieldName, asc);
             }
