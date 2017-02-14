@@ -32,14 +32,8 @@ import org.elasticsearch.common.xcontent.XContentParser.Token;
 import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.search.aggregations.AggregatorFactories.Builder;
 import org.elasticsearch.search.aggregations.AggregatorFactory;
-import org.elasticsearch.search.aggregations.support.ValueType;
-import org.elasticsearch.search.aggregations.support.ValuesSource;
+import org.elasticsearch.search.aggregations.support.*;
 import org.elasticsearch.search.aggregations.support.ValuesSource.Numeric;
-import org.elasticsearch.search.aggregations.support.ValuesSourceAggregationBuilder;
-import org.elasticsearch.search.aggregations.support.ValuesSourceAggregatorFactory;
-import org.elasticsearch.search.aggregations.support.ValuesSourceConfig;
-import org.elasticsearch.search.aggregations.support.ValuesSourceParserHelper;
-import org.elasticsearch.search.aggregations.support.ValuesSourceType;
 import org.elasticsearch.search.internal.SearchContext;
 
 import java.io.IOException;
@@ -53,7 +47,7 @@ import static java.util.Collections.unmodifiableMap;
  * A builder for histograms on date fields.
  */
 public class DateHistogramAggregationBuilder
-        extends ValuesSourceAggregationBuilder<ValuesSource.Numeric, DateHistogramAggregationBuilder> {
+    extends ValuesSourceAggregationBuilder<ValuesSource.Numeric, DateHistogramAggregationBuilder> {
     public static final String NAME = InternalDateHistogram.TYPE.name();
 
     public static final Map<String, DateTimeUnit> DATE_FIELD_UNITS;
@@ -80,6 +74,7 @@ public class DateHistogramAggregationBuilder
     }
 
     private static final ObjectParser<DateHistogramAggregationBuilder, QueryParseContext> PARSER;
+
     static {
         PARSER = new ObjectParser<>(DateHistogramAggregationBuilder.NAME);
         ValuesSourceParserHelper.declareNumericFields(PARSER, true, true, true);
@@ -99,11 +94,16 @@ public class DateHistogramAggregationBuilder
         }, Histogram.INTERVAL_FIELD, ObjectParser.ValueType.LONG);
 
         PARSER.declareField(DateHistogramAggregationBuilder::offset, p -> {
+            long value;
             if (p.currentToken() == XContentParser.Token.VALUE_NUMBER) {
-                return p.longValue();
+                value = p.longValue();
             } else {
-                return DateHistogramAggregationBuilder.parseStringOffset(p.text());
+                value = DateHistogramAggregationBuilder.parseStringOffset(p.text());
             }
+            if ("pre_offset".equals(p.currentName())) {
+                return -value;
+            }
+            return value;
         }, Histogram.OFFSET_FIELD, ObjectParser.ValueType.LONG);
 
         PARSER.declareBoolean(DateHistogramAggregationBuilder::keyed, Histogram.KEYED_FIELD);
@@ -111,10 +111,10 @@ public class DateHistogramAggregationBuilder
         PARSER.declareLong(DateHistogramAggregationBuilder::minDocCount, Histogram.MIN_DOC_COUNT_FIELD);
 
         PARSER.declareField(DateHistogramAggregationBuilder::extendedBounds, ExtendedBounds.PARSER::apply,
-                ExtendedBounds.EXTENDED_BOUNDS_FIELD, ObjectParser.ValueType.OBJECT);
+            ExtendedBounds.EXTENDED_BOUNDS_FIELD, ObjectParser.ValueType.OBJECT);
 
         PARSER.declareField(DateHistogramAggregationBuilder::order, DateHistogramAggregationBuilder::parseOrder,
-                Histogram.ORDER_FIELD, ObjectParser.ValueType.OBJECT);
+            Histogram.ORDER_FIELD, ObjectParser.ValueType.OBJECT);
     }
 
     public static DateHistogramAggregationBuilder parse(String aggregationName, QueryParseContext context) throws IOException {
@@ -129,12 +129,16 @@ public class DateHistogramAggregationBuilder
     private boolean keyed = false;
     private long minDocCount = 0;
 
-    /** Create a new builder with the given name. */
+    /**
+     * Create a new builder with the given name.
+     */
     public DateHistogramAggregationBuilder(String name) {
         super(name, InternalDateHistogram.TYPE, ValuesSourceType.NUMERIC, ValueType.DATE);
     }
 
-    /** Read from a stream, for internal use only. */
+    /**
+     * Read from a stream, for internal use only.
+     */
     public DateHistogramAggregationBuilder(StreamInput in) throws IOException {
         super(in, InternalDateHistogram.TYPE, ValuesSourceType.NUMERIC, ValueType.DATE);
         if (in.readBoolean()) {
@@ -163,14 +167,18 @@ public class DateHistogramAggregationBuilder
         out.writeOptionalWriteable(extendedBounds);
     }
 
-    /** Get the current interval in milliseconds that is set on this builder. */
+    /**
+     * Get the current interval in milliseconds that is set on this builder.
+     */
     public double interval() {
         return interval;
     }
 
-    /** Set the interval on this builder, and return the builder so that calls can be chained.
-     *  If both {@link #interval()} and {@link #dateHistogramInterval()} are set, then the
-     *  {@link #dateHistogramInterval()} wins. */
+    /**
+     * Set the interval on this builder, and return the builder so that calls can be chained.
+     * If both {@link #interval()} and {@link #dateHistogramInterval()} are set, then the
+     * {@link #dateHistogramInterval()} wins.
+     */
     public DateHistogramAggregationBuilder interval(long interval) {
         if (interval < 1) {
             throw new IllegalArgumentException("[interval] must be 1 or greater for histogram aggregation [" + name + "]");
@@ -179,14 +187,18 @@ public class DateHistogramAggregationBuilder
         return this;
     }
 
-    /** Get the current date interval that is set on this builder. */
+    /**
+     * Get the current date interval that is set on this builder.
+     */
     public DateHistogramInterval dateHistogramInterval() {
         return dateHistogramInterval;
     }
 
-    /** Set the interval on this builder, and return the builder so that calls can be chained.
-     *  If both {@link #interval()} and {@link #dateHistogramInterval()} are set, then the
-     *  {@link #dateHistogramInterval()} wins. */
+    /**
+     * Set the interval on this builder, and return the builder so that calls can be chained.
+     * If both {@link #interval()} and {@link #dateHistogramInterval()} are set, then the
+     * {@link #dateHistogramInterval()} wins.
+     */
     public DateHistogramAggregationBuilder dateHistogramInterval(DateHistogramInterval dateHistogramInterval) {
         if (dateHistogramInterval == null) {
             throw new IllegalArgumentException("[dateHistogramInterval] must not be null: [" + name + "]");
@@ -195,20 +207,26 @@ public class DateHistogramAggregationBuilder
         return this;
     }
 
-    /** Get the offset to use when rounding, which is a number of milliseconds. */
+    /**
+     * Get the offset to use when rounding, which is a number of milliseconds.
+     */
     public double offset() {
         return offset;
     }
 
-    /** Set the offset on this builder, which is a number of milliseconds, and
-     *  return the builder so that calls can be chained. */
+    /**
+     * Set the offset on this builder, which is a number of milliseconds, and
+     * return the builder so that calls can be chained.
+     */
     public DateHistogramAggregationBuilder offset(long offset) {
         this.offset = offset;
         return this;
     }
 
-    /** Set the offset on this builder, as a time value, and
-     *  return the builder so that calls can be chained. */
+    /**
+     * Set the offset on this builder, as a time value, and
+     * return the builder so that calls can be chained.
+     */
     public DateHistogramAggregationBuilder offset(String offset) {
         if (offset == null) {
             throw new IllegalArgumentException("[offset] must not be null: [" + name + "]");
@@ -219,22 +237,26 @@ public class DateHistogramAggregationBuilder
     static long parseStringOffset(String offset) {
         if (offset.charAt(0) == '-') {
             return -TimeValue
-                    .parseTimeValue(offset.substring(1), null, DateHistogramAggregationBuilder.class.getSimpleName() + ".parseOffset")
-                    .millis();
+                .parseTimeValue(offset.substring(1), null, DateHistogramAggregationBuilder.class.getSimpleName() + ".parseOffset")
+                .millis();
         }
         int beginIndex = offset.charAt(0) == '+' ? 1 : 0;
         return TimeValue
-                .parseTimeValue(offset.substring(beginIndex), null, DateHistogramAggregationBuilder.class.getSimpleName() + ".parseOffset")
-                .millis();
+            .parseTimeValue(offset.substring(beginIndex), null, DateHistogramAggregationBuilder.class.getSimpleName() + ".parseOffset")
+            .millis();
     }
 
-    /** Return extended bounds for this histogram, or {@code null} if none are set. */
+    /**
+     * Return extended bounds for this histogram, or {@code null} if none are set.
+     */
     public ExtendedBounds extendedBounds() {
         return extendedBounds;
     }
 
-    /** Set extended bounds on this histogram, so that buckets would also be
-     *  generated on intervals that did not match any documents. */
+    /**
+     * Set extended bounds on this histogram, so that buckets would also be
+     * generated on intervals that did not match any documents.
+     */
     public DateHistogramAggregationBuilder extendedBounds(ExtendedBounds extendedBounds) {
         if (extendedBounds == null) {
             throw new IllegalArgumentException("[extendedBounds] must not be null: [" + name + "]");
@@ -243,13 +265,17 @@ public class DateHistogramAggregationBuilder
         return this;
     }
 
-    /** Return the order to use to sort buckets of this histogram. */
+    /**
+     * Return the order to use to sort buckets of this histogram.
+     */
     public Histogram.Order order() {
         return order;
     }
 
-    /** Set a new order on this builder and return the builder so that calls
-     *  can be chained. */
+    /**
+     * Set a new order on this builder and return the builder so that calls
+     * can be chained.
+     */
     public DateHistogramAggregationBuilder order(Histogram.Order order) {
         if (order == null) {
             throw new IllegalArgumentException("[order] must not be null: [" + name + "]");
@@ -258,31 +284,39 @@ public class DateHistogramAggregationBuilder
         return this;
     }
 
-    /** Return whether buckets should be returned as a hash. In case
-     *  {@code keyed} is false, buckets will be returned as an array. */
+    /**
+     * Return whether buckets should be returned as a hash. In case
+     * {@code keyed} is false, buckets will be returned as an array.
+     */
     public boolean keyed() {
         return keyed;
     }
 
-    /** Set whether to return buckets as a hash or as an array, and return the
-     *  builder so that calls can be chained. */
+    /**
+     * Set whether to return buckets as a hash or as an array, and return the
+     * builder so that calls can be chained.
+     */
     public DateHistogramAggregationBuilder keyed(boolean keyed) {
         this.keyed = keyed;
         return this;
     }
 
-    /** Return the minimum count of documents that buckets need to have in order
-     *  to be included in the response. */
+    /**
+     * Return the minimum count of documents that buckets need to have in order
+     * to be included in the response.
+     */
     public long minDocCount() {
         return minDocCount;
     }
 
-    /** Set the minimum count of matching documents that buckets need to have
-     *  and return this builder so that calls can be chained. */
+    /**
+     * Set the minimum count of matching documents that buckets need to have
+     * and return this builder so that calls can be chained.
+     */
     public DateHistogramAggregationBuilder minDocCount(long minDocCount) {
         if (minDocCount < 0) {
             throw new IllegalArgumentException(
-                    "[minDocCount] must be greater than or equal to 0. Found [" + minDocCount + "] in [" + name + "]");
+                "[minDocCount] must be greater than or equal to 0. Found [" + minDocCount + "] in [" + name + "]");
         }
         this.minDocCount = minDocCount;
         return this;
@@ -321,7 +355,7 @@ public class DateHistogramAggregationBuilder
 
     @Override
     protected ValuesSourceAggregatorFactory<Numeric, ?> innerBuild(SearchContext context, ValuesSourceConfig<Numeric> config,
-            AggregatorFactory<?> parent, Builder subFactoriesBuilder) throws IOException {
+                                                                   AggregatorFactory<?> parent, Builder subFactoriesBuilder) throws IOException {
         Rounding rounding = createRounding();
         ExtendedBounds roundedBounds = null;
         if (this.extendedBounds != null) {
@@ -329,7 +363,7 @@ public class DateHistogramAggregationBuilder
             roundedBounds = this.extendedBounds.parseAndValidate(name, context, config.format()).round(rounding);
         }
         return new DateHistogramAggregatorFactory(name, type, config, interval, dateHistogramInterval, offset, order, keyed, minDocCount,
-                rounding, roundedBounds, context, parent, subFactoriesBuilder, metaData);
+            rounding, roundedBounds, context, parent, subFactoriesBuilder, metaData);
     }
 
     private Rounding createRounding() {
@@ -341,7 +375,7 @@ public class DateHistogramAggregationBuilder
             } else {
                 // the interval is a time value?
                 tzRoundingBuilder = Rounding.builder(
-                        TimeValue.parseTimeValue(dateHistogramInterval.toString(), null, getClass().getSimpleName() + ".interval"));
+                    TimeValue.parseTimeValue(dateHistogramInterval.toString(), null, getClass().getSimpleName() + ".interval"));
             }
         } else {
             // the interval is an integer time value in millis?
@@ -363,12 +397,12 @@ public class DateHistogramAggregationBuilder
     protected boolean innerEquals(Object obj) {
         DateHistogramAggregationBuilder other = (DateHistogramAggregationBuilder) obj;
         return Objects.equals(order, other.order)
-                && Objects.equals(keyed, other.keyed)
-                && Objects.equals(minDocCount, other.minDocCount)
-                && Objects.equals(interval, other.interval)
-                && Objects.equals(dateHistogramInterval, other.dateHistogramInterval)
-                && Objects.equals(offset, other.offset)
-                && Objects.equals(extendedBounds, other.extendedBounds);
+            && Objects.equals(keyed, other.keyed)
+            && Objects.equals(minDocCount, other.minDocCount)
+            && Objects.equals(interval, other.interval)
+            && Objects.equals(dateHistogramInterval, other.dateHistogramInterval)
+            && Objects.equals(offset, other.offset)
+            && Objects.equals(extendedBounds, other.extendedBounds);
     }
 
     // similar to the parsing oh histogram orders, but also accepts _time as an alias for _key
@@ -384,7 +418,7 @@ public class DateHistogramAggregationBuilder
                 boolean asc = "asc".equals(dir);
                 if (!asc && !"desc".equals(dir)) {
                     throw new ParsingException(parser.getTokenLocation(), "Unknown order direction: [" + dir
-                            + "]. Should be either [asc] or [desc]");
+                        + "]. Should be either [asc] or [desc]");
                 }
                 order = resolveOrder(currentFieldName, asc);
             }

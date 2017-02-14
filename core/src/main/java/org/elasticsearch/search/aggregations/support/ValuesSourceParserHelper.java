@@ -28,73 +28,90 @@ import org.elasticsearch.script.Script;
 import org.joda.time.DateTimeZone;
 
 public final class ValuesSourceParserHelper {
-    static final ParseField TIME_ZONE = new ParseField("time_zone");
+    static final ParseField TIME_ZONE = new ParseField("time_zone", "pre_zone", "post_zone");
 
-    private ValuesSourceParserHelper() {} // utility class, no instantiation
+    private ValuesSourceParserHelper() {
+    } // utility class, no instantiation
 
     public static void declareAnyFields(
-            ObjectParser<? extends ValuesSourceAggregationBuilder<ValuesSource, ?>, QueryParseContext> objectParser,
-            boolean scriptable, boolean formattable) {
+        ObjectParser<? extends ValuesSourceAggregationBuilder<ValuesSource, ?>, QueryParseContext> objectParser,
+        boolean scriptable, boolean formattable) {
         declareFields(objectParser, scriptable, formattable, false, ValuesSourceType.ANY, null);
     }
 
     public static void declareNumericFields(
-            ObjectParser<? extends ValuesSourceAggregationBuilder<ValuesSource.Numeric, ?>, QueryParseContext> objectParser,
-            boolean scriptable, boolean formattable, boolean timezoneAware) {
+        ObjectParser<? extends ValuesSourceAggregationBuilder<ValuesSource.Numeric, ?>, QueryParseContext> objectParser,
+        boolean scriptable, boolean formattable, boolean timezoneAware) {
         declareFields(objectParser, scriptable, formattable, timezoneAware, ValuesSourceType.NUMERIC, ValueType.NUMERIC);
     }
 
     public static void declareBytesFields(
-            ObjectParser<? extends ValuesSourceAggregationBuilder<ValuesSource.Bytes, ?>, QueryParseContext> objectParser,
-            boolean scriptable, boolean formattable) {
+        ObjectParser<? extends ValuesSourceAggregationBuilder<ValuesSource.Bytes, ?>, QueryParseContext> objectParser,
+        boolean scriptable, boolean formattable) {
         declareFields(objectParser, scriptable, formattable, false, ValuesSourceType.BYTES, ValueType.STRING);
     }
 
     public static void declareGeoFields(
-            ObjectParser<? extends ValuesSourceAggregationBuilder<ValuesSource.GeoPoint, ?>, QueryParseContext> objectParser,
-            boolean scriptable, boolean formattable) {
+        ObjectParser<? extends ValuesSourceAggregationBuilder<ValuesSource.GeoPoint, ?>, QueryParseContext> objectParser,
+        boolean scriptable, boolean formattable) {
         declareFields(objectParser, scriptable, formattable, false, ValuesSourceType.GEOPOINT, ValueType.GEOPOINT);
     }
 
     private static <VS extends ValuesSource> void declareFields(
-            ObjectParser<? extends ValuesSourceAggregationBuilder<VS, ?>, QueryParseContext> objectParser,
-            boolean scriptable, boolean formattable, boolean timezoneAware, ValuesSourceType valuesSourceType, ValueType targetValueType) {
+        ObjectParser<? extends ValuesSourceAggregationBuilder<VS, ?>, QueryParseContext> objectParser,
+        boolean scriptable, boolean formattable, boolean timezoneAware, ValuesSourceType valuesSourceType, ValueType targetValueType) {
 
 
         objectParser.declareField(ValuesSourceAggregationBuilder::field, XContentParser::text,
-                new ParseField("field"), ObjectParser.ValueType.STRING);
+            new ParseField("field"), ObjectParser.ValueType.STRING);
 
         objectParser.declareField(ValuesSourceAggregationBuilder::missing, XContentParser::objectText,
-                new ParseField("missing"), ObjectParser.ValueType.VALUE);
+            new ParseField("missing"), ObjectParser.ValueType.VALUE);
 
         objectParser.declareField(ValuesSourceAggregationBuilder::valueType, p -> {
             ValueType valueType = ValueType.resolveForScript(p.text());
             if (targetValueType != null && valueType.isNotA(targetValueType)) {
                 throw new ParsingException(p.getTokenLocation(),
-                        "Aggregation [" + objectParser.getName() + "] was configured with an incompatible value type ["
-                                + valueType + "]. It can only work on value of type ["
-                                + targetValueType + "]");
+                    "Aggregation [" + objectParser.getName() + "] was configured with an incompatible value type ["
+                        + valueType + "]. It can only work on value of type ["
+                        + targetValueType + "]");
             }
             return valueType;
         }, new ParseField("value_type", "valueType"), ObjectParser.ValueType.STRING);
 
         if (formattable) {
             objectParser.declareField(ValuesSourceAggregationBuilder::format, XContentParser::text,
-                    new ParseField("format"), ObjectParser.ValueType.STRING);
+                new ParseField("format"), ObjectParser.ValueType.STRING);
         }
 
         if (scriptable) {
             objectParser.declareField(ValuesSourceAggregationBuilder::script, org.elasticsearch.script.Script::parse,
-                    Script.SCRIPT_PARSE_FIELD, ObjectParser.ValueType.OBJECT_OR_STRING);
+                Script.SCRIPT_PARSE_FIELD, ObjectParser.ValueType.OBJECT_OR_STRING);
         }
 
         if (timezoneAware) {
             objectParser.declareField(ValuesSourceAggregationBuilder::timeZone, p -> {
-                if (p.currentToken() == XContentParser.Token.VALUE_STRING) {
-                    return DateTimeZone.forID(p.text());
+
+                DateTimeZone timezone;
+                if ("pre_zone".equals(p.currentName())) {
+                    if (p.currentToken() == XContentParser.Token.VALUE_STRING) {
+                        String text = p.text();
+                        if (!text.startsWith("-")) {
+                            text = "-" + text;
+                        }
+                        timezone = DateTimeZone.forID(text);
+                    } else {
+                        throw new ParsingException(p.getTokenLocation(),
+                            "Unexpected token " + p.currentToken() + " [" + p.currentName() + "]");
+                    }
                 } else {
-                    return DateTimeZone.forOffsetHours(p.intValue());
+                    if (p.currentToken() == XContentParser.Token.VALUE_STRING) {
+                        timezone = DateTimeZone.forID(p.text());
+                    } else {
+                        timezone = DateTimeZone.forOffsetHours(p.intValue());
+                    }
                 }
+                return timezone;
             }, TIME_ZONE, ObjectParser.ValueType.LONG);
         }
     }
