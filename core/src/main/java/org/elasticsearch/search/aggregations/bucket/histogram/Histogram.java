@@ -36,6 +36,8 @@ public interface Histogram extends MultiBucketsAggregation {
     ParseField KEYED_FIELD = new ParseField("keyed");
     ParseField MIN_DOC_COUNT_FIELD = new ParseField("min_doc_count");
     ParseField EXTENDED_BOUNDS_FIELD = new ParseField("extended_bounds");
+    ParseField REVERSE_POST_TZ = new ParseField("reverse_post_tz", "reversePostTz");
+    ParseField PRE_ZONE_ADJUST_LARGE_INTERVAL = new ParseField("pre_zone_adjust_large_interval", "preZoneAdjustLargeInterval");
 
     /**
      * A bucket in the histogram where documents fall in
