@@ -247,21 +247,6 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
             return stats;
         }
 
-        @Override
-        public Weight doCache(Weight weight, QueryCachingPolicy policy) {
-            try {
-                /**
-                 *  short circuiting to avoid all locks and checks at {@link CachingWrapperWeight}
-                 */
-                if (policy.shouldCache(weight.getQuery())) {
-                    return super.doCache(weight, policy);
-                }
-            } catch (IOException e) {
-                throw ExceptionsHelper.convertToElastic(e);
-            }
-            return weight;
-        }
-
         // It's ok to not protect these callbacks by a lock since it is
         // done in LRUQueryCache
         @Override
