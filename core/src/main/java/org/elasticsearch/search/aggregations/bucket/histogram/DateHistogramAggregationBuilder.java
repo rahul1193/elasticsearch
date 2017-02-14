@@ -19,6 +19,7 @@
 
 package org.elasticsearch.search.aggregations.bucket.histogram;
 
+import org.elasticsearch.common.CheckedFunction;
 import org.elasticsearch.common.ParsingException;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
@@ -98,12 +99,17 @@ public class DateHistogramAggregationBuilder
             }
         }, Histogram.INTERVAL_FIELD, ObjectParser.ValueType.LONG);
 
-        PARSER.declareField(DateHistogramAggregationBuilder::offset, p -> {
-            if (p.currentToken() == XContentParser.Token.VALUE_NUMBER) {
-                return p.longValue();
+        PARSER.declareField(DateHistogramAggregationBuilder::offset, (XContentParser p) -> {
+            long value;
+            if (p.currentToken() == Token.VALUE_NUMBER) {
+                value = p.longValue();
             } else {
-                return DateHistogramAggregationBuilder.parseStringOffset(p.text());
+                value = DateHistogramAggregationBuilder.parseStringOffset(p.text());
             }
+            if ("pre_offset".equals(p.currentName())) {
+                return -value;
+            }
+            return value;
         }, Histogram.OFFSET_FIELD, ObjectParser.ValueType.LONG);
 
         PARSER.declareBoolean(DateHistogramAggregationBuilder::keyed, Histogram.KEYED_FIELD);
@@ -115,6 +121,8 @@ public class DateHistogramAggregationBuilder
 
         PARSER.declareField(DateHistogramAggregationBuilder::order, DateHistogramAggregationBuilder::parseOrder,
                 Histogram.ORDER_FIELD, ObjectParser.ValueType.OBJECT);
+        PARSER.declareBoolean(DateHistogramAggregationBuilder::reversePostTimeZone, Histogram.REVERSE_POST_TZ);
+        PARSER.declareBoolean(DateHistogramAggregationBuilder::preZoneAdjustLargeInterval, Histogram.PRE_ZONE_ADJUST_LARGE_INTERVAL);
     }
 
     public static DateHistogramAggregationBuilder parse(String aggregationName, QueryParseContext context) throws IOException {
@@ -128,6 +136,8 @@ public class DateHistogramAggregationBuilder
     private InternalOrder order = (InternalOrder) Histogram.Order.KEY_ASC;
     private boolean keyed = false;
     private long minDocCount = 0;
+    private boolean reversePostTimeZone;
+    private boolean preZoneAdjustLargeInterval;
 
     /** Create a new builder with the given name. */
     public DateHistogramAggregationBuilder(String name) {
@@ -285,6 +295,16 @@ public class DateHistogramAggregationBuilder
                     "[minDocCount] must be greater than or equal to 0. Found [" + minDocCount + "] in [" + name + "]");
         }
         this.minDocCount = minDocCount;
+        return this;
+    }
+
+    public DateHistogramAggregationBuilder reversePostTimeZone(boolean reversePostTimeZone) {
+        this.reversePostTimeZone = reversePostTimeZone;
+        return this;
+    }
+
+    public DateHistogramAggregationBuilder preZoneAdjustLargeInterval(boolean preZoneAdjustLargeInterval) {
+        this.preZoneAdjustLargeInterval = preZoneAdjustLargeInterval;
         return this;
     }
 

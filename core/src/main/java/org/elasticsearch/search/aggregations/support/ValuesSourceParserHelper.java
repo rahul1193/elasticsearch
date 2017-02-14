@@ -91,11 +91,27 @@ public final class ValuesSourceParserHelper {
 
         if (timezoneAware) {
             objectParser.declareField(ValuesSourceAggregationBuilder::timeZone, p -> {
-                if (p.currentToken() == XContentParser.Token.VALUE_STRING) {
-                    return DateTimeZone.forID(p.text());
+
+                DateTimeZone timezone;
+                if ("pre_zone".equals(p.currentName())) {
+                    if (p.currentToken() == XContentParser.Token.VALUE_STRING) {
+                        String text = p.text();
+                        if (!text.startsWith("-")) {
+                            text = "-" + text;
+                        }
+                        timezone = DateTimeZone.forID(text);
+                    } else {
+                        throw new ParsingException(p.getTokenLocation(),
+                            "Unexpected token " + p.currentToken() + " [" + p.currentName() + "]");
+                    }
                 } else {
-                    return DateTimeZone.forOffsetHours(p.intValue());
+                    if (p.currentToken() == XContentParser.Token.VALUE_STRING) {
+                        timezone = DateTimeZone.forID(p.text());
+                    } else {
+                        timezone = DateTimeZone.forOffsetHours(p.intValue());
+                    }
                 }
+                return timezone;
             }, TIME_ZONE, ObjectParser.ValueType.LONG);
         }
     }
