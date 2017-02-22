@@ -217,6 +217,7 @@ public class CommonStatsFlags implements Writeable, Cloneable {
         Flush("flush"),
         Refresh("refresh"),
         QueryCache("query_cache"),
+        ParsedQueryCache("parsed_query_cache"),
         FieldData("fielddata"),
         Docs("docs"),
         Warmer("warmer"),

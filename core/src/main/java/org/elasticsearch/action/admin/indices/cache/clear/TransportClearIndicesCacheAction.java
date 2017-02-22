@@ -113,6 +113,7 @@ public class TransportClearIndicesCacheAction extends TransportBroadcastByNodeAc
                 } else {
                     service.cache().clear("api");
                     service.fieldData().clear();
+                    service.parsedQueryCache().clear();
                     indicesService.clearRequestCache(shard);
                 }
             }

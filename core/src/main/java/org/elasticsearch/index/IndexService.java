@@ -19,6 +19,7 @@
 
 package org.elasticsearch.index;
 
+import com.spr.elasticsearch.index.query.ParsedQueryCache;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.logging.log4j.util.Supplier;
 import org.apache.lucene.index.IndexReader;
@@ -100,6 +101,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
     private final IndexStore indexStore;
     private final IndexSearcherWrapper searcherWrapper;
     private final IndexCache indexCache;
+    private final ParsedQueryCache parsedQueryCache;
     private final MapperService mapperService;
     private final SimilarityService similarityService;
     private final EngineFactory engineFactory;
@@ -132,6 +134,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                         ClusterService clusterService,
                         Client client,
                         QueryCache queryCache,
+                        ParsedQueryCache parsedQueryCache,
                         IndexStore indexStore,
                         IndexEventListener eventListener,
                         IndexModule.IndexSearcherWrapperFactory wrapperFactory,
@@ -163,6 +166,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         this.warmer = new IndexWarmer(indexSettings.getSettings(), threadPool,
             bitsetFilterCache.createListener(threadPool));
         this.indexCache = new IndexCache(indexSettings, queryCache, bitsetFilterCache);
+        this.parsedQueryCache = parsedQueryCache;
         this.engineFactory = engineFactory;
         // initialize this last -- otherwise if the wrapper requires any other member to be non-null we fail with an NPE
         this.searcherWrapper = wrapperFactory.newWrapper(this);
@@ -216,6 +220,10 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
 
     public IndexCache cache() {
         return indexCache;
+    }
+
+    public ParsedQueryCache parsedQueryCache() {
+        return parsedQueryCache;
     }
 
     public IndexFieldDataService fieldData() {
@@ -465,7 +473,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 similarityService(), scriptService, queryRegistry,
                 client, indexReader,
                 clusterService.state(),
-            nowInMillis);
+            nowInMillis, parsedQueryCache);
     }
 
     /**

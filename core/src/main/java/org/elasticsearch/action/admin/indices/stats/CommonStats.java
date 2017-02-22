@@ -19,6 +19,8 @@
 
 package org.elasticsearch.action.admin.indices.stats;
 
+import com.spr.elasticsearch.index.query.ParsedQueryCache;
+import com.spr.elasticsearch.index.query.ParsedQueryCacheStats;
 import org.elasticsearch.common.Nullable;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
@@ -80,6 +82,9 @@ public class CommonStats implements Writeable, ToXContent {
     public QueryCacheStats queryCache;
 
     @Nullable
+    public ParsedQueryCacheStats parsedQueryCache;
+
+    @Nullable
     public FieldDataStats fieldData;
 
     @Nullable
@@ -136,6 +141,9 @@ public class CommonStats implements Writeable, ToXContent {
                 case QueryCache:
                     queryCache = new QueryCacheStats();
                     break;
+                case ParsedQueryCache:
+                    parsedQueryCache = new ParsedQueryCacheStats();
+                    break;
                 case FieldData:
                     fieldData = new FieldDataStats();
                     break;
@@ -163,7 +171,7 @@ public class CommonStats implements Writeable, ToXContent {
         }
     }
 
-    public CommonStats(IndicesQueryCache indicesQueryCache, IndexShard indexShard, CommonStatsFlags flags) {
+    public CommonStats(ParsedQueryCache parsedQueryCache, IndicesQueryCache indicesQueryCache, IndexShard indexShard, CommonStatsFlags flags) {
         CommonStatsFlags.Flag[] setFlags = flags.getFlags();
         for (CommonStatsFlags.Flag flag : setFlags) {
             switch (flag) {
@@ -196,6 +204,9 @@ public class CommonStats implements Writeable, ToXContent {
                     break;
                 case QueryCache:
                     queryCache = indicesQueryCache.getStats(indexShard.shardId());
+                    break;
+                case ParsedQueryCache:
+                    this.parsedQueryCache = parsedQueryCache.getStats();
                     break;
                 case FieldData:
                     fieldData = indexShard.fieldDataStats(flags.fieldDataFields());
@@ -254,6 +265,9 @@ public class CommonStats implements Writeable, ToXContent {
         }
         if (in.readBoolean()) {
             queryCache = QueryCacheStats.readQueryCacheStats(in);
+        }
+        if (in.readBoolean()) {
+            parsedQueryCache = ParsedQueryCacheStats.readQueryCacheStats(in);
         }
         if (in.readBoolean()) {
             fieldData = FieldDataStats.readFieldDataStats(in);
@@ -330,6 +344,12 @@ public class CommonStats implements Writeable, ToXContent {
         } else {
             out.writeBoolean(true);
             queryCache.writeTo(out);
+        }
+        if (parsedQueryCache == null) {
+            out.writeBoolean(false);
+        } else {
+            out.writeBoolean(true);
+            parsedQueryCache.writeTo(out);
         }
         if (fieldData == null) {
             out.writeBoolean(false);
@@ -435,7 +455,14 @@ public class CommonStats implements Writeable, ToXContent {
         } else {
             queryCache.add(stats.getQueryCache());
         }
-
+        if (parsedQueryCache == null) {
+            if (stats.getParsedQueryCache() != null) {
+                parsedQueryCache = new ParsedQueryCacheStats();
+                parsedQueryCache.add(stats.getParsedQueryCache());
+            }
+        } else {
+            parsedQueryCache.add(stats.getParsedQueryCache());
+        }
         if (fieldData == null) {
             if (stats.getFieldData() != null) {
                 fieldData = new FieldDataStats();
@@ -537,6 +564,11 @@ public class CommonStats implements Writeable, ToXContent {
     }
 
     @Nullable
+    public ParsedQueryCacheStats getParsedQueryCache() {
+        return this.parsedQueryCache;
+    }
+
+    @Nullable
     public FieldDataStats getFieldData() {
         return this.fieldData;
     }
@@ -619,6 +651,9 @@ public class CommonStats implements Writeable, ToXContent {
         }
         if (queryCache != null) {
             queryCache.toXContent(builder, params);
+        }
+        if (parsedQueryCache != null) {
+            parsedQueryCache.toXContent(builder, params);
         }
         if (fieldData != null) {
             fieldData.toXContent(builder, params);

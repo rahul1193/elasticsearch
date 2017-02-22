@@ -19,6 +19,7 @@
 
 package org.elasticsearch.index.query;
 
+import com.spr.elasticsearch.index.query.ParsedQueryCache;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
@@ -33,11 +34,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentParser;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Consumer;
 
 import static org.elasticsearch.common.lucene.search.Queries.fixNegativeQueryIfNeeded;
@@ -60,6 +57,9 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
     private static final ParseField MINIMUM_SHOULD_MATCH = new ParseField("minimum_should_match");
     private static final ParseField MINIMUM_NUMBER_SHOULD_MATCH = new ParseField("minimum_number_should_match");
     private static final ParseField ADJUST_PURE_NEGATIVE = new ParseField("adjust_pure_negative");
+    private static final ParseField CACHE_KEY = new ParseField("_cache_key");
+    private static final ParseField CACHE_ANY = new ParseField("_cache_any");
+    private static final ParseField CACHE_SHA = new ParseField("_cache_sha");
 
     private final List<QueryBuilder> mustClauses = new ArrayList<>();
 
@@ -74,6 +74,8 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
     private boolean adjustPureNegative = ADJUST_PURE_NEGATIVE_DEFAULT;
 
     private String minimumShouldMatch;
+
+    private String cacheKey;
 
     /**
      * Build an empty bool query.
@@ -93,6 +95,7 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
         adjustPureNegative = in.readBoolean();
         disableCoord = in.readBoolean();
         minimumShouldMatch = in.readOptionalString();
+        cacheKey = in.readOptionalString();
     }
 
     @Override
@@ -104,6 +107,7 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
         out.writeBoolean(adjustPureNegative);
         out.writeBoolean(disableCoord);
         out.writeOptionalString(minimumShouldMatch);
+        out.writeOptionalString(cacheKey);
     }
 
     /**
@@ -186,6 +190,11 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
      */
     public List<QueryBuilder> should() {
         return this.shouldClauses;
+    }
+
+    public BoolQueryBuilder cache(String cacheKey) {
+        this.cacheKey = cacheKey;
+        return this;
     }
 
     /**
@@ -283,6 +292,9 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
         if (minimumShouldMatch != null) {
             builder.field(MINIMUM_SHOULD_MATCH.getPreferredName(), minimumShouldMatch);
         }
+        if (cacheKey != null) {
+            builder.field(CACHE_KEY.getPreferredName(), cacheKey);
+        }
         printBoostAndQueryName(builder);
         builder.endObject();
     }
@@ -312,13 +324,14 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
         final List<QueryBuilder> shouldClauses = new ArrayList<>();
         final List<QueryBuilder> filterClauses = new ArrayList<>();
         String queryName = null;
+        String cacheKey = null;
 
         String currentFieldName = null;
         XContentParser.Token token;
         while ((token = parser.nextToken()) != XContentParser.Token.END_OBJECT) {
             if (token == XContentParser.Token.FIELD_NAME) {
                 currentFieldName = parser.currentName();
-            } else if (parseContext.isDeprecatedSetting(currentFieldName)) {
+            } else if (isDeprecatedSetting(parseContext, currentFieldName)) {
                 // skip
             } else if (token == XContentParser.Token.START_OBJECT) {
                 switch (currentFieldName) {
@@ -371,6 +384,21 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
                     adjustPureNegative = parser.booleanValue();
                 } else if (parseContext.getParseFieldMatcher().match(currentFieldName, AbstractQueryBuilder.NAME_FIELD)) {
                     queryName = parser.text();
+                } else if (parseContext.getParseFieldMatcher().match(currentFieldName, CACHE_KEY)) {
+                    String cacheValue = parser.text();
+                    if (parseContext.getCacheStrategy() == QueryParseContext.CacheStrategy.KEY) {
+                        cacheKey = cacheValue;
+                    }
+                } else if (parseContext.getParseFieldMatcher().match(currentFieldName, CACHE_ANY)) {
+                    String cacheValue = parser.text();
+                    if (parseContext.getCacheStrategy() == QueryParseContext.CacheStrategy.ANY) {
+                        cacheKey = cacheValue;
+                    }
+                } else if (parseContext.getParseFieldMatcher().match(currentFieldName, CACHE_SHA)) {
+                    String cacheValue = parser.text();
+                    if (parseContext.getCacheStrategy() == QueryParseContext.CacheStrategy.SHA) {
+                        cacheKey = cacheValue;
+                    }
                 } else {
                     throw new ParsingException(parser.getTokenLocation(), "[bool] query does not support [" + currentFieldName + "]");
                 }
@@ -394,6 +422,7 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
         boolQuery.adjustPureNegative(adjustPureNegative);
         boolQuery.minimumNumberShouldMatch(minimumShouldMatch);
         boolQuery.queryName(queryName);
+        boolQuery.cache(cacheKey);
         return Optional.of(boolQuery);
     }
 
@@ -404,8 +433,22 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
 
     @Override
     protected Query doToQuery(QueryShardContext context) throws IOException {
+        ParsedQueryCache parsedQueryCache = context.getParsedQueryCache();
+        Query query = null;
+
+        if (cacheKey != null && cacheKey.length() > 0) {
+            if(parsedQueryCache != null) {
+                query = parsedQueryCache.get(cacheKey);
+            }
+        }
+
+        if (query != null) {
+            return query;
+        }
+
         BooleanQuery.Builder booleanQueryBuilder = new BooleanQuery.Builder();
         booleanQueryBuilder.setDisableCoord(disableCoord);
+        booleanQueryBuilder.cache(cacheKey);
         addBooleanClauses(context, booleanQueryBuilder, mustClauses, BooleanClause.Occur.MUST);
         addBooleanClauses(context, booleanQueryBuilder, mustNotClauses, BooleanClause.Occur.MUST_NOT);
         addBooleanClauses(context, booleanQueryBuilder, shouldClauses, BooleanClause.Occur.SHOULD);
@@ -421,8 +464,12 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
         } else {
             minimumShouldMatch = this.minimumShouldMatch;
         }
-        Query query = Queries.applyMinimumShouldMatch(booleanQuery, minimumShouldMatch);
-        return adjustPureNegative ? fixNegativeQueryIfNeeded(query) : query;
+        query = Queries.applyMinimumShouldMatch(booleanQuery, minimumShouldMatch);
+        query = adjustPureNegative ? fixNegativeQueryIfNeeded(query) : query;
+        if (cacheKey != null && cacheKey.length() > 0 && query != null && parsedQueryCache != null) {
+            parsedQueryCache.put(cacheKey, query);
+        }
+        return query;
     }
 
     private static void addBooleanClauses(QueryShardContext context, BooleanQuery.Builder booleanQueryBuilder,
@@ -479,6 +526,7 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
             newBuilder.minimumShouldMatch = minimumShouldMatch;
             newBuilder.boost(boost());
             newBuilder.queryName(queryName());
+            newBuilder.cache(cacheKey);
             return newBuilder;
         }
         return this;
@@ -493,6 +541,10 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
         for (QueryBuilder clause : clauses) {
             InnerHitBuilder.extractInnerHits(clause, innerHits);
         }
+    }
+
+    private static boolean isDeprecatedSetting(QueryParseContext parseContext, String setting) {
+        return parseContext.getParseFieldMatcher().match(setting, QueryParseContext.CACHE);
     }
 
     private static boolean rewriteClauses(QueryRewriteContext queryRewriteContext, List<QueryBuilder> builders,

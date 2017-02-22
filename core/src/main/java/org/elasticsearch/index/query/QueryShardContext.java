@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
 
+import com.spr.elasticsearch.index.query.ParsedQueryCache;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.queryparser.classic.MapperQueryParser;
@@ -77,6 +78,7 @@ public class QueryShardContext extends QueryRewriteContext {
     private final BitsetFilterCache bitsetFilterCache;
     private final IndexFieldDataService indexFieldDataService;
     private final IndexSettings indexSettings;
+    private final ParsedQueryCache parsedQueryCache;
     private final int shardId;
     private String[] types = Strings.EMPTY_ARRAY;
     private boolean cachable = true;
@@ -102,6 +104,14 @@ public class QueryShardContext extends QueryRewriteContext {
                              IndexFieldDataService indexFieldDataService, MapperService mapperService, SimilarityService similarityService,
                              ScriptService scriptService, final IndicesQueriesRegistry indicesQueriesRegistry, Client client,
                              IndexReader reader, ClusterState clusterState, LongSupplier nowInMillis) {
+        this(shardId, indexSettings, bitsetFilterCache, indexFieldDataService, mapperService, similarityService, scriptService,
+                indicesQueriesRegistry, client, reader, clusterState, nowInMillis, null);
+    }
+
+    public QueryShardContext(int shardId, IndexSettings indexSettings, BitsetFilterCache bitsetFilterCache,
+            IndexFieldDataService indexFieldDataService, MapperService mapperService, SimilarityService similarityService,
+            ScriptService scriptService, final IndicesQueriesRegistry indicesQueriesRegistry, Client client,
+            IndexReader reader, ClusterState clusterState, LongSupplier nowInMillis, ParsedQueryCache parsedQueryCache) {
         super(indexSettings, mapperService, scriptService, indicesQueriesRegistry, client, reader, clusterState, nowInMillis);
         this.shardId = shardId;
         this.indexSettings = indexSettings;
@@ -111,6 +121,7 @@ public class QueryShardContext extends QueryRewriteContext {
         this.indexFieldDataService = indexFieldDataService;
         this.allowUnmappedFields = indexSettings.isDefaultAllowUnmappedFields();
         this.indicesQueriesRegistry = indicesQueriesRegistry;
+        this.parsedQueryCache = parsedQueryCache;
         this.nestedScope = new NestedScope();
 
     }
@@ -118,7 +129,7 @@ public class QueryShardContext extends QueryRewriteContext {
     public QueryShardContext(QueryShardContext source) {
         this(source.shardId, source.indexSettings, source.bitsetFilterCache, source.indexFieldDataService, source.mapperService,
                 source.similarityService, source.scriptService, source.indicesQueriesRegistry, source.client,
-                source.reader, source.clusterState, source.nowInMillis);
+                source.reader, source.clusterState, source.nowInMillis, source.parsedQueryCache);
         this.types = source.getTypes();
     }
 
@@ -165,6 +176,10 @@ public class QueryShardContext extends QueryRewriteContext {
 
     public <IFD extends IndexFieldData<?>> IFD getForField(MappedFieldType mapper) {
         return indexFieldDataService.getForField(mapper);
+    }
+
+    public ParsedQueryCache getParsedQueryCache() {
+        return parsedQueryCache;
     }
 
     public void addNamedQuery(String name, Query query) {

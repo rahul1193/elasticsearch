@@ -25,7 +25,9 @@ import org.elasticsearch.common.ParseFieldMatcherSupplier;
 import org.elasticsearch.common.ParsingException;
 import org.elasticsearch.common.logging.DeprecationLogger;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.xcontent.XContentParser;
+import org.elasticsearch.index.IndexSettings;
 import org.elasticsearch.indices.query.IndicesQueriesRegistry;
 import org.elasticsearch.script.Script;
 
@@ -37,24 +39,43 @@ public class QueryParseContext implements ParseFieldMatcherSupplier {
 
     private static final DeprecationLogger DEPRECATION_LOGGER = new DeprecationLogger(Loggers.getLogger(QueryParseContext.class));
 
-    private static final ParseField CACHE = new ParseField("_cache").withAllDeprecated("Elasticsearch makes its own caching decisions");
+    static final ParseField CACHE = new ParseField("_cache").withAllDeprecated("Elasticsearch makes its own caching decisions");
     private static final ParseField CACHE_KEY = new ParseField("_cache_key").withAllDeprecated("Filters are always used as cache keys");
+
+    enum CacheStrategy { KEY, ANY, SHA }
+
+    public static final Setting<CacheStrategy> CACHE_STRATEGY_SETTING = new Setting<>("cache.strategy", o -> CacheStrategy.KEY.name(), s -> {
+        CacheStrategy strategy = CacheStrategy.KEY;
+        try {
+            strategy = CacheStrategy.valueOf(s.toUpperCase());
+        } catch (Throwable t) {
+            // Use default
+        }
+        return strategy;
+    });
 
     private final XContentParser parser;
     private final IndicesQueriesRegistry indicesQueriesRegistry;
     private final ParseFieldMatcher parseFieldMatcher;
     private final String defaultScriptLanguage;
+    private final CacheStrategy cacheStrategy;
 
     public QueryParseContext(IndicesQueriesRegistry registry, XContentParser parser, ParseFieldMatcher parseFieldMatcher) {
-        this(Script.DEFAULT_SCRIPT_LANG, registry, parser, parseFieldMatcher);
+        this(Script.DEFAULT_SCRIPT_LANG, registry, parser, parseFieldMatcher, null);
     }
 
     public QueryParseContext(String defaultScriptLanguage, IndicesQueriesRegistry registry, XContentParser parser,
-                             ParseFieldMatcher parseFieldMatcher) {
+                             ParseFieldMatcher parseFieldMatcher, IndexSettings indexSettings) {
         this.indicesQueriesRegistry = Objects.requireNonNull(registry, "indices queries registry cannot be null");
         this.parser = Objects.requireNonNull(parser, "parser cannot be null");
         this.parseFieldMatcher = Objects.requireNonNull(parseFieldMatcher, "parse field matcher cannot be null");
         this.defaultScriptLanguage = defaultScriptLanguage;
+
+        if (indexSettings != null) {
+            this.cacheStrategy = CACHE_STRATEGY_SETTING.get(indexSettings.getSettings());
+        } else {
+            this.cacheStrategy = CacheStrategy.KEY;
+        }
     }
 
     public XContentParser parser() {
@@ -63,6 +84,10 @@ public class QueryParseContext implements ParseFieldMatcherSupplier {
 
     public boolean isDeprecatedSetting(String setting) {
         return this.parseFieldMatcher.match(setting, CACHE) || this.parseFieldMatcher.match(setting, CACHE_KEY);
+    }
+
+    public CacheStrategy getCacheStrategy() {
+        return cacheStrategy;
     }
 
     /**

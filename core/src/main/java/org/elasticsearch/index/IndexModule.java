@@ -19,6 +19,7 @@
 
 package org.elasticsearch.index;
 
+import com.spr.elasticsearch.index.query.ParsedQueryCache;
 import org.apache.lucene.util.SetOnce;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.service.ClusterService;
@@ -329,7 +330,7 @@ public final class IndexModule {
     public IndexService newIndexService(NodeEnvironment environment, IndexService.ShardStoreDeleter shardStoreDeleter,
             CircuitBreakerService circuitBreakerService, BigArrays bigArrays, ThreadPool threadPool, ScriptService scriptService,
             IndicesQueriesRegistry indicesQueriesRegistry, ClusterService clusterService, Client client,
-            IndicesQueryCache indicesQueryCache, MapperRegistry mapperRegistry, IndicesFieldDataCache indicesFieldDataCache)
+            IndicesQueryCache indicesQueryCache, ParsedQueryCache parsedQueryCache, MapperRegistry mapperRegistry, IndicesFieldDataCache indicesFieldDataCache)
             throws IOException {
         final IndexEventListener eventListener = freeze();
         IndexSearcherWrapperFactory searcherWrapperFactory = indexSearcherWrapper.get() == null
@@ -365,7 +366,7 @@ public final class IndexModule {
         }
         return new IndexService(indexSettings, environment, new SimilarityService(indexSettings, similarities), shardStoreDeleter,
                 analysisRegistry, engineFactory.get(), circuitBreakerService, bigArrays, threadPool, scriptService, indicesQueriesRegistry,
-                clusterService, client, queryCache, store, eventListener, searcherWrapperFactory, mapperRegistry, indicesFieldDataCache,
+                clusterService, client, queryCache, parsedQueryCache, store, eventListener, searcherWrapperFactory, mapperRegistry, indicesFieldDataCache,
                 searchOperationListeners, indexOperationListeners);
     }
 
