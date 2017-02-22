@@ -391,17 +391,17 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
                     adjustPureNegative = parser.booleanValue();
                 } else if (AbstractQueryBuilder.NAME_FIELD.match(currentFieldName)) {
                     queryName = parser.text();
-                } else if (parseContext.getParseFieldMatcher().match(currentFieldName, CACHE_KEY)) {
+                } else if (CACHE_KEY.match(currentFieldName)) {
                     String cacheValue = parser.text();
                     if (parseContext.getCacheStrategy() == QueryParseContext.CacheStrategy.KEY) {
                         cacheKey = cacheValue;
                     }
-                } else if (parseContext.getParseFieldMatcher().match(currentFieldName, CACHE_ANY)) {
+                } else if (CACHE_ANY.match(currentFieldName)) {
                     String cacheValue = parser.text();
                     if (parseContext.getCacheStrategy() == QueryParseContext.CacheStrategy.ANY) {
                         cacheKey = cacheValue;
                     }
-                } else if (parseContext.getParseFieldMatcher().match(currentFieldName, CACHE_SHA)) {
+                } else if (CACHE_SHA.match(currentFieldName)) {
                     String cacheValue = parser.text();
                     if (parseContext.getCacheStrategy() == QueryParseContext.CacheStrategy.SHA) {
                         cacheKey = cacheValue;
@@ -551,7 +551,7 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
     }
 
     private static boolean isDeprecatedSetting(QueryParseContext parseContext, String setting) {
-        return parseContext.getParseFieldMatcher().match(setting, QueryParseContext.CACHE);
+        return QueryParseContext.CACHE.match(setting);
     }
 
     private static boolean rewriteClauses(QueryRewriteContext queryRewriteContext, List<QueryBuilder> builders,
