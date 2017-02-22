@@ -249,7 +249,7 @@ public class CommonStats implements Writeable, ToXContent {
         flush =  in.readOptionalStreamable(FlushStats::new);
         warmer =  in.readOptionalStreamable(WarmerStats::new);
         queryCache = in.readOptionalStreamable(QueryCacheStats::new);
-        parsedQueryCache = ParsedQueryCacheStats.readQueryCacheStats(in);;
+        parsedQueryCache = in.readOptionalStreamable(ParsedQueryCacheStats::new);
         fieldData =  in.readOptionalStreamable(FieldDataStats::new);
         completion =  in.readOptionalStreamable(CompletionStats::new);
         segments =  in.readOptionalStreamable(SegmentsStats::new);
