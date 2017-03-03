@@ -50,6 +50,7 @@ import org.elasticsearch.search.suggest.completion.CompletionStats;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 public class CommonStats implements Writeable, ToXContent {
@@ -209,7 +210,8 @@ public class CommonStats implements Writeable, ToXContent {
                     queryCache = indicesQueryCache.getStats(indexShard.shardId());
                     break;
                 case ParsedQueryCache:
-                    this.parsedQueryCache = parsedQueryCache.getStats();
+                    if (parsedQueryCache != null)
+                        this.parsedQueryCache = parsedQueryCache.getStats();
                     break;
                 case FieldData:
                     fieldData = indexShard.fieldDataStats(flags.fieldDataFields());
@@ -245,14 +247,14 @@ public class CommonStats implements Writeable, ToXContent {
         get = in.readOptionalStreamable(GetStats::new);
         search = in.readOptionalStreamable(SearchStats::new);
         merge = in.readOptionalStreamable(MergeStats::new);
-        refresh =  in.readOptionalStreamable(RefreshStats::new);
-        flush =  in.readOptionalStreamable(FlushStats::new);
-        warmer =  in.readOptionalStreamable(WarmerStats::new);
+        refresh = in.readOptionalStreamable(RefreshStats::new);
+        flush = in.readOptionalStreamable(FlushStats::new);
+        warmer = in.readOptionalStreamable(WarmerStats::new);
         queryCache = in.readOptionalStreamable(QueryCacheStats::new);
         parsedQueryCache = in.readOptionalStreamable(ParsedQueryCacheStats::new);
-        fieldData =  in.readOptionalStreamable(FieldDataStats::new);
-        completion =  in.readOptionalStreamable(CompletionStats::new);
-        segments =  in.readOptionalStreamable(SegmentsStats::new);
+        fieldData = in.readOptionalStreamable(FieldDataStats::new);
+        completion = in.readOptionalStreamable(CompletionStats::new);
+        segments = in.readOptionalStreamable(SegmentsStats::new);
         translog = in.readOptionalStreamable(TranslogStats::new);
         requestCache = in.readOptionalStreamable(RequestCacheStats::new);
         recoveryStats = in.readOptionalStreamable(RecoveryStats::new);
@@ -517,8 +519,8 @@ public class CommonStats implements Writeable, ToXContent {
         }
         if (this.getSegments() != null) {
             size += this.getSegments().getMemoryInBytes() +
-                    this.getSegments().getIndexWriterMemoryInBytes() +
-                    this.getSegments().getVersionMapMemoryInBytes();
+                this.getSegments().getIndexWriterMemoryInBytes() +
+                this.getSegments().getVersionMapMemoryInBytes();
         }
 
         return new ByteSizeValue(size);
@@ -527,11 +529,11 @@ public class CommonStats implements Writeable, ToXContent {
     // note, requires a wrapping object
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-        final Stream<ToXContent> stream = Arrays.stream(new ToXContent[] {
+        final Stream<ToXContent> stream = Arrays.stream(new ToXContent[]{
             docs, store, indexing, get, search, merge, refresh, flush, warmer, queryCache, parsedQueryCache,
             fieldData, completion, segments, translog, requestCache, recoveryStats})
             .filter(Objects::nonNull);
-        for (ToXContent toXContent : ((Iterable<ToXContent>)stream::iterator)) {
+        for (ToXContent toXContent : ((Iterable<ToXContent>) stream::iterator)) {
             toXContent.toXContent(builder, params);
         }
         return builder;

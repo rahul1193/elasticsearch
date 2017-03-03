@@ -27,6 +27,7 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.ParsingException;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.lucene.search.Queries;
@@ -36,6 +37,7 @@ import org.elasticsearch.common.xcontent.XContentParser;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static org.elasticsearch.common.lucene.search.Queries.fixNegativeQueryIfNeeded;
 
@@ -57,8 +59,6 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
     private static final ParseField MINIMUM_SHOULD_MATCH = new ParseField("minimum_should_match", "minimum_number_should_match");
     private static final ParseField ADJUST_PURE_NEGATIVE = new ParseField("adjust_pure_negative");
     private static final ParseField CACHE_KEY = new ParseField("_cache_key");
-    private static final ParseField CACHE_ANY = new ParseField("_cache_any");
-    private static final ParseField CACHE_SHA = new ParseField("_cache_sha");
 
     private final List<QueryBuilder> mustClauses = new ArrayList<>();
 
@@ -301,7 +301,7 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
         if (minimumShouldMatch != null) {
             builder.field(MINIMUM_SHOULD_MATCH.getPreferredName(), minimumShouldMatch);
         }
-        if (cacheKey != null) {
+        if (Strings.hasLength(cacheKey)) {
             builder.field(CACHE_KEY.getPreferredName(), cacheKey);
         }
         printBoostAndQueryName(builder);
@@ -392,20 +392,7 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
                 } else if (AbstractQueryBuilder.NAME_FIELD.match(currentFieldName)) {
                     queryName = parser.text();
                 } else if (CACHE_KEY.match(currentFieldName)) {
-                    String cacheValue = parser.text();
-                    if (parseContext.getCacheStrategy() == QueryParseContext.CacheStrategy.KEY) {
-                        cacheKey = cacheValue;
-                    }
-                } else if (CACHE_ANY.match(currentFieldName)) {
-                    String cacheValue = parser.text();
-                    if (parseContext.getCacheStrategy() == QueryParseContext.CacheStrategy.ANY) {
-                        cacheKey = cacheValue;
-                    }
-                } else if (CACHE_SHA.match(currentFieldName)) {
-                    String cacheValue = parser.text();
-                    if (parseContext.getCacheStrategy() == QueryParseContext.CacheStrategy.SHA) {
-                        cacheKey = cacheValue;
-                    }
+                    cacheKey = parser.text();
                 } else {
                     throw new ParsingException(parser.getTokenLocation(), "[bool] query does not support [" + currentFieldName + "]");
                 }
@@ -440,13 +427,11 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
 
     @Override
     protected Query doToQuery(QueryShardContext context) throws IOException {
-        ParsedQueryCache parsedQueryCache = context.getParsedQueryCache();
+        Optional<ParsedQueryCache> parsedQueryCache = context.getParsedQueryCache();
         Query query = null;
 
-        if (cacheKey != null && cacheKey.length() > 0) {
-            if(parsedQueryCache != null) {
-                query = parsedQueryCache.get(cacheKey);
-            }
+        if (Strings.hasLength(cacheKey)) {
+            query = parsedQueryCache.orElseGet(() -> null).get(cacheKey);
         }
 
         if (query != null) {
@@ -473,8 +458,9 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
         }
         query = Queries.applyMinimumShouldMatch(booleanQuery, minimumShouldMatch);
         query = adjustPureNegative ? fixNegativeQueryIfNeeded(query) : query;
-        if (cacheKey != null && cacheKey.length() > 0 && query != null && parsedQueryCache != null) {
-            parsedQueryCache.put(cacheKey, query);
+        if (Strings.hasLength(cacheKey) && query != null && parsedQueryCache != null) {
+            Query finalQuery = query;
+            parsedQueryCache.ifPresent(parsedQueryCache1 -> parsedQueryCache1.put(cacheKey, finalQuery));
         }
         return query;
     }

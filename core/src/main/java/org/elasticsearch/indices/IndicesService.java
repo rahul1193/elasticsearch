@@ -206,7 +206,11 @@ public class IndicesService extends AbstractLifecycleComponent
         this.indexNameExpressionResolver = indexNameExpressionResolver;
         this.indicesRequestCache = new IndicesRequestCache(settings);
         this.indicesQueryCache = new IndicesQueryCache(settings);
-        this.parsedQueryCache = new ParsedQueryCache(settings);
+        if(ParsedQueryCache.PARSED_QUERY_CACHE_ENABLED.get(settings)) {
+            this.parsedQueryCache = new ParsedQueryCache(settings);
+        } else {
+            this.parsedQueryCache = null;
+        }
         this.mapperRegistry = mapperRegistry;
         this.namedWriteableRegistry = namedWriteableRegistry;
         clusterSettings.addSettingsUpdateConsumer(IndexStoreConfig.INDICES_STORE_THROTTLE_TYPE_SETTING, indexStoreConfig::setRateLimitingType);

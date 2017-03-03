@@ -74,13 +74,7 @@ import org.elasticsearch.threadpool.ThreadPool;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -222,8 +216,8 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         return indexCache;
     }
 
-    public ParsedQueryCache parsedQueryCache() {
-        return parsedQueryCache;
+    public Optional<ParsedQueryCache> parsedQueryCache() {
+        return Optional.ofNullable(parsedQueryCache);
     }
 
     public IndexFieldDataService fieldData() {

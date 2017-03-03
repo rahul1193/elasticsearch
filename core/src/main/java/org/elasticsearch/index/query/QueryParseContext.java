@@ -42,36 +42,17 @@ public class QueryParseContext {
     static final ParseField CACHE = new ParseField("_cache").withAllDeprecated("Elasticsearch makes its own caching decisions");
     private static final ParseField CACHE_KEY = new ParseField("_cache_key").withAllDeprecated("Filters are always used as cache keys");
 
-    enum CacheStrategy { KEY, ANY, SHA }
-
-    public static final Setting<CacheStrategy> CACHE_STRATEGY_SETTING = new Setting<>("cache.strategy", o -> CacheStrategy.KEY.name(), s -> {
-        CacheStrategy strategy = CacheStrategy.KEY;
-        try {
-            strategy = CacheStrategy.valueOf(s.toUpperCase());
-        } catch (Throwable t) {
-            // Use default
-        }
-        return strategy;
-    });
-
     private final XContentParser parser;
     private final String defaultScriptLanguage;
-    private final CacheStrategy cacheStrategy;
 
     public QueryParseContext(XContentParser parser) {
-        this(Script.DEFAULT_SCRIPT_LANG, parser, null);
+        this(Script.DEFAULT_SCRIPT_LANG, parser);
     }
 
     //TODO this constructor can be removed from master branch
-    public QueryParseContext(String defaultScriptLanguage, XContentParser parser, IndexSettings indexSettings) {
+    public QueryParseContext(String defaultScriptLanguage, XContentParser parser) {
         this.parser = Objects.requireNonNull(parser, "parser cannot be null");
         this.defaultScriptLanguage = defaultScriptLanguage;
-
-        if (indexSettings != null) {
-            this.cacheStrategy = CACHE_STRATEGY_SETTING.get(indexSettings.getSettings());
-        } else {
-            this.cacheStrategy = CacheStrategy.KEY;
-        }
     }
 
     public XContentParser parser() {
@@ -80,10 +61,6 @@ public class QueryParseContext {
 
     public boolean isDeprecatedSetting(String setting) {
         return CACHE.match(setting) || CACHE_KEY.match(setting);
-    }
-
-    public CacheStrategy getCacheStrategy() {
-        return cacheStrategy;
     }
 
     /**

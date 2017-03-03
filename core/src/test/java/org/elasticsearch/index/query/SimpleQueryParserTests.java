@@ -176,7 +176,7 @@ public class SimpleQueryParserTests extends ESTestCase {
         IndexMetaData indexState = IndexMetaData.builder("index").settings(indexSettings).build();
         IndexSettings settings = new IndexSettings(indexState, Settings.EMPTY);
         QueryShardContext mockShardContext = new QueryShardContext(0, settings, null, null, null, null, null, xContentRegistry(),
-                null, null, System::currentTimeMillis) {
+                null, null, System::currentTimeMillis, null) {
             @Override
             public MappedFieldType fieldMapper(String name) {
                 return new MockFieldMapper.FakeFieldType();
@@ -190,7 +190,7 @@ public class SimpleQueryParserTests extends ESTestCase {
 
         // Now check what happens if foo.quote does not exist
         mockShardContext = new QueryShardContext(0, settings, null, null, null, null, null, xContentRegistry(),
-                null, null, System::currentTimeMillis) {
+                null, null, System::currentTimeMillis, null) {
             @Override
             public MappedFieldType fieldMapper(String name) {
                 if (name.equals("foo.quote")) {

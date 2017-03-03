@@ -22,10 +22,7 @@ package org.elasticsearch.index.query;
 import static java.util.Collections.unmodifiableMap;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
 
@@ -169,8 +166,8 @@ public class QueryShardContext extends QueryRewriteContext {
         return indexFieldDataService.getForField(mapper);
     }
 
-    public ParsedQueryCache getParsedQueryCache() {
-        return parsedQueryCache;
+    public Optional<ParsedQueryCache> getParsedQueryCache() {
+        return Optional.ofNullable(parsedQueryCache);
     }
 
     public void addNamedQuery(String name, Query query) {

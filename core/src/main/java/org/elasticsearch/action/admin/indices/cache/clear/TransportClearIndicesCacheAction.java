@@ -19,6 +19,7 @@
 
 package org.elasticsearch.action.admin.indices.cache.clear;
 
+import com.spr.elasticsearch.index.query.ParsedQueryCache;
 import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.action.support.broadcast.node.TransportBroadcastByNodeAction;
@@ -40,6 +41,7 @@ import org.elasticsearch.transport.TransportService;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Consumer;
 
 
 /**
@@ -113,7 +115,7 @@ public class TransportClearIndicesCacheAction extends TransportBroadcastByNodeAc
                 } else {
                     service.cache().clear("api");
                     service.fieldData().clear();
-                    service.parsedQueryCache().clear();
+                    service.parsedQueryCache().ifPresent(ParsedQueryCache::clear);
                     indicesService.clearRequestCache(shard);
                 }
             }
