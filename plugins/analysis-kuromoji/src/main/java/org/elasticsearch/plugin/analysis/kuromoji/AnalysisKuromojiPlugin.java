@@ -20,29 +20,44 @@
 package org.elasticsearch.plugin.analysis.kuromoji;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.elasticsearch.index.analysis.AnalyzerProvider;
-import org.elasticsearch.index.analysis.CharFilterFactory;
-import org.elasticsearch.index.analysis.JapaneseStopTokenFilterFactory;
-import org.elasticsearch.index.analysis.KuromojiAnalyzerProvider;
-import org.elasticsearch.index.analysis.KuromojiBaseFormFilterFactory;
-import org.elasticsearch.index.analysis.KuromojiIterationMarkCharFilterFactory;
-import org.elasticsearch.index.analysis.KuromojiKatakanaStemmerFactory;
-import org.elasticsearch.index.analysis.KuromojiNumberFilterFactory;
-import org.elasticsearch.index.analysis.KuromojiPartOfSpeechFilterFactory;
-import org.elasticsearch.index.analysis.KuromojiReadingFormFilterFactory;
-import org.elasticsearch.index.analysis.KuromojiTokenizerFactory;
-import org.elasticsearch.index.analysis.TokenFilterFactory;
-import org.elasticsearch.index.analysis.TokenizerFactory;
+import org.elasticsearch.SpecialPermission;
+import org.elasticsearch.common.settings.Setting;
+import org.elasticsearch.index.analysis.*;
 import org.elasticsearch.indices.analysis.AnalysisModule.AnalysisProvider;
 import org.elasticsearch.plugins.AnalysisPlugin;
 import org.elasticsearch.plugins.Plugin;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static java.util.Collections.singletonMap;
 
 public class AnalysisKuromojiPlugin extends Plugin implements AnalysisPlugin {
+
+    // ClientConfiguration clinit has some classloader problems
+    // This is also done for S3RepositoryPlugin, Ec2DiscoveryPlugin
+    static {
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(new SpecialPermission());
+        }
+        AccessController.doPrivileged(new PrivilegedAction<Void>() {
+            @Override
+            public Void run() {
+                try {
+                    Class.forName("com.amazonaws.ClientConfiguration");
+                } catch (ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+                return null;
+            }
+        });
+    }
+
     @Override
     public Map<String, AnalysisProvider<CharFilterFactory>> getCharFilters() {
         return singletonMap("kuromoji_iteration_mark", KuromojiIterationMarkCharFilterFactory::new);
@@ -68,5 +83,14 @@ public class AnalysisKuromojiPlugin extends Plugin implements AnalysisPlugin {
     @Override
     public Map<String, AnalysisProvider<AnalyzerProvider<? extends Analyzer>>> getAnalyzers() {
         return singletonMap("kuromoji", KuromojiAnalyzerProvider::new);
+    }
+
+    @Override
+    public List<Setting<?>> getSettings() {
+        // Plugin settings need to be registered from ES-5, otherwise Elasticsearch will reject them.
+        return Arrays.asList(KuromojiDictionarySyncRunnable.AMAZON_S3_KEY_SETTING,
+            KuromojiDictionarySyncRunnable.AMAZON_S3_SECRET_SETTING,
+            KuromojiDictionarySyncRunnable.AMAZON_S3_BUCKET_SETTING,
+            KuromojiDictionarySyncRunnable.AMAZON_S3_OBJECT_SETTING);
     }
 }
