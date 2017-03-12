@@ -37,7 +37,6 @@ import org.elasticsearch.common.xcontent.XContentParser;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import static org.elasticsearch.common.lucene.search.Queries.fixNegativeQueryIfNeeded;
 
@@ -430,8 +429,8 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
         Optional<ParsedQueryCache> parsedQueryCache = context.getParsedQueryCache();
         Query query = null;
 
-        if (Strings.hasLength(cacheKey)) {
-            query = parsedQueryCache.orElseGet(() -> null).get(cacheKey);
+        if (Strings.hasLength(cacheKey) && parsedQueryCache.isPresent()) {
+            query = parsedQueryCache.get().get(cacheKey);
         }
 
         if (query != null) {
@@ -458,7 +457,7 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
         }
         query = Queries.applyMinimumShouldMatch(booleanQuery, minimumShouldMatch);
         query = adjustPureNegative ? fixNegativeQueryIfNeeded(query) : query;
-        if (Strings.hasLength(cacheKey) && query != null && parsedQueryCache != null) {
+        if (Strings.hasLength(cacheKey) && query != null) {
             Query finalQuery = query;
             parsedQueryCache.ifPresent(parsedQueryCache1 -> parsedQueryCache1.put(cacheKey, finalQuery));
         }
