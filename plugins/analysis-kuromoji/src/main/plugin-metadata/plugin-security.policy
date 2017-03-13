@@ -20,7 +20,16 @@
 grant {
   // needed because of problems in ClientConfiguration. This is done in other plugins as well.
   permission java.lang.RuntimePermission "accessDeclaredMembers";
-  // NOTE: no tests fail without this, but we know the problem
-  // exists in AWS sdk, and tests here are not thorough
   permission java.lang.RuntimePermission "getClassLoader";
+
+  // https://discuss.elastic.co/t/es-cloud-aws-error-2-2-1/45331/6
+  permission javax.management.MBeanServerPermission "createMBeanServer";
+  permission javax.management.MBeanServerPermission "findMBeanServer";
+  permission javax.management.MBeanPermission "com.amazonaws.metrics.*", "*";
+  permission javax.management.MBeanTrustPermission "register";
+
+  permission java.io.FilePermission "/mnt1/", "read,write";
+  permission java.io.FilePermission "/mnt1/tmp/", "read,write";
+  permission java.io.FilePermission "/mnt1/tmp/kuromoji/", "read,write";
+  permission java.io.FilePermission "/mnt1/tmp/kuromoji/dictionary.dat", "read,write";
 };

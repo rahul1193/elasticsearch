@@ -9,6 +9,7 @@ import org.apache.commons.codec.Charsets;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.analysis.ja.SprJapaneseAnalyzer;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
+import org.elasticsearch.SpecialPermission;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
@@ -17,6 +18,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.security.PrivilegedExceptionAction;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Locale;
@@ -45,7 +49,17 @@ public class KuromojiDictionarySyncRunnable implements Runnable {
     public KuromojiDictionarySyncRunnable(SprJapaneseAnalyzer analyzer, Settings settings) {
         initializeSettings(settings);
         AWSCredentials credentials = new BasicAWSCredentials(AMAZON_S3_KEY, AMAZON_S3_SECRET);
-        this.amazonS3Client = new AmazonS3Client(credentials);
+        final SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(new SpecialPermission());
+        }
+        amazonS3Client = AccessController.doPrivileged(new PrivilegedAction<AmazonS3Client>() {
+            @Override
+            public AmazonS3Client run() {
+                return new AmazonS3Client(credentials);
+            }
+        });
+
         this.analyzers.add(analyzer);
         this.lastSyncTime = 0;
     }
@@ -64,7 +78,16 @@ public class KuromojiDictionarySyncRunnable implements Runnable {
 
                     long s3UpdateTime = getLastS3UpdateTime();
                     if (s3UpdateTime > lastSyncTime) {
-                        userDict = downloadDictionary();
+                        final SecurityManager sm = System.getSecurityManager();
+                        if (sm != null) {
+                            sm.checkPermission(new SpecialPermission());
+                        }
+                        userDict = AccessController.doPrivileged(new PrivilegedExceptionAction<UserDictionary>() {
+                            @Override
+                            public UserDictionary run() throws IOException {
+                                return downloadDictionary();
+                            }
+                        });
                         for (SprJapaneseAnalyzer analyzer : analyzers) {
                             analyzer.setUserDictionary(userDict);
                         }
@@ -90,6 +113,7 @@ public class KuromojiDictionarySyncRunnable implements Runnable {
         UserDictionary dictionary = null;
         try {
             dictionaryFile = new File(DICTIONARY_FILE);
+
             ObjectMetadata metadata = amazonS3Client.getObject(request, dictionaryFile);
             dictionary = readUserDictionary(dictionaryFile);
             lastSyncTime = metadata.getLastModified().getTime();
