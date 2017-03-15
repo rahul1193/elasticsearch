@@ -29,21 +29,32 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.index.cache.query.CacheableQueryWrapper;
 import org.elasticsearch.indices.IndicesQueryCache;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 /**
  * @author Utkarsh
  */
 public class CacheKeyLRUQueryCache extends LRUQueryCache {
+
+    private static final QueryCachingPolicy CACHING_POLICY = new QueryCachingPolicy() {
+        @Override
+        public void onUse(Query query) {
+            //no-op
+        }
+
+        @Override
+        public boolean shouldCache(Query query) throws IOException {
+            return query instanceof CacheableQueryWrapper;
+        }
+    };
 
     private static final long HASHTABLE_RAM_BYTES_PER_ENTRY =
         2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF // key + value
@@ -154,19 +165,12 @@ public class CacheKeyLRUQueryCache extends LRUQueryCache {
 
     @Override
     public Weight doCache(Weight weight, QueryCachingPolicy policy) {
-        try {
-            if (!policy.shouldCache(weight.getQuery())) {
-                return weight;
-            }
-        } catch (IOException e) {
-            throw ExceptionsHelper.convertToElastic(e);
-        }
 
         while (weight instanceof CachingWrapperWeight) {
             weight = ((CachingWrapperWeight) weight).in;
         }
 
-        return new CachingWrapperWeight(weight, policy);
+        return new CachingWrapperWeight(weight);
     }
 
     @Override
@@ -189,11 +193,11 @@ public class CacheKeyLRUQueryCache extends LRUQueryCache {
         return super.cacheImpl(scorer, maxDoc);
     }
 
-    DocIdSet get(Query query, LeafReaderContext context) {
-        assert query instanceof BooleanQuery;
-        assert ((BooleanQuery) query).getCacheKey() != null;
+    private DocIdSet get(Query query, LeafReaderContext context) {
+        assert query instanceof CacheableQueryWrapper;
+        assert ((CacheableQueryWrapper) query).getCacheKey() != null;
         final Object leaf = context.reader().getCoreCacheKey();
-        final String key = ((BooleanQuery) query).getCacheKey();
+        final String key = ((CacheableQueryWrapper) query).getCacheKey();
         final DocIdSet cached = cache.getIfPresent(LeafCacheKey.of(leaf, key));
         if (cached == null) {
             onMiss(leaf, query);
@@ -203,11 +207,11 @@ public class CacheKeyLRUQueryCache extends LRUQueryCache {
         return cached;
     }
 
-    void put(Query query, LeafReaderContext context, DocIdSet set) {
-        assert query instanceof BooleanQuery;
-        assert ((BooleanQuery) query).getCacheKey() != null;
+    private void put(Query query, LeafReaderContext context, DocIdSet set) {
+        assert query instanceof CacheableQueryWrapper;
+        assert ((CacheableQueryWrapper) query).getCacheKey() != null;
         final Object leaf = context.reader().getCoreCacheKey();
-        final String key = ((BooleanQuery) query).getCacheKey();
+        final String key = ((CacheableQueryWrapper) query).getCacheKey();
         cache.put(LeafCacheKey.of(leaf, key), set);
         onDocIdSetCache(leaf, HASHTABLE_RAM_BYTES_PER_ENTRY + set.ramBytesUsed());
     }
@@ -243,16 +247,10 @@ public class CacheKeyLRUQueryCache extends LRUQueryCache {
     private class CachingWrapperWeight extends ConstantScoreWeight {
 
         private final Weight in;
-        private final QueryCachingPolicy policy;
-        // we use an AtomicBoolean because Weight.scorer may be called from multiple
-        // threads when IndexSearcher is created with threads
-        private final AtomicBoolean used;
 
-        CachingWrapperWeight(Weight in, QueryCachingPolicy policy) {
+        CachingWrapperWeight(Weight in) {
             super(in.getQuery());
             this.in = in;
-            this.policy = policy;
-            used = new AtomicBoolean(false);
         }
 
         @Override
@@ -271,11 +269,7 @@ public class CacheKeyLRUQueryCache extends LRUQueryCache {
 
         @Override
         public Scorer scorer(LeafReaderContext context) throws IOException {
-            if (used.compareAndSet(false, true)) {
-                policy.onUse(getQuery());
-            }
-
-            if (!policy.shouldCache(in.getQuery())) {
+            if (!CACHING_POLICY.shouldCache(in.getQuery())) {
                 return in.scorer(context);
             }
 
@@ -300,18 +294,14 @@ public class CacheKeyLRUQueryCache extends LRUQueryCache {
 
         @Override
         public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-            if (used.compareAndSet(false, true)) {
-                policy.onUse(getQuery());
+            if (!CACHING_POLICY.shouldCache(in.getQuery())) {
+                return in.bulkScorer(context);
             }
 
             DocIdSet docIdSet = get(in.getQuery(), context);
             if (docIdSet == null) {
-                if (policy.shouldCache(in.getQuery())) {
-                    docIdSet = cache(context);
-                    put(in.getQuery(), context, docIdSet);
-                } else {
-                    return in.bulkScorer(context);
-                }
+                docIdSet = cache(context);
+                put(in.getQuery(), context, docIdSet);
             }
 
             assert docIdSet != null;
