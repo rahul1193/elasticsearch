@@ -19,7 +19,6 @@
 
 package org.elasticsearch.action.update;
 
-import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
 import org.apache.http.HttpEntity;
 import org.apache.http.nio.entity.NStringEntity;
@@ -29,7 +28,6 @@ import org.elasticsearch.action.ActionRestRequest;
 import org.elasticsearch.action.DocumentRequest;
 import org.elasticsearch.action.WriteConsistencyLevel;
 import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.support.replication.ReplicationType;
 import org.elasticsearch.action.support.single.instance.InstanceShardOperationRequest;
 import org.elasticsearch.common.Nullable;
@@ -43,13 +41,12 @@ import org.elasticsearch.common.lucene.uid.Versions;
 import org.elasticsearch.common.util.UriBuilder;
 import org.elasticsearch.common.xcontent.*;
 import org.elasticsearch.index.VersionType;
-import org.elasticsearch.index.query.ScriptFilterParser;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.script.ScriptService;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -804,7 +801,7 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
             payload.putIfNotNull("lang", this.scriptLang);
             payload.putIf("scripted_upsert", Boolean.TRUE, this.scriptedUpsert);
             payload.put("script", this.script);
-            payload.put("params", scriptParams);
+            payload.put("params", scriptParams == null ? Collections.emptyMap() : scriptParams);
         }
         if (this.upsertRequest != null) {
             payload.put("upsert", this.upsertRequest.sourceAsMap());
@@ -853,7 +850,7 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
                 Map<String, Object> scriptObj = new LinkedHashMap<>();
                 scriptObj.put(UpdateRequest.this.scriptType.name().toLowerCase(Locale.ROOT), script);
                 scriptObj.put("lang", scriptLang);
-                scriptObj.put("params", scriptParams);
+                scriptObj.put("params", scriptParams == null ? Collections.emptyMap() : scriptParams);
                 payload.put("script", scriptObj);
             }
             if (UpdateRequest.this.upsertRequest != null) {
