@@ -22,6 +22,7 @@ package org.elasticsearch.common.xcontent;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import org.apache.lucene.util.BytesRef;
+import org.elasticsearch.Version;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.bytes.BytesReference;
@@ -80,9 +81,14 @@ public final class XContentBuilder implements BytesStream, Releasable {
         return new XContentBuilder(xContent, new BytesStreamOutput());
     }
 
+    public static XContentBuilder builder(XContent xContent, Version version) throws IOException {
+        return new XContentBuilder(xContent, new BytesStreamOutput(), version);
+    }
+
     private XContentGenerator generator;
 
     private final OutputStream bos;
+    private final Version version;
 
     private FieldCaseConversion fieldCaseConversion = globalFieldCaseConversion;
 
@@ -95,8 +101,17 @@ public final class XContentBuilder implements BytesStream, Releasable {
      * to call {@link #close()} when the builder is done with.
      */
     public XContentBuilder(XContent xContent, OutputStream bos) throws IOException {
+        this(xContent, bos, Version.V_1_4_1);
+    }
+
+    /**
+     * Constructs a new builder using the provided xcontent and an OutputStream. Make sure
+     * to call {@link #close()} when the builder is done with.
+     */
+    public XContentBuilder(XContent xContent, OutputStream bos, Version version) throws IOException {
         this.bos = bos;
         this.generator = xContent.createGenerator(bos);
+        this.version = version;
     }
 
     public XContentBuilder fieldCaseConversion(FieldCaseConversion fieldCaseConversion) {
@@ -1263,7 +1278,7 @@ public final class XContentBuilder implements BytesStream, Releasable {
                 generator.writeUTF8String(bytesArray.array(), bytesArray.arrayOffset(), bytesArray.length());
             }
         } else if (value instanceof ToXContent) {
-            ((ToXContent) value).toXContent(this, ToXContent.EMPTY_PARAMS);
+            ((ToXContent) value).toXContent(this, ToXContentUtils.createParamsWithTargetClusterVersion(this.version));
         } else if (value instanceof double[]) {
             generator.writeStartArray();
             for (double v : (double[]) value) {

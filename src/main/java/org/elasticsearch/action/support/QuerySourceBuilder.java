@@ -23,7 +23,6 @@ import org.elasticsearch.Version;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.xcontent.*;
 import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilderException;
 
 import java.io.IOException;
@@ -69,7 +68,7 @@ public class QuerySourceBuilder implements ToXContent {
 
     public BytesReference buildAsBytes(XContentType contentType, Version version) throws SearchSourceBuilderException {
         try {
-            XContentBuilder builder = XContentFactory.contentBuilder(contentType);
+            XContentBuilder builder = XContentFactory.contentBuilder(contentType, version);
             toXContent(builder, ToXContentUtils.createParamsWithTargetClusterVersion(version));
             return builder.bytes();
         } catch (Exception e) {

@@ -47,7 +47,10 @@ import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.SuggestBuilder;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * A search source builder allowing to easily build search source. Simple construction
@@ -716,7 +719,7 @@ public class SearchSourceBuilder implements ToXContent {
     @Override
     public String toString() {
         try {
-            XContentBuilder builder = XContentFactory.contentBuilder(XContentType.JSON).prettyPrint();
+            XContentBuilder builder = XContentFactory.contentBuilder(XContentType.JSON, targetClusterVersion).prettyPrint();
             toXContent(builder, ToXContentUtils.createParamsWithTargetClusterVersion(targetClusterVersion));
             return builder.string();
         } catch (Exception e) {
@@ -730,7 +733,7 @@ public class SearchSourceBuilder implements ToXContent {
 
     public BytesReference buildAsBytes(XContentType contentType) throws SearchSourceBuilderException {
         try {
-            XContentBuilder builder = XContentFactory.contentBuilder(contentType);
+            XContentBuilder builder = XContentFactory.contentBuilder(contentType, targetClusterVersion);
             toXContent(builder, ToXContentUtils.createParamsWithTargetClusterVersion(targetClusterVersion));
             return builder.bytes();
         } catch (Exception e) {

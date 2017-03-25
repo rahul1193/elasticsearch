@@ -20,11 +20,11 @@
 package org.elasticsearch.action.suggest;
 
 import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.Version;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.broadcast.BroadcastOperationRequestBuilder;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
-import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.ToXContentUtils;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
@@ -87,8 +87,9 @@ public class SuggestRequestBuilder extends BroadcastOperationRequestBuilder<Sugg
     @Override
     protected void doExecute(ActionListener<SuggestResponse> listener) {
         try {
-            XContentBuilder builder = XContentFactory.contentBuilder(Requests.CONTENT_TYPE);
-            suggest.toXContent(builder, ToXContentUtils.createParamsWithTargetClusterVersion(client.getClusterVersion()));
+            Version version = client.getClusterVersion();
+            XContentBuilder builder = XContentFactory.contentBuilder(Requests.CONTENT_TYPE, version);
+            suggest.toXContent(builder, ToXContentUtils.createParamsWithTargetClusterVersion(version));
             request.suggest(builder.bytes());
         } catch (IOException e) {
             throw new ElasticsearchException("Unable to build suggestion request", e);

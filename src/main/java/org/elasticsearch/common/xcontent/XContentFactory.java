@@ -23,6 +23,7 @@ import com.fasterxml.jackson.dataformat.cbor.CBORConstants;
 import com.fasterxml.jackson.dataformat.smile.SmileConstants;
 import org.elasticsearch.ElasticsearchIllegalArgumentException;
 import org.elasticsearch.ElasticsearchParseException;
+import org.elasticsearch.Version;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.xcontent.cbor.CborXContent;
@@ -120,6 +121,22 @@ public class XContentFactory {
     public static XContentBuilder contentBuilder(XContentType type) throws IOException {
         if (type == XContentType.JSON) {
             return JsonXContent.contentBuilder();
+        } else if (type == XContentType.SMILE) {
+            return SmileXContent.contentBuilder();
+        } else if (type == XContentType.YAML) {
+            return YamlXContent.contentBuilder();
+        } else if (type == XContentType.CBOR) {
+            return CborXContent.contentBuilder();
+        }
+        throw new ElasticsearchIllegalArgumentException("No matching content type for " + type);
+    }
+
+    /**
+     * Returns a binary content builder for the provided content type.
+     */
+    public static XContentBuilder contentBuilder(XContentType type, Version version) throws IOException {
+        if (type == XContentType.JSON) {
+            return JsonXContent.contentBuilder(version);
         } else if (type == XContentType.SMILE) {
             return SmileXContent.contentBuilder();
         } else if (type == XContentType.YAML) {
@@ -231,7 +248,7 @@ public class XContentFactory {
                 return XContentType.YAML;
             }
         }
-        if (first == (CBORConstants.BYTE_OBJECT_INDEFINITE & 0xff)){
+        if (first == (CBORConstants.BYTE_OBJECT_INDEFINITE & 0xff)) {
             return XContentType.CBOR;
         }
         for (int i = 2; i < GUESS_HEADER_LENGTH; i++) {
@@ -279,7 +296,7 @@ public class XContentFactory {
         if (length > 2 && first == '-' && bytes.get(1) == '-' && bytes.get(2) == '-') {
             return XContentType.YAML;
         }
-        if (first == CBORConstants.BYTE_OBJECT_INDEFINITE){
+        if (first == CBORConstants.BYTE_OBJECT_INDEFINITE) {
             return XContentType.CBOR;
         }
         for (int i = 0; i < length; i++) {

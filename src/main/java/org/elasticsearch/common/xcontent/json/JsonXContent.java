@@ -23,6 +23,7 @@ import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
+import org.elasticsearch.Version;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.io.FastStringReader;
 import org.elasticsearch.common.xcontent.*;
@@ -37,6 +38,11 @@ public class JsonXContent implements XContent {
     public static XContentBuilder contentBuilder() throws IOException {
         return XContentBuilder.builder(jsonXContent);
     }
+
+    public static XContentBuilder contentBuilder(Version version) throws IOException {
+        return XContentBuilder.builder(jsonXContent, version);
+    }
+
 
     private final static JsonFactory jsonFactory;
     public final static JsonXContent jsonXContent;
