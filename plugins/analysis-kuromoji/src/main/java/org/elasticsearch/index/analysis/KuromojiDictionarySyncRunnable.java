@@ -113,7 +113,6 @@ public class KuromojiDictionarySyncRunnable implements Runnable {
         UserDictionary dictionary = null;
         try {
             dictionaryFile = new File(DICTIONARY_FILE);
-
             ObjectMetadata metadata = amazonS3Client.getObject(request, dictionaryFile);
             dictionary = readUserDictionary(dictionaryFile);
             lastSyncTime = metadata.getLastModified().getTime();
