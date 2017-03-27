@@ -50,7 +50,7 @@ public class KuromojiTokenizerFactory extends AbstractTokenizerFactory {
         super(indexSettings, name, settings);
         mode = getMode(settings);
         userDictionary = getUserDictionary(env, settings);
-        discartPunctuation = settings.getAsBoolean("discard_punctuation", true);
+        discartPunctuation = settings.getAsBoolean("discard_punctuation", false);
         nBestCost = settings.getAsInt(NBEST_COST, -1);
         nBestExamples = settings.get(NBEST_EXAMPLES);
     }
