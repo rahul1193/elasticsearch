@@ -33,12 +33,12 @@ public class SprJapaneseAnalyzer extends StopwordAnalyzerBase {
 
     @Override
     protected Analyzer.TokenStreamComponents createComponents(String fieldName) {
-        Tokenizer tokenizer = new JapaneseTokenizer(userDict, false, mode);
-        TokenStream stream = new JapanesePartOfSpeechStopFilter(tokenizer, stoptags);
-        stream = new CJKWidthFilter(stream);
-        stream = new StopFilter(stream, stopwords);
-        stream = new LowerCaseFilter(stream);
-        return new TokenStreamComponents(tokenizer, stream);
+        JapaneseTokenizer tokenizer = new JapaneseTokenizer(userDict, false, mode);
+        JapanesePartOfSpeechStopFilter stream = new JapanesePartOfSpeechStopFilter(tokenizer, stoptags);
+        CJKWidthFilter stream2 = new CJKWidthFilter(stream);
+        StopFilter stream3 = new StopFilter(stream2, stopwords);
+        LowerCaseFilter stream1 = new LowerCaseFilter(stream3);
+        return new TokenStreamComponents(tokenizer, stream1);
     }
 
     @Override
