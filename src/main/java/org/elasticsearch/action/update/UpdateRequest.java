@@ -623,6 +623,8 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
                     docAsUpsert(parser.booleanValue());
                 } else if ("detect_noop".equals(currentFieldName)) {
                     detectNoop(parser.booleanValue());
+                } else if ("retry_on_conflict".equals(currentFieldName)) {
+                    retryOnConflict(parser.intValue());
                 }
             }
         }
@@ -807,6 +809,10 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
             payload.put("upsert", this.upsertRequest.sourceAsMap());
         }
 
+        if (this.retryOnConflict != 0) {
+            payload.put("retry_on_conflict", this.retryOnConflict);
+        }
+
         if (payload.isEmpty()) {
             throw new IllegalStateException("Nothing to update. No doc, script or upsert provided");
         }
@@ -855,6 +861,10 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
             }
             if (UpdateRequest.this.upsertRequest != null) {
                 payload.put("upsert", UpdateRequest.this.upsertRequest.sourceAsMap());
+            }
+
+            if (UpdateRequest.this.retryOnConflict != 0) {
+                payload.put("retry_on_conflict", UpdateRequest.this.retryOnConflict);
             }
 
             if (payload.isEmpty()) {

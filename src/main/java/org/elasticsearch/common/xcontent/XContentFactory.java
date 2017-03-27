@@ -58,6 +58,13 @@ public class XContentFactory {
     }
 
     /**
+     * Constructs a new json builder that will output the result into the provided output stream.
+     */
+    public static XContentBuilder jsonBuilder(OutputStream os, Version version) throws IOException {
+        return new XContentBuilder(JsonXContent.jsonXContent, os, version);
+    }
+
+    /**
      * Returns a content builder using SMILE format ({@link org.elasticsearch.common.xcontent.XContentType#SMILE}.
      */
     public static XContentBuilder smileBuilder() throws IOException {
@@ -116,6 +123,22 @@ public class XContentFactory {
     }
 
     /**
+     * Constructs a xcontent builder that will output the result into the provided output stream.
+     */
+    public static XContentBuilder contentBuilder(XContentType type, OutputStream outputStream, Version version) throws IOException {
+        if (type == XContentType.JSON) {
+            return jsonBuilder(outputStream, version);
+        } else if (type == XContentType.SMILE) {
+            return smileBuilder(outputStream);
+        } else if (type == XContentType.YAML) {
+            return yamlBuilder(outputStream);
+        } else if (type == XContentType.CBOR) {
+            return cborBuilder(outputStream);
+        }
+        throw new ElasticsearchIllegalArgumentException("No matching content type for " + type);
+    }
+
+    /**
      * Returns a binary content builder for the provided content type.
      */
     public static XContentBuilder contentBuilder(XContentType type) throws IOException {
@@ -138,7 +161,7 @@ public class XContentFactory {
         if (type == XContentType.JSON) {
             return JsonXContent.contentBuilder(version);
         } else if (type == XContentType.SMILE) {
-            return SmileXContent.contentBuilder();
+            return SmileXContent.contentBuilder(version);
         } else if (type == XContentType.YAML) {
             return YamlXContent.contentBuilder();
         } else if (type == XContentType.CBOR) {

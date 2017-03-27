@@ -20,13 +20,12 @@
 package org.elasticsearch.common.xcontent.smile;
 
 import com.fasterxml.jackson.core.JsonEncoding;
-import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.dataformat.smile.SmileFactory;
 import com.fasterxml.jackson.dataformat.smile.SmileGenerator;
+import org.elasticsearch.Version;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.io.FastStringReader;
 import org.elasticsearch.common.xcontent.*;
-import org.elasticsearch.common.xcontent.json.JsonXContentParser;
 
 import java.io.*;
 
@@ -37,6 +36,10 @@ public class SmileXContent implements XContent {
 
     public static XContentBuilder contentBuilder() throws IOException {
         return XContentBuilder.builder(smileXContent);
+    }
+
+    public static XContentBuilder contentBuilder(Version version) throws IOException {
+        return XContentBuilder.builder(smileXContent, version);
     }
 
     final static SmileFactory smileFactory;
