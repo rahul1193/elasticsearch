@@ -24,10 +24,11 @@ import org.apache.lucene.analysis.ja.JapaneseTokenizer;
 import org.apache.lucene.analysis.ja.SprJapaneseAnalyzer;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.util.set.Sets;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.index.IndexSettings;
 
-import java.util.Collections;
+import java.util.Set;
 
 /**
  */
@@ -39,7 +40,7 @@ public class KuromojiAnalyzerProvider extends AbstractIndexAnalyzerProvider<SprJ
         super(indexSettings, name, settings);
         final JapaneseTokenizer.Mode mode = KuromojiTokenizerFactory.getMode(settings);
         final UserDictionary userDictionary = KuromojiTokenizerFactory.getUserDictionary(env, settings);
-        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, CharArraySet.EMPTY_SET, Collections.emptySet(), env.settings());
+        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, CharArraySet.EMPTY_SET, SprJapaneseAnalyzer.getDefaultStopTags(), env.settings());
     }
 
     @Override

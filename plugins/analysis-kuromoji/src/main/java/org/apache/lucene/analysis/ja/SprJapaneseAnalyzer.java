@@ -6,6 +6,7 @@ import org.apache.lucene.analysis.core.LowerCaseFilter;
 import org.apache.lucene.analysis.core.StopFilter;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.util.set.Sets;
 import org.elasticsearch.index.analysis.KuromojiUserDictionarySyncUtil;
 
 import java.util.Set;
@@ -17,6 +18,9 @@ public class SprJapaneseAnalyzer extends StopwordAnalyzerBase {
     private final JapaneseTokenizer.Mode mode;
     private final Set<String> stoptags;
     private volatile UserDictionary userDict;
+
+    // # Remove whitespace tokens (part of speech is defined in stoptags.txt - "symbol-space : 記号-空白")
+    private static final Set<String> DEFAULT_STOP_TAGS = Sets.newHashSet("記号-空白");
 
     public SprJapaneseAnalyzer(UserDictionary userDict, JapaneseTokenizer.Mode mode, CharArraySet stopwords, Set<String> stoptags, Settings settings) {
         super(stopwords);
@@ -48,13 +52,7 @@ public class SprJapaneseAnalyzer extends StopwordAnalyzerBase {
         return result1;
     }
 
-    @Override
-    public int hashCode() {
-        return System.identityHashCode(this);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return this == obj;
+    public static Set<String> getDefaultStopTags() {
+        return DEFAULT_STOP_TAGS;
     }
 }
