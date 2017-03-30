@@ -623,8 +623,6 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
                     docAsUpsert(parser.booleanValue());
                 } else if ("detect_noop".equals(currentFieldName)) {
                     detectNoop(parser.booleanValue());
-                } else if ("retry_on_conflict".equals(currentFieldName)) {
-                    retryOnConflict(parser.intValue());
                 }
             }
         }
@@ -773,6 +771,9 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
         actionMetadata.put("_index", index);
         actionMetadata.put("_type", type);
         actionMetadata.put("_id", id);
+        if (retryOnConflict != 0) {
+            actionMetadata.put("_retry_on_conflict", retryOnConflict);
+        }
         payload.put(BULK_TYPE, actionMetadata);
         String json = XContentHelper.convertToJson(payload, false);
 
@@ -786,7 +787,12 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
         Map<String, Object> payload = getPayload();
         String json = XContentHelper.convertToJson(payload, false);
         return new NStringEntity(json, StandardCharsets.UTF_8);
+    }
 
+    @Override
+    public Map<String, String> getParams() {
+        return MapBuilder.<String, String>newMapBuilder()
+                .putIf("retry_on_conflict", String.valueOf(retryOnConflict), retryOnConflict != 0).map();
     }
 
     private Map<String, Object> getPayload() {
@@ -807,10 +813,6 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
         }
         if (this.upsertRequest != null) {
             payload.put("upsert", this.upsertRequest.sourceAsMap());
-        }
-
-        if (this.retryOnConflict != 0) {
-            payload.put("retry_on_conflict", this.retryOnConflict);
         }
 
         if (payload.isEmpty()) {
@@ -863,10 +865,6 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
                 payload.put("upsert", UpdateRequest.this.upsertRequest.sourceAsMap());
             }
 
-            if (UpdateRequest.this.retryOnConflict != 0) {
-                payload.put("retry_on_conflict", UpdateRequest.this.retryOnConflict);
-            }
-
             if (payload.isEmpty()) {
                 throw new IllegalStateException("Nothing to update. No doc, script or upsert provided");
             }
@@ -879,6 +877,9 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
             actionMetadata.put("_index", index);
             actionMetadata.put("_type", type);
             actionMetadata.put("_id", id);
+            if (retryOnConflict != 0) {
+                actionMetadata.put("_retry_on_conflict", retryOnConflict);
+            }
             payload.put(BULK_TYPE, actionMetadata);
             String json = XContentHelper.convertToJson(payload, false);
 
