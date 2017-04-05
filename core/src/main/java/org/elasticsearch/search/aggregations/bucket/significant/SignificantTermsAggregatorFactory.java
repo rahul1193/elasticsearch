@@ -66,7 +66,7 @@ public class SignificantTermsAggregatorFactory extends ValuesSourceAggregatorFac
     private MappedFieldType fieldType;
     private FilterableTermsEnum termsEnum;
     private int numberOfAggregatorsCreated;
-    private final Query filter;
+    final Query filter;
     private final int supersetNumDocs;
     private final TermsAggregator.BucketCountThresholds bucketCountThresholds;
     private final SignificanceHeuristic significanceHeuristic;
@@ -80,7 +80,7 @@ public class SignificantTermsAggregatorFactory extends ValuesSourceAggregatorFac
         this.executionHint = executionHint;
         this.filter = filterBuilder == null
                 ? null
-                : filterBuilder.toQuery(context.getQueryShardContext());
+                : filterBuilder.toFilter(context.getQueryShardContext());
         IndexSearcher searcher = context.searcher();
         this.supersetNumDocs = filter == null
                 // Important - need to use the doc count that includes deleted docs
