@@ -34,7 +34,6 @@ import org.elasticsearch.common.xcontent.XContentObjectParseable;
 import org.elasticsearch.rest.RestStatus;
 
 import java.io.IOException;
-import java.util.Map;
 
 /**
  * Represents a single item response for an action executed as part of the bulk API. Holds the index/type/id
@@ -318,7 +317,7 @@ public class BulkItemResponse implements Streamable, FromXContentObject {
             @Override
             public void apply(XContentObject in, BulkItemResponse response) throws IOException {
                 response.response = new IndexResponse();
-                response.response.readFrom(in);
+                response.response.readFrom(in.getAsXContentObject(this));
                 handleFailure(in, response, this);
             }
         },
@@ -326,7 +325,7 @@ public class BulkItemResponse implements Streamable, FromXContentObject {
             @Override
             public void apply(XContentObject in, BulkItemResponse response) throws IOException {
                 response.response = new IndexResponse();
-                response.response.readFrom(in);
+                response.response.readFrom(in.getAsXContentObject(this));
                 handleFailure(in, response, this);
             }
 
@@ -335,7 +334,7 @@ public class BulkItemResponse implements Streamable, FromXContentObject {
             @Override
             public void apply(XContentObject in, BulkItemResponse response) throws IOException {
                 response.response = new UpdateResponse();
-                response.response.readFrom(in);
+                response.response.readFrom(in.getAsXContentObject(this));
                 handleFailure(in, response, this);
             }
         },
@@ -343,7 +342,7 @@ public class BulkItemResponse implements Streamable, FromXContentObject {
             @Override
             public void apply(XContentObject in, BulkItemResponse response) throws IOException {
                 response.response = new DeleteResponse();
-                response.response.readFrom(in);
+                response.response.readFrom(in.getAsXContentObject(this));
                 handleFailure(in, response, this);
             }
         };
