@@ -20,7 +20,6 @@
 package org.elasticsearch.action.bulk;
 
 import com.google.common.collect.Lists;
-import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.nio.entity.NStringEntity;
 import org.elasticsearch.ElasticsearchIllegalArgumentException;
@@ -526,7 +525,11 @@ public class BulkRequest extends ActionRequest<BulkRequest> implements Composite
 
     @Override
     public String getEndPoint() {
-        return "/_bulk";
+        String endpoint = "/_bulk";
+        if (refresh) {
+            endpoint += "?refresh";
+        }
+        return endpoint;
     }
 
     @Override
