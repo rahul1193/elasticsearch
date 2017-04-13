@@ -19,6 +19,8 @@
 
 package org.elasticsearch.action.admin.indices.settings.put;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.nio.entity.NStringEntity;
 import org.elasticsearch.ElasticsearchGenerationException;
 import org.elasticsearch.action.ActionRequestValidationException;
 import org.elasticsearch.action.IndicesRequest;
@@ -28,11 +30,15 @@ import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.util.UriBuilder;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.rest.RestRequest;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import static org.elasticsearch.action.ValidateActions.addValidationError;
@@ -126,6 +132,21 @@ public class UpdateSettingsRequest extends AcknowledgedRequest<UpdateSettingsReq
     public UpdateSettingsRequest settings(String source) {
         this.settings = ImmutableSettings.settingsBuilder().loadFromSource(source).build();
         return this;
+    }
+
+    @Override
+    public RestRequest.Method getMethod() {
+        return RestRequest.Method.PUT;
+    }
+
+    @Override
+    public String getEndPoint() {
+        return UriBuilder.newBuilder().csv(indices()).slash("_settings").toString();
+    }
+
+    @Override
+    public HttpEntity getEntity() throws IOException {
+        return new NStringEntity(XContentHelper.convertToJson(settings.getAsStructuredMap(), false), StandardCharsets.UTF_8);
     }
 
     /**

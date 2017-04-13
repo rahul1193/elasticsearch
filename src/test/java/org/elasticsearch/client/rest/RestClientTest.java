@@ -23,6 +23,8 @@ import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
+import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequestBuilder;
+import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsResponse;
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest;
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsResponse;
 import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateResponse;
@@ -129,6 +131,14 @@ public class RestClientTest extends AbstractRestClientTest {
     @After
     public void tearDown() {
         super.tearDown();
+    }
+
+    @Test
+    public void testUpdateSettings() {
+        UpdateSettingsRequestBuilder updateSettingsRequestBuilder = client.admin().indices().prepareUpdateSettings(index);
+        updateSettingsRequestBuilder.setSettings("{\"index.number_of_replicas\":1}");
+        UpdateSettingsResponse updateSettingsResponse = updateSettingsRequestBuilder.execute().actionGet();
+        System.out.println(updateSettingsResponse);
     }
 
     @Test
