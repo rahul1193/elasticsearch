@@ -20,20 +20,9 @@ package org.elasticsearch.client.rest.support;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpHost;
-import org.apache.http.HttpRequest;
-import org.apache.http.HttpResponse;
+import org.apache.http.*;
 import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
-import org.apache.http.client.methods.HttpHead;
-import org.apache.http.client.methods.HttpOptions;
-import org.apache.http.client.methods.HttpPatch;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.client.methods.HttpTrace;
+import org.apache.http.client.methods.*;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.entity.BufferedHttpEntity;
@@ -58,22 +47,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -292,9 +267,12 @@ public class InternalRestClient implements Closeable {
                             if (map.containsKey("error")) {
                                 ElasticsearchExceptionHandler handler;
                                 if (version.id >= Version.V_5_0_0_ID) {
-                                    XContentObject rootCause;
-                                    rootCause = map.getAsXContentObject("error").getAsXContentObjects("root_cause").get(0);
-                                    String type = rootCause.get("type");
+                                    XContentObject error = map.getAsXContentObject("error");
+                                    List<XContentObject> rootCauses = error.getAsXContentObjects("root_cause");
+                                    String type = null;
+                                    if(rootCauses != null && !rootCauses.isEmpty()){
+                                        type = rootCauses.get(0).get("type");
+                                    }
                                     handler = ElasticsearchExceptionHandler.safeValueOf(type);
                                     ElasticsearchException elasticsearchException = handler.newException(map);
                                     if (elasticsearchException != null) {
