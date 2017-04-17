@@ -29,6 +29,7 @@ import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.common.xcontent.support.XContentObjectImpl;
 import org.elasticsearch.rest.RestRequest;
 
+import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -39,12 +40,12 @@ public class RestExecuteUtil {
 
     public static <Request extends ActionRequest, Response extends ActionResponse, RequestBuilder extends ActionRequestBuilder<Request, Response, RequestBuilder, ?>>
     void execute(InternalRestClient internalRestClient,
-                 Action<Request, Response, RequestBuilder, ?> action, Request request, ActionListener<Response> listener) {
+                 final Action<Request, Response, RequestBuilder, ?> action, Request request, final ActionListener<Response> listener) {
         try {
             if (internalRestClient.getVersion() == null) {
                 internalRestClient.readVersionAndClusterName();
             }
-            Version version = internalRestClient.getVersion();
+            final Version version = internalRestClient.getVersion();
             assert version != null;
 
             ActionRequestValidationException validationException = request.validate();
@@ -52,31 +53,62 @@ public class RestExecuteUtil {
                 listener.onFailure(validationException);
                 return;
             }
+            final ActionRestRequest actionRestRequest = request.getActionRestRequest(version);
 
-            ActionRestRequest actionRestRequest = request.getActionRestRequest(version);
-            RestResponse restResponse = internalRestClient.performRequest (
-                    actionRestRequest.getMethod().name(),
-                    actionRestRequest.getEndPoint(),
-                    actionRestRequest.getParams(),
-                    actionRestRequest.getEntity());
-            Response response = action.newResponse();
-            if (actionRestRequest.getMethod() == RestRequest.Method.HEAD) {
-                response.exists(restResponse.getHttpResponse().getStatusLine().getStatusCode() == STATUS_OK);
+            if (listener instanceof AsyncActionListener) {
+                performAsyncRequest(internalRestClient, action, listener, version, actionRestRequest);
+            } else {
+                RestResponse restResponse = internalRestClient.performRequest(
+                        actionRestRequest.getMethod().name(),
+                        actionRestRequest.getEndPoint(),
+                        actionRestRequest.getParams(),
+                        actionRestRequest.getEntity());
+                Response response = parseResponse(action, actionRestRequest, version, restResponse);
+                listener.onResponse(response);
             }
-            else {
-                HttpEntity entity = restResponse.getEntity();
-                assert entity != null;
-                String content = HttpUtils.readUtf8(entity);
-                XContentParser parser = XContentHelper.createParser(new BytesArray(content));
-                XContentObject source = new XContentObjectImpl(parser.mapOrderedAndClose(), version);
-                validate(source);
-                response.readFrom(source);
-            }
-            listener.onResponse(response);
-
         } catch (Exception e) {
             listener.onFailure(e);
         }
+    }
+
+    private static <Request extends ActionRequest, Response extends ActionResponse, RequestBuilder extends ActionRequestBuilder<Request, Response, RequestBuilder, ?>> void performAsyncRequest(InternalRestClient internalRestClient, final Action<Request, Response, RequestBuilder, ?> action, final ActionListener<Response> listener, final Version version, final ActionRestRequest actionRestRequest) throws IOException {
+        ResponseListener responseListener = new ResponseListener() {
+            @Override
+            public void onSuccess(RestResponse restResponse) {
+                Response response = null;
+                try {
+                    response = parseResponse(action, actionRestRequest, version, restResponse);
+                    listener.onResponse(response);
+                } catch (Exception e) {
+                    onFailure(e);
+                }
+            }
+
+            @Override
+            public void onFailure(Exception exception) {
+                listener.onFailure(exception);
+            }
+        };
+        internalRestClient.performRequestAsync(actionRestRequest.getMethod().name(),
+                actionRestRequest.getEndPoint(),
+                actionRestRequest.getParams(),
+                actionRestRequest.getEntity(), responseListener);
+    }
+
+    private static <Request extends ActionRequest, Response extends ActionResponse, RequestBuilder extends ActionRequestBuilder<Request, Response, RequestBuilder, ?>> Response parseResponse(Action<Request, Response, RequestBuilder, ?> action, ActionRestRequest actionRestRequest, Version version, RestResponse restResponse) throws Exception {
+        Response response = action.newResponse();
+        if (actionRestRequest.getMethod() == RestRequest.Method.HEAD) {
+            response.exists(restResponse.getHttpResponse().getStatusLine().getStatusCode() == STATUS_OK);
+        } else {
+            HttpEntity entity = restResponse.getEntity();
+            assert entity != null;
+            String content = HttpUtils.readUtf8(entity);
+            XContentParser parser = XContentHelper.createParser(new BytesArray(content));
+            XContentObject source = new XContentObjectImpl(parser.mapOrderedAndClose(), version);
+            validate(source);
+            response.readFrom(source);
+        }
+        return response;
     }
 
     private static void validate(XContentObject source) throws Exception {
@@ -90,12 +122,10 @@ public class RestExecuteUtil {
                 String type = error.get("type");
                 ElasticsearchExceptionHandler handler = ElasticsearchExceptionHandler.safeValueOf(type);
                 throw handler.newException(source);
-            }
-            else {
+            } else {
                 throw new UncategorizedExecutionException(source.toJson());
             }
-        }
-        else {
+        } else {
             String message = source.get("error");
             throw new UncategorizedExecutionException(message);
         }

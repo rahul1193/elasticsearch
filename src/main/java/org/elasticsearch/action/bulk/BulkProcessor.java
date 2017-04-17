@@ -20,8 +20,8 @@
 package org.elasticsearch.action.bulk;
 
 import org.elasticsearch.ElasticsearchIllegalStateException;
-import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionRequest;
+import org.elasticsearch.action.AsyncActionListener;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Client;
@@ -323,7 +323,7 @@ public class BulkProcessor implements Closeable {
             try {
                 listener.beforeBulk(executionId, bulkRequest);
                 semaphore.acquire();
-                client.bulk(bulkRequest, new ActionListener<BulkResponse>() {
+                client.bulk(bulkRequest, new AsyncActionListener<BulkResponse>() {
                     @Override
                     public void onResponse(BulkResponse response) {
                         try {
