@@ -22,6 +22,7 @@ import com.google.common.collect.Maps;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequestBuilder;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsResponse;
@@ -48,6 +49,8 @@ import org.elasticsearch.action.indexedscripts.get.GetIndexedScriptRequest;
 import org.elasticsearch.action.indexedscripts.get.GetIndexedScriptResponse;
 import org.elasticsearch.action.indexedscripts.put.PutIndexedScriptResponse;
 import org.elasticsearch.action.search.*;
+import org.elasticsearch.action.shrink.ShrinkRequestBuilder;
+import org.elasticsearch.action.shrink.ShrinkResponse;
 import org.elasticsearch.action.suggest.SuggestResponse;
 import org.elasticsearch.action.support.QuerySourceBuilder;
 import org.elasticsearch.action.support.replication.ReplicationType;
@@ -56,6 +59,8 @@ import org.elasticsearch.client.IndicesAdminClient;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.geo.GeoPoint;
+import org.elasticsearch.common.settings.ImmutableSettings;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.DistanceUnit;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.engine.DocumentMissingException;
@@ -161,6 +166,21 @@ public class RestClientTest extends AbstractRestClientTest {
         GetRequest getRequest = new GetRequest(index, STATS_TYPE, id);
         ActionFuture<GetResponse> getResponseActionFuture = this.client.get(getRequest);
         return getResponseActionFuture.get();
+    }
+
+    @Test
+    public void testShrink() {
+        ShrinkRequestBuilder shrinkRequestBuilder = new ShrinkRequestBuilder(client);
+        shrinkRequestBuilder.setSourceIndex("tweet_p999999_v3_new");
+        CreateIndexRequest createIndexRequest = new CreateIndexRequest("tweet_p999999_v3_new_shrinked_test");
+        ImmutableSettings.Builder builder = ImmutableSettings.builder();
+        builder.put("index.number_of_replicas", "0");
+        builder.put("index.number_of_shards", "1");
+        builder.put("index.codec", "best_compression");
+        createIndexRequest.settings(builder.build());
+        shrinkRequestBuilder.setTargetIndex(createIndexRequest);
+        ShrinkResponse shrinkResponse = shrinkRequestBuilder.execute().actionGet();
+        assert shrinkResponse.isAcknowledged();
     }
 
     @Test

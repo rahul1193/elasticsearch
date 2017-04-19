@@ -18,6 +18,7 @@
  */
 package org.elasticsearch.action.support.master;
 
+import org.elasticsearch.Version;
 import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
@@ -32,6 +33,7 @@ import java.io.IOException;
 public abstract class AcknowledgedResponse extends ActionResponse {
 
     private boolean acknowledged;
+    private boolean shardsAcknowledged;
 
     protected AcknowledgedResponse() {
 
@@ -43,10 +45,15 @@ public abstract class AcknowledgedResponse extends ActionResponse {
 
     /**
      * Returns whether the response is acknowledged or not
+     *
      * @return true if the response is acknowledged, false otherwise
      */
     public final boolean isAcknowledged() {
         return acknowledged;
+    }
+
+    public boolean isShardsAcknowledged() {
+        return shardsAcknowledged;
     }
 
     /**
@@ -74,7 +81,9 @@ public abstract class AcknowledgedResponse extends ActionResponse {
         shards_acknowledged {
             @Override
             public void apply(XContentObject in, AcknowledgedResponse response) throws IOException {
-                // 5.0 results //todo bdk handle
+                if (Version.V_5_0_0.onOrBefore(in.getVersion())) {
+                    response.shardsAcknowledged = in.getAsBoolean(this);
+                }
             }
         }
     }

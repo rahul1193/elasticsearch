@@ -82,7 +82,7 @@ public class CreateIndexRequest extends AcknowledgedRequest<CreateIndexRequest> 
 
     private final Map<String, IndexMetaData.Custom> customs = newHashMap();
 
-    CreateIndexRequest() {
+    public CreateIndexRequest() {
     }
 
     /**
@@ -138,7 +138,7 @@ public class CreateIndexRequest extends AcknowledgedRequest<CreateIndexRequest> 
     /**
      * The index name to create.
      */
-    String index() {
+    public String index() {
         return index;
     }
 

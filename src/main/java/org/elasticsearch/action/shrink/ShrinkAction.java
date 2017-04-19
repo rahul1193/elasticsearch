@@ -17,35 +17,34 @@
  * under the License.
  */
 
-package org.elasticsearch.action.admin.indices.create;
+package org.elasticsearch.action.shrink;
 
-import org.elasticsearch.action.support.master.AcknowledgedResponse;
-import org.elasticsearch.common.io.stream.StreamInput;
-import org.elasticsearch.common.io.stream.StreamOutput;
-
-import java.io.IOException;
+import org.elasticsearch.action.Action;
+import org.elasticsearch.client.ElasticsearchClient;
 
 /**
- * A response for a create index action.
+ * @author rahulanishetty
+ * @since 19/04/17.
  */
-public class CreateIndexResponse extends AcknowledgedResponse {
+public class ShrinkAction extends Action<ShrinkRequest, ShrinkResponse, ShrinkRequestBuilder, ElasticsearchClient> {
 
-    public CreateIndexResponse() {
-    }
+    public static final ShrinkAction INSTANCE = new ShrinkAction();
+    public static final String NAME = "indices:admin/shrink";
 
-    public CreateIndexResponse(boolean acknowledged) {
-        super(acknowledged);
-    }
-
-    @Override
-    public void readFrom(StreamInput in) throws IOException {
-        super.readFrom(in);
-        readAcknowledged(in);
+    private ShrinkAction() {
+        super(NAME);
     }
 
     @Override
-    public void writeTo(StreamOutput out) throws IOException {
-        super.writeTo(out);
-        writeAcknowledged(out);
+    public ShrinkResponse newResponse() {
+        return new ShrinkResponse();
     }
+
+    @Override
+    public ShrinkRequestBuilder newRequestBuilder(ElasticsearchClient client) {
+        return new ShrinkRequestBuilder(client);
+    }
+
+
 }
+
