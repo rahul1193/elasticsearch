@@ -21,6 +21,8 @@ package org.elasticsearch.cluster.metadata;
 
 import org.elasticsearch.ElasticsearchGenerationException;
 import org.elasticsearch.ElasticsearchIllegalArgumentException;
+import org.elasticsearch.action.admin.indices.alias.Alias;
+import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.common.Nullable;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
@@ -42,7 +44,8 @@ public class AliasAction implements Streamable, ToXContent {
 
     public static enum Type {
         ADD((byte) 0),
-        REMOVE((byte) 1);
+        REMOVE((byte) 1),
+        REMOVE_INDEX((byte) 2);
 
         private final byte value;
 
@@ -240,6 +243,10 @@ public class AliasAction implements Streamable, ToXContent {
 
     public static AliasAction newRemoveAliasAction(String index, String alias) {
         return new AliasAction(Type.REMOVE, index, alias);
+    }
+
+    public static AliasAction removeIndex() {
+        return new AliasAction(Type.REMOVE_INDEX);
     }
 
 }

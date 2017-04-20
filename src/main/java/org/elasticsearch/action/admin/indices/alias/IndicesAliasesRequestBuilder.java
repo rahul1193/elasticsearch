@@ -192,5 +192,9 @@ public class IndicesAliasesRequestBuilder extends AcknowledgedRequestBuilder<Ind
         return this;
     }
 
+    public IndicesAliasesRequestBuilder removeIndex(String index) {
+        request.addAliasAction(AliasAction.removeIndex().index(index));
+        return this;
+    }
    
 }

@@ -99,7 +99,9 @@ public class IndicesAliasesRequest extends AcknowledgedRequest<IndicesAliasesReq
         public AliasActions(AliasAction action) {
             this.aliasAction = action;
             indices(action.index());
-            aliases(action.alias());
+            if (action.alias() != null) {
+                aliases();
+            }
         }
 
         public AliasActions(Type type, String index, String[] aliases) {
@@ -211,11 +213,13 @@ public class IndicesAliasesRequest extends AcknowledgedRequest<IndicesAliasesReq
                 builder.value(index);
             }
             builder.endArray();
-            builder.startArray("aliases");
-            for (String alias : aliases) {
-                builder.value(alias);
+            if (aliases.length != 0) {
+                builder.startArray("aliases");
+                for (String alias : aliases) {
+                    builder.value(alias);
+                }
+                builder.endArray();
             }
-            builder.endArray();
             builder.fieldIfNotNull("search_routing", this.aliasAction.searchRouting())
                     .fieldIfNotNull("index_routing", this.aliasAction.indexRouting());
             if (Strings.isNotEmpty(this.aliasAction.filter())) {
@@ -230,7 +234,8 @@ public class IndicesAliasesRequest extends AcknowledgedRequest<IndicesAliasesReq
 
     /**
      * Adds an alias to the index.
-     * @param alias The alias
+     *
+     * @param alias   The alias
      * @param indices The indices
      */
     public IndicesAliasesRequest addAlias(String alias, String... indices) {
@@ -248,12 +253,13 @@ public class IndicesAliasesRequest extends AcknowledgedRequest<IndicesAliasesReq
         addAliasAction(new AliasActions(action));
         return this;
     }
-    
+
     /**
      * Adds an alias to the index.
-     * @param alias  The alias
-     * @param filter The filter
-     * @param indices  The indices
+     *
+     * @param alias   The alias
+     * @param filter  The filter
+     * @param indices The indices
      */
     public IndicesAliasesRequest addAlias(String alias, Map<String, Object> filter, String... indices) {
         addAliasAction(new AliasActions(AliasAction.Type.ADD, indices, alias).filter(filter));
@@ -262,16 +268,17 @@ public class IndicesAliasesRequest extends AcknowledgedRequest<IndicesAliasesReq
 
     /**
      * Adds an alias to the index.
+     *
      * @param alias         The alias
      * @param filterBuilder The filter
-     * @param indices         The indices
+     * @param indices       The indices
      */
     public IndicesAliasesRequest addAlias(String alias, FilterBuilder filterBuilder, String... indices) {
         addAliasAction(new AliasActions(AliasAction.Type.ADD, indices, alias).filter(filterBuilder));
         return this;
     }
-    
-    
+
+
     /**
      * Removes an alias to the index.
      *
@@ -282,11 +289,11 @@ public class IndicesAliasesRequest extends AcknowledgedRequest<IndicesAliasesReq
         addAliasAction(new AliasActions(AliasAction.Type.REMOVE, indices, aliases));
         return this;
     }
-    
+
     /**
      * Removes an alias to the index.
      *
-     * @param index The index
+     * @param index   The index
      * @param aliases The aliases
      */
     public IndicesAliasesRequest removeAlias(String index, String... aliases) {
@@ -317,6 +324,15 @@ public class IndicesAliasesRequest extends AcknowledgedRequest<IndicesAliasesReq
                 if (!Strings.hasText(aliasAction.aliases[0])) {
                     validationException = addValidationError("Alias action [" + aliasAction.actionType().name().toLowerCase(Locale.ENGLISH)
                             + "] requires an [alias] to be set", validationException);
+                }
+            } else if (aliasAction.actionType() == Type.REMOVE_INDEX) {
+                if (aliasAction.indices.length != 1) {
+                    validationException = addValidationError("Alias action [" + aliasAction.actionType().name().toLowerCase(Locale.ENGLISH)
+                            + "] requires exactly one [index] to be set", validationException);
+                }
+                if (!Strings.hasLength(aliasAction.indices[0])) {
+                    validationException = addValidationError("Alias action [" + aliasAction.actionType().name().toLowerCase(Locale.ENGLISH)
+                            + "] requires exactly one [index] to be set", validationException);
                 }
             } else {
                 if (aliasAction.aliases.length == 0) {
@@ -381,7 +397,7 @@ public class IndicesAliasesRequest extends AcknowledgedRequest<IndicesAliasesReq
     public IndicesOptions indicesOptions() {
         return indicesOptions;
     }
-    
+
     private AliasActions readAliasActions(StreamInput in) throws IOException {
         AliasActions actions = new AliasActions();
         return actions.readFrom(in);

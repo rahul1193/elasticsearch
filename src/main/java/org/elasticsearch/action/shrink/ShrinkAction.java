@@ -19,14 +19,14 @@
 
 package org.elasticsearch.action.shrink;
 
-import org.elasticsearch.action.Action;
-import org.elasticsearch.client.ElasticsearchClient;
+import org.elasticsearch.action.admin.indices.IndicesAction;
+import org.elasticsearch.client.IndicesAdminClient;
 
 /**
  * @author rahulanishetty
  * @since 19/04/17.
  */
-public class ShrinkAction extends Action<ShrinkRequest, ShrinkResponse, ShrinkRequestBuilder, ElasticsearchClient> {
+public class ShrinkAction extends IndicesAction<ShrinkRequest, ShrinkResponse, ShrinkRequestBuilder> {
 
     public static final ShrinkAction INSTANCE = new ShrinkAction();
     public static final String NAME = "indices:admin/shrink";
@@ -41,7 +41,7 @@ public class ShrinkAction extends Action<ShrinkRequest, ShrinkResponse, ShrinkRe
     }
 
     @Override
-    public ShrinkRequestBuilder newRequestBuilder(ElasticsearchClient client) {
+    public ShrinkRequestBuilder newRequestBuilder(IndicesAdminClient client) {
         return new ShrinkRequestBuilder(client);
     }
 

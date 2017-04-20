@@ -150,14 +150,14 @@ public class CreateIndexRequest extends AcknowledgedRequest<CreateIndexRequest> 
     /**
      * The settings to create the index with.
      */
-    Settings settings() {
+    public Settings settings() {
         return settings;
     }
 
     /**
      * The cause for this index creation.
      */
-    String cause() {
+    public String cause() {
         return cause;
     }
 
@@ -431,7 +431,7 @@ public class CreateIndexRequest extends AcknowledgedRequest<CreateIndexRequest> 
         return this;
     }
 
-    Map<String, String> mappings() {
+    public Map<String, String> mappings() {
         return this.mappings;
     }
 

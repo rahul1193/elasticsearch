@@ -22,6 +22,12 @@ import com.google.common.collect.Maps;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionFuture;
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequestBuilder;
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthStatus;
+import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
+import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequestBuilder;
+import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequestBuilder;
@@ -170,7 +176,7 @@ public class RestClientTest extends AbstractRestClientTest {
 
     @Test
     public void testShrink() {
-        ShrinkRequestBuilder shrinkRequestBuilder = new ShrinkRequestBuilder(client);
+        ShrinkRequestBuilder shrinkRequestBuilder = new ShrinkRequestBuilder(client.admin().indices());
         shrinkRequestBuilder.setSourceIndex("tweet_p999999_v3_new");
         CreateIndexRequest createIndexRequest = new CreateIndexRequest("tweet_p999999_v3_new_shrinked_test");
         ImmutableSettings.Builder builder = ImmutableSettings.builder();
@@ -181,6 +187,23 @@ public class RestClientTest extends AbstractRestClientTest {
         shrinkRequestBuilder.setTargetIndex(createIndexRequest);
         ShrinkResponse shrinkResponse = shrinkRequestBuilder.execute().actionGet();
         assert shrinkResponse.isAcknowledged();
+    }
+
+    @Test
+    public void testClusterHealth() {
+        ClusterHealthRequestBuilder clusterHealthRequestBuilder = new ClusterHealthRequestBuilder(client.admin().cluster());
+        ClusterHealthResponse clusterIndexHealths = clusterHealthRequestBuilder.execute().actionGet();
+        assert clusterIndexHealths.getStatus() == ClusterHealthStatus.GREEN;
+    }
+
+
+    @Test
+    public void testAliasAction() {
+        IndicesAliasesRequestBuilder builder = new IndicesAliasesRequestBuilder(client.admin().indices());
+        builder.addAlias("tweet_p999999_v3_new_shrinked_test", "tweet_p999999_v3_new_shrinked");
+        builder.removeIndex("tweet_p999999_v3_new_shrinked");
+        IndicesAliasesResponse indicesAliasesResponse = builder.execute().actionGet();
+        assert indicesAliasesResponse.isAcknowledged();
     }
 
     @Test

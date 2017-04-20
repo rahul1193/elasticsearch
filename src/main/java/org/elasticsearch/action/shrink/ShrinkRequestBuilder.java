@@ -22,24 +22,22 @@ package org.elasticsearch.action.shrink;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.support.master.AcknowledgedRequestBuilder;
-import org.elasticsearch.client.ElasticsearchClient;
+import org.elasticsearch.client.IndicesAdminClient;
 import org.elasticsearch.common.settings.Settings;
-
-import javax.swing.*;
 
 /**
  * @author rahulanishetty
  * @since 19/04/17.
  */
 public class ShrinkRequestBuilder extends AcknowledgedRequestBuilder<ShrinkRequest, ShrinkResponse,
-        ShrinkRequestBuilder, ElasticsearchClient> {
+        ShrinkRequestBuilder, IndicesAdminClient> {
 
-    public ShrinkRequestBuilder(ElasticsearchClient client) {
+    public ShrinkRequestBuilder(IndicesAdminClient client) {
         super(client, new ShrinkRequest());
     }
 
     @Override
-    protected void doExecute(ActionListener listener) {
+    protected void doExecute(ActionListener<ShrinkResponse> listener) {
         client.execute(ShrinkAction.INSTANCE, request, listener);
     }
 

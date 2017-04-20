@@ -213,7 +213,12 @@ public class ClusterHealthRequest extends MasterNodeReadOperationRequest<Cluster
 
     @Override
     public String getEndPoint() {
-        return UriBuilder.newBuilder().slash("_cluster/health").csvOrDefault("_all", indices()).build();
+        UriBuilder uriBuilder = UriBuilder.newBuilder().slash("_cluster").slash("health");
+        String[] indices = indices();
+        if (indices != null && indices.length != 0) {
+            uriBuilder.csv(indices);
+        }
+        return uriBuilder.build();
     }
 
     @Override

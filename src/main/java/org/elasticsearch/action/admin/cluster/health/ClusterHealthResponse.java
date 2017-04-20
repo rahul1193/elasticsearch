@@ -58,6 +58,14 @@ public class ClusterHealthResponse extends ActionResponse implements Iterable<Cl
     private List<String> validationFailures;
     Map<String, ClusterIndexHealth> indices = Maps.newHashMap();
 
+
+    // es5 fields
+    private int delayedUnassignedShards;
+    private int numberOfPendingTasks;
+    private int numberOfInFlightFetch;
+    private long taskMaxWaitingInQueueMillis;
+    private int activeShardsPercentAsNumber;
+
     ClusterHealthResponse() {
     }
 
@@ -170,6 +178,26 @@ public class ClusterHealthResponse extends ActionResponse implements Iterable<Cl
 
     public Map<String, ClusterIndexHealth> getIndices() {
         return indices;
+    }
+
+    public int getDelayedUnassignedShards() {
+        return delayedUnassignedShards;
+    }
+
+    public int getNumberOfPendingTasks() {
+        return numberOfPendingTasks;
+    }
+
+    public int getNumberOfInFlightFetch() {
+        return numberOfInFlightFetch;
+    }
+
+    public long getTaskMaxWaitingInQueueMillis() {
+        return taskMaxWaitingInQueueMillis;
+    }
+
+    public int getActiveShardsPercentAsNumber() {
+        return activeShardsPercentAsNumber;
     }
 
     @Override
@@ -312,7 +340,103 @@ public class ClusterHealthResponse extends ActionResponse implements Iterable<Cl
         return builder;
     }
 
-    enum JsonField {
+    @Override
+    public void readFrom(XContentObject source) throws IOException {
+        XContentHelper.populate(source, JsonField.values(), this);
+    }
+
+    enum JsonField implements XContentObjectParseable<ClusterHealthResponse> {
+
+        cluster_name {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.clusterName = in.get(this);
+            }
+        },
+        status {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.status = ClusterHealthStatus.valueOf(in.get(this).toUpperCase(Locale.ROOT));
+            }
+        },
+        timed_out {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.timedOut = in.getAsBoolean(this);
+            }
+        },
+        number_of_nodes {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.numberOfNodes = in.getAsInt(this);
+            }
+        },
+        number_of_data_nodes {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.numberOfDataNodes = in.getAsInt(this);
+            }
+        },
+        active_primary_shards {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.activePrimaryShards = in.getAsInt(this);
+            }
+        },
+        active_shards {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.activeShards = in.getAsInt(this);
+            }
+        },
+        relocating_shards {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.relocatingShards = in.getAsInt(this);
+            }
+        },
+        initializing_shards {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.initializingShards = in.getAsInt(this);
+            }
+        },
+        unassigned_shards {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.unassignedShards = in.getAsInt(this);
+            }
+        },
+        delayed_unassigned_shards {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.delayedUnassignedShards = in.getAsInt(this);
+            }
+        },
+        number_of_pending_tasks {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.numberOfPendingTasks = in.getAsInt(this);
+            }
+        },
+        number_of_in_flight_fetch {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.numberOfInFlightFetch = in.getAsInt(this);
+            }
+        },
+        task_max_waiting_in_queue_millis {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.taskMaxWaitingInQueueMillis = in.getAsLong(this);
+            }
+        },
+        active_shards_percent_as_number {
+            @Override
+            public void apply(XContentObject in, ClusterHealthResponse response) throws IOException {
+                response.activeShardsPercentAsNumber = in.getAsInt(this);
+            }
+        }
 
     }
 
