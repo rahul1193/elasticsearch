@@ -754,7 +754,7 @@ public class SearchSourceBuilder implements ToXContent {
         }
 
         if (timeoutInMillis != -1) {
-            builder.field("timeout", timeoutInMillis);
+            builder.field("timeout", timeoutInMillis + "ms");
         }
 
         if (terminateAfter != SearchContext.DEFAULT_TERMINATE_AFTER) {
