@@ -497,11 +497,6 @@ public class XContentHelper {
             if (keys.contains(field.name())) {
                 field.apply(source, o);
             }
-            else {
-                if (log.isDebugEnabled() && !partialDocument) {
-                    log.debug("Skipping field: " + field.name() + " for class: " + o.getClass().getName());
-                }
-            }
         }
     }
 
