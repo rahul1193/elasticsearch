@@ -22,7 +22,6 @@ package org.elasticsearch.index.mapper;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableField;
-import org.elasticsearch.Version;
 import org.elasticsearch.action.TimestampParsingException;
 import org.elasticsearch.common.joda.FormatDateTimeFormatter;
 import org.elasticsearch.common.joda.Joda;
@@ -119,9 +118,9 @@ public class TimestampFieldMapper extends MetadataFieldMapper {
     public static class TypeParser implements MetadataFieldMapper.TypeParser {
         @Override
         public MetadataFieldMapper.Builder parse(String name, Map<String, Object> node, ParserContext parserContext) throws MapperParsingException {
-            if (parserContext.indexVersionCreated().onOrAfter(Version.V_5_0_0_alpha4)) {
-                throw new IllegalArgumentException("[_timestamp] is removed in 5.0. As a replacement, you can use an ingest pipeline to add a field with the current timestamp to your documents.");
-            }
+//            if (parserContext.indexVersionCreated().onOrAfter(Version.V_5_0_0_alpha4)) {
+//                throw new IllegalArgumentException("[_timestamp] is removed in 5.0. As a replacement, you can use an ingest pipeline to add a field with the current timestamp to your documents.");
+//            }
             Builder builder = new Builder(parserContext.mapperService().fullName(NAME));
             boolean defaultSet = false;
             Boolean ignoreMissing = null;
@@ -197,9 +196,9 @@ public class TimestampFieldMapper extends MetadataFieldMapper {
     private TimestampFieldMapper(MappedFieldType fieldType, MappedFieldType defaultFieldType, EnabledAttributeMapper enabledState,
                                    String defaultTimestamp, Boolean ignoreMissing, Settings indexSettings) {
         super(NAME, fieldType, defaultFieldType, indexSettings);
-        if (enabledState.enabled && Version.indexCreated(indexSettings).onOrAfter(Version.V_5_0_0_alpha4)) {
-            throw new IllegalArgumentException("[_timestamp] is removed in 5.0. As a replacement, you can use an ingest pipeline to add a field with the current timestamp to your documents.");
-        }
+//        if (enabledState.enabled && Version.indexCreated(indexSettings).onOrAfter(Version.V_5_0_0_alpha4)) {
+//            throw new IllegalArgumentException("[_timestamp] is removed in 5.0. As a replacement, you can use an ingest pipeline to add a field with the current timestamp to your documents.");
+//        }
         this.enabledState = enabledState;
         this.defaultTimestamp = defaultTimestamp;
         this.ignoreMissing = ignoreMissing;

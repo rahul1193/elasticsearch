@@ -21,18 +21,23 @@ package org.elasticsearch.plugin.analysis.kuromoji;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.elasticsearch.SpecialPermission;
+import org.elasticsearch.client.Client;
+import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.settings.Setting;
+import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.index.analysis.*;
 import org.elasticsearch.indices.analysis.AnalysisModule.AnalysisProvider;
 import org.elasticsearch.plugins.AnalysisPlugin;
 import org.elasticsearch.plugins.Plugin;
+import org.elasticsearch.script.ScriptService;
+import org.elasticsearch.search.SearchRequestParsers;
+import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.watcher.ResourceWatcherService;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Collections.singletonMap;
 
@@ -58,6 +63,8 @@ public class AnalysisKuromojiPlugin extends Plugin implements AnalysisPlugin {
         });
     }
 
+    private AtomicReference<KuromojiUserDictionarySyncService> reference = new AtomicReference<>();
+
     @Override
     public Map<String, AnalysisProvider<CharFilterFactory>> getCharFilters() {
         return singletonMap("kuromoji_iteration_mark", KuromojiIterationMarkCharFilterFactory::new);
@@ -81,16 +88,23 @@ public class AnalysisKuromojiPlugin extends Plugin implements AnalysisPlugin {
     }
 
     @Override
+    public Collection<Object> createComponents(Client client, ClusterService clusterService, ThreadPool threadPool, ResourceWatcherService resourceWatcherService, ScriptService scriptService, SearchRequestParsers searchRequestParsers, NamedXContentRegistry xContentRegistry) {
+        KuromojiUserDictionarySyncService kuromojiUserDictionarySyncService = new KuromojiUserDictionarySyncService(clusterService, threadPool);
+        reference.set(kuromojiUserDictionarySyncService);
+        return Collections.emptyList();
+    }
+
+    @Override
     public Map<String, AnalysisProvider<AnalyzerProvider<? extends Analyzer>>> getAnalyzers() {
-        return singletonMap("kuromoji", KuromojiAnalyzerProvider::new);
+        return singletonMap("kuromoji", (indexSettings, environment, name, settings) -> new KuromojiAnalyzerProvider(indexSettings, environment, name, settings, () -> reference.get()));
     }
 
     @Override
     public List<Setting<?>> getSettings() {
-        // Plugin settings need to be registered from ES-5, otherwise Elasticsearch will reject them.
-        return Arrays.asList(KuromojiDictionarySyncRunnable.AMAZON_S3_KEY_SETTING,
-            KuromojiDictionarySyncRunnable.AMAZON_S3_SECRET_SETTING,
-            KuromojiDictionarySyncRunnable.AMAZON_S3_BUCKET_SETTING,
-            KuromojiDictionarySyncRunnable.AMAZON_S3_OBJECT_SETTING);
+        return Arrays.asList(KuromojiUserDictionarySyncService.AMAZON_S3_KEY_SETTING,
+            KuromojiUserDictionarySyncService.AMAZON_S3_SECRET_SETTING,
+            KuromojiUserDictionarySyncService.AMAZON_S3_BUCKET_SETTING,
+            KuromojiUserDictionarySyncService.AMAZON_S3_OBJECT_SETTING,
+            KuromojiUserDictionarySyncService.AMAZON_S3_INIT_ON_START_SETTING);
     }
 }

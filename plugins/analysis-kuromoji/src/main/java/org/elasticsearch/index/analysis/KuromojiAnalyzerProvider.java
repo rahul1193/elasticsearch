@@ -24,11 +24,11 @@ import org.apache.lucene.analysis.ja.JapaneseTokenizer;
 import org.apache.lucene.analysis.ja.SprJapaneseAnalyzer;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.util.set.Sets;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.index.IndexSettings;
 
-import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 /**
  */
@@ -36,15 +36,22 @@ public class KuromojiAnalyzerProvider extends AbstractIndexAnalyzerProvider<SprJ
 
     private final SprJapaneseAnalyzer analyzer;
 
-    public KuromojiAnalyzerProvider(IndexSettings indexSettings, Environment env, String name, Settings settings) {
+    private final AtomicBoolean registered = new AtomicBoolean(false);
+    private final Supplier<KuromojiUserDictionarySyncService> serviceProvider;
+
+    public KuromojiAnalyzerProvider(IndexSettings indexSettings, Environment env, String name, Settings settings, Supplier<KuromojiUserDictionarySyncService> dictionarySyncService) {
         super(indexSettings, name, settings);
         final JapaneseTokenizer.Mode mode = KuromojiTokenizerFactory.getMode(settings);
         final UserDictionary userDictionary = KuromojiTokenizerFactory.getUserDictionary(env, settings);
         analyzer = new SprJapaneseAnalyzer(userDictionary, mode, CharArraySet.EMPTY_SET, SprJapaneseAnalyzer.getDefaultStopTags(), env.settings());
+        this.serviceProvider = dictionarySyncService;
     }
 
     @Override
     public SprJapaneseAnalyzer get() {
+        if (registered.compareAndSet(false, true)) {
+            serviceProvider.get().registerDictionaryConsumer(analyzer::setUserDictionary);
+        }
         return this.analyzer;
     }
 
