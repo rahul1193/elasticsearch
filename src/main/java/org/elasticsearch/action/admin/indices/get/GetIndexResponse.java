@@ -54,8 +54,8 @@ public class GetIndexResponse extends ActionResponse {
     private String[] indices;
 
     GetIndexResponse(String[] indices, ImmutableOpenMap<String, ImmutableList<IndexWarmersMetaData.Entry>> warmers,
-            ImmutableOpenMap<String, ImmutableOpenMap<String, MappingMetaData>> mappings,
-            ImmutableOpenMap<String, ImmutableList<AliasMetaData>> aliases, ImmutableOpenMap<String, Settings> settings) {
+                     ImmutableOpenMap<String, ImmutableOpenMap<String, MappingMetaData>> mappings,
+                     ImmutableOpenMap<String, ImmutableList<AliasMetaData>> aliases, ImmutableOpenMap<String, Settings> settings) {
         this.indices = indices;
         if (warmers != null) {
             this.warmers = warmers;
@@ -208,7 +208,7 @@ public class GetIndexResponse extends ActionResponse {
     }
 
     public static GetIndexResponse convertResponses(GetAliasesResponse aliasesResponse, GetMappingsResponse mappingsResponse,
-            GetSettingsResponse settingsResponse, GetWarmersResponse warmersResponse) {
+                                                    GetSettingsResponse settingsResponse, GetWarmersResponse warmersResponse) {
         Set<String> indices = new HashSet<String>();
         Builder<String, ImmutableList<AliasMetaData>> aliasesBuilder = ImmutableOpenMap.builder();
         if (aliasesResponse != null) {
@@ -256,7 +256,7 @@ public class GetIndexResponse extends ActionResponse {
     }
 
 
-    enum JsonField  {
+    enum JsonField {
         mappings,
         settings,
         aliases,
@@ -277,36 +277,45 @@ public class GetIndexResponse extends ActionResponse {
 
             // handle mappings
             XContentObject xMappings = indexData.getAsXContentObject(JsonField.mappings);
-            Set<String> types = xMappings.keySet();
-            ImmutableOpenMap.Builder<String, MappingMetaData> mappingEntryBuilder = ImmutableOpenMap.builder();
-            for (String type : types) {
-                mappingEntryBuilder.put(type, new MappingMetaData(type, xMappings.getInternalMap()));
+            if (xMappings != null) {
+                Set<String> types = xMappings.keySet();
+                ImmutableOpenMap.Builder<String, MappingMetaData> mappingEntryBuilder = ImmutableOpenMap.builder();
+                for (String type : types) {
+                    mappingEntryBuilder.put(type, new MappingMetaData(type, xMappings.getInternalMap()));
+                }
+                mappingsMapBuilder.put(index, mappingEntryBuilder.build());
             }
-            mappingsMapBuilder.put(index, mappingEntryBuilder.build());
 
             // handle aliases
             XContentObject xAliases = indexData.getAsXContentObject(JsonField.aliases);
-            Set<String> aliases = xAliases.keySet();
-            ImmutableList.Builder<AliasMetaData> aliasEntryBuilder = ImmutableList.builder();
-            for (String alias : aliases) {
-                XContentObject xAlias = xAliases.getAsXContentObject(alias);
-                xAlias.put("_alias", alias);
-                aliasEntryBuilder.add(AliasMetaData.Builder.readFrom(xAlias));
+            if (xAliases != null) {
+                Set<String> aliases = xAliases.keySet();
+                ImmutableList.Builder<AliasMetaData> aliasEntryBuilder = ImmutableList.builder();
+                for (String alias : aliases) {
+                    XContentObject xAlias = xAliases.getAsXContentObject(alias);
+                    xAlias.put("_alias", alias);
+                    aliasEntryBuilder.add(AliasMetaData.Builder.readFrom(xAlias));
+                }
+                aliasesMapBuilder.put(index, aliasEntryBuilder.build());
             }
-            aliasesMapBuilder.put(index, aliasEntryBuilder.build());
 
             XContentObject xWarmers = indexData.getAsXContentObject(JsonField.warmers);
-            ImmutableList.Builder<IndexWarmersMetaData.Entry> warmerEntryBuilder = ImmutableList.builder();
-            Map<String, Object> xWarmersInternalMap = xWarmers == null ? Collections.<String, Object>emptyMap() : xWarmers.getInternalMap();
-            IndexWarmersMetaData metaData = new IndexWarmersMetaData.Factory().fromMap(xWarmersInternalMap);
-            for (Entry entry : metaData.entries()) {
-                warmerEntryBuilder.add(entry);
-            }
-            warmersMapBuilder.put(index, warmerEntryBuilder.build());
 
+            if (xWarmers != null) {
+                ImmutableList.Builder<IndexWarmersMetaData.Entry> warmerEntryBuilder = ImmutableList.builder();
+                Map<String, Object> xWarmersInternalMap = xWarmers == null ? Collections.<String, Object>emptyMap() : xWarmers.getInternalMap();
+                IndexWarmersMetaData metaData = new IndexWarmersMetaData.Factory().fromMap(xWarmersInternalMap);
+                for (Entry entry : metaData.entries()) {
+                    warmerEntryBuilder.add(entry);
+                }
+                warmersMapBuilder.put(index, warmerEntryBuilder.build());
+            }
 
             // handle settings
-            settingsMapBuilder.put(index, ImmutableSettings.readSettingsFromStream(indexData.getAsXContentObject(JsonField.settings)));
+            XContentObject xSettings = indexData.getAsXContentObject(JsonField.settings);
+            if (xSettings != null) {
+                settingsMapBuilder.put(index, ImmutableSettings.readSettingsFromStream(xSettings));
+            }
         }
 
         this.mappings = mappingsMapBuilder.build();

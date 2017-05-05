@@ -30,6 +30,7 @@ import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequestBuilder
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
+import org.elasticsearch.action.admin.indices.get.GetIndexRequest;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequestBuilder;
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsResponse;
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest;
@@ -64,6 +65,7 @@ import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.IndicesAdminClient;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.Strings;
+import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.elasticsearch.common.geo.GeoPoint;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
@@ -150,6 +152,13 @@ public class RestClientTest extends AbstractRestClientTest {
         updateSettingsRequestBuilder.setSettings("{\"index.number_of_replicas\":1}");
         UpdateSettingsResponse updateSettingsResponse = updateSettingsRequestBuilder.execute().actionGet();
         System.out.println(updateSettingsResponse);
+    }
+
+    @Test
+    public void testIndexSettings() {
+        ImmutableOpenMap<String, Settings> settings = client.admin().indices().getIndex(new GetIndexRequest().addFeatures(GetIndexRequest.Feature.SETTINGS)).actionGet()
+                .getSettings();
+        assert settings != null;
     }
 
     @Test
