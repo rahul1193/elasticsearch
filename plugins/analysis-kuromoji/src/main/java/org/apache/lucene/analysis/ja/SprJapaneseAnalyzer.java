@@ -1,13 +1,15 @@
 package org.apache.lucene.analysis.ja;
 
-import org.apache.lucene.analysis.*;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.analysis.StopwordAnalyzerBase;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.cjk.CJKWidthFilter;
 import org.apache.lucene.analysis.core.LowerCaseFilter;
 import org.apache.lucene.analysis.core.StopFilter;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.set.Sets;
-import org.elasticsearch.index.analysis.KuromojiUserDictionarySyncUtil;
 
 import java.util.Set;
 
@@ -27,7 +29,6 @@ public class SprJapaneseAnalyzer extends StopwordAnalyzerBase {
         this.userDict = userDict;
         this.mode = mode;
         this.stoptags = stoptags;
-        KuromojiUserDictionarySyncUtil.ensureSyncThread(this, settings);
     }
 
     public void setUserDictionary(UserDictionary userDict) {
@@ -48,8 +49,7 @@ public class SprJapaneseAnalyzer extends StopwordAnalyzerBase {
     @Override
     protected TokenStream normalize(String fieldName, TokenStream in) {
         CJKWidthFilter result = new CJKWidthFilter(in);
-        org.apache.lucene.analysis.LowerCaseFilter result1 = new org.apache.lucene.analysis.LowerCaseFilter(result);
-        return result1;
+        return new org.apache.lucene.analysis.LowerCaseFilter(result);
     }
 
     public static Set<String> getDefaultStopTags() {
