@@ -19,7 +19,6 @@
 
 package org.elasticsearch.action.delete;
 
-import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
 import org.apache.http.HttpEntity;
 import org.apache.http.nio.entity.NStringEntity;
@@ -29,6 +28,7 @@ import org.elasticsearch.action.DocumentRequest;
 import org.elasticsearch.action.support.replication.ShardReplicationOperationRequest;
 import org.elasticsearch.common.Nullable;
 import org.elasticsearch.common.Strings;
+import org.elasticsearch.common.collect.MapBuilder;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.lucene.uid.Versions;
@@ -64,6 +64,8 @@ public class DeleteRequest extends ShardReplicationOperationRequest<DeleteReques
     private boolean refresh;
     private long version = Versions.MATCH_ANY;
     private VersionType versionType = VersionType.INTERNAL;
+
+    private boolean parent = false;
 
     public DeleteRequest() {
     }
@@ -170,6 +172,7 @@ public class DeleteRequest extends ShardReplicationOperationRequest<DeleteReques
     public DeleteRequest parent(String parent) {
         if (routing == null) {
             routing = parent;
+            this.parent = true;
         }
         return this;
     }
@@ -181,8 +184,10 @@ public class DeleteRequest extends ShardReplicationOperationRequest<DeleteReques
     public DeleteRequest routing(String routing) {
         if (routing != null && routing.length() == 0) {
             this.routing = null;
+            parent = false;
         } else {
             this.routing = routing;
+            parent = false;
         }
         return this;
     }
@@ -269,12 +274,33 @@ public class DeleteRequest extends ShardReplicationOperationRequest<DeleteReques
     }
 
     @Override
+    public Map<String, String> getParams() {
+        MapBuilder<String, String> paramsBuilder = MapBuilder.newMapBuilder();
+        if (Strings.hasLength(routing)) {
+            if (parent) {
+                paramsBuilder.put("parent", routing);
+            } else {
+                paramsBuilder.put("routing", routing);
+            }
+        }
+        return paramsBuilder.map();
+    }
+
+    @Override
     public HttpEntity getBulkEntity() throws IOException {
         Map<String, Object> payload = Maps.newLinkedHashMap();
         Map<String, Object> actionMetadata = Maps.newLinkedHashMap();
         actionMetadata.put("_index", index);
         actionMetadata.put("_type", type);
         actionMetadata.put("_id", id);
+
+        if (Strings.hasLength(routing)) {
+            if (parent)
+                actionMetadata.put("parent", routing);
+            else
+                actionMetadata.put("routing", routing);
+        }
+
         payload.put(BULK_TYPE, actionMetadata);
         String json = XContentHelper.convertToJson(payload, false);
 

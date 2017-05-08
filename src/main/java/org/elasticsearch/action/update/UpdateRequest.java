@@ -91,6 +91,7 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
 
     @Nullable
     private IndexRequest doc;
+    private boolean parent;
 
     public UpdateRequest() {
 
@@ -174,8 +175,10 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
     public UpdateRequest routing(String routing) {
         if (routing != null && routing.length() == 0) {
             this.routing = null;
+            this.parent = false;
         } else {
             this.routing = routing;
+            this.parent = false;
         }
         return this;
     }
@@ -187,6 +190,7 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
     public UpdateRequest parent(String parent) {
         if (routing == null) {
             routing = parent;
+            this.parent = true;
         }
         return this;
     }
@@ -791,8 +795,16 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
 
     @Override
     public Map<String, String> getParams() {
-        return MapBuilder.<String, String>newMapBuilder()
-                .putIf("retry_on_conflict", String.valueOf(retryOnConflict), retryOnConflict != 0).map();
+        MapBuilder<String, String> paramsBuilder = MapBuilder.<String, String>newMapBuilder()
+                .putIf("retry_on_conflict", String.valueOf(retryOnConflict), retryOnConflict != 0);
+        if (Strings.hasLength(routing)) {
+            if (parent) {
+                paramsBuilder.put("parent", routing);
+            } else {
+                paramsBuilder.put("routing", routing);
+            }
+        }
+        return paramsBuilder.map();
     }
 
     private Map<String, Object> getPayload() {
@@ -880,6 +892,14 @@ public class UpdateRequest extends InstanceShardOperationRequest<UpdateRequest> 
             if (retryOnConflict != 0) {
                 actionMetadata.put("_retry_on_conflict", retryOnConflict);
             }
+
+            if (Strings.hasLength(routing)) {
+                if (parent)
+                    actionMetadata.put("parent", routing);
+                else
+                    actionMetadata.put("routing", routing);
+            }
+
             payload.put(BULK_TYPE, actionMetadata);
             String json = XContentHelper.convertToJson(payload, false);
 
