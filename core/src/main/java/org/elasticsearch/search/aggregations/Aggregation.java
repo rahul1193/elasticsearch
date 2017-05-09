@@ -59,5 +59,6 @@ public interface Aggregation {
         public static final ParseField FROM_AS_STRING = new ParseField("from_as_string");
         public static final ParseField TO = new ParseField("to");
         public static final ParseField TO_AS_STRING = new ParseField("to_as_string");
+        public static final ParseField _TYPE = new ParseField("_type");
     }
 }

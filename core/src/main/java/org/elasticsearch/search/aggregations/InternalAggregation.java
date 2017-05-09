@@ -18,7 +18,6 @@
  */
 package org.elasticsearch.search.aggregations;
 
-import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.io.stream.NamedWriteable;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
@@ -187,11 +186,11 @@ public abstract class InternalAggregation implements Aggregation, ToXContent, Na
             builder.startObject(getName());
         }
         if (this.metaData != null) {
-            builder.field(CommonFields.META);
+            builder.field(CommonFields.META.getPreferredName());
             builder.map(this.metaData);
         }
         doXContentBody(builder, params);
-        builder.field(CommonFields._TYPE, this.getWriteableName());
+        builder.field(CommonFields._TYPE.getPreferredName(), this.getWriteableName());
 
         builder.endObject();
         return builder;
@@ -199,23 +198,4 @@ public abstract class InternalAggregation implements Aggregation, ToXContent, Na
 
     public abstract XContentBuilder doXContentBody(XContentBuilder builder, Params params) throws IOException;
 
-    /**
-     * Common xcontent fields that are shared among addAggregation
-     */
-    public static final class CommonFields extends ParseField.CommonFields {
-        // todo convert these to ParseField
-        public static final String META = "meta";
-        public static final String BUCKETS = "buckets";
-        public static final String VALUE = "value";
-        public static final String VALUES = "values";
-        public static final String VALUE_AS_STRING = "value_as_string";
-        public static final String DOC_COUNT = "doc_count";
-        public static final String KEY = "key";
-        public static final String KEY_AS_STRING = "key_as_string";
-        public static final String FROM = "from";
-        public static final String FROM_AS_STRING = "from_as_string";
-        public static final String TO = "to";
-        public static final String TO_AS_STRING = "to_as_string";
-        public static final String _TYPE = "_type";
-    }
 }

@@ -29,7 +29,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.indices.IndicesQueryCache;
@@ -43,7 +42,7 @@ import java.util.function.Function;
 /**
  * @author Utkarsh
  */
-public class CacheKeyLRUQueryCache extends LRUQueryCache {
+public class CacheKeyLRUQueryCache extends XLRUQueryCache {
 
     private static final long HASHTABLE_RAM_BYTES_PER_ENTRY =
         2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF // key + value
@@ -154,14 +153,6 @@ public class CacheKeyLRUQueryCache extends LRUQueryCache {
 
     @Override
     public Weight doCache(Weight weight, QueryCachingPolicy policy) {
-        try {
-            if (!policy.shouldCache(weight.getQuery())) {
-                return weight;
-            }
-        } catch (IOException e) {
-            throw ExceptionsHelper.convertToElastic(e);
-        }
-
         while (weight instanceof CachingWrapperWeight) {
             weight = ((CachingWrapperWeight) weight).in;
         }
@@ -275,7 +266,7 @@ public class CacheKeyLRUQueryCache extends LRUQueryCache {
                 policy.onUse(getQuery());
             }
 
-            if (!policy.shouldCache(in.getQuery())) {
+            if (policy.shouldCache(in.getQuery()) == false) {
                 return in.scorer(context);
             }
 
@@ -304,14 +295,14 @@ public class CacheKeyLRUQueryCache extends LRUQueryCache {
                 policy.onUse(getQuery());
             }
 
+            if (policy.shouldCache(in.getQuery()) == false) {
+                return in.bulkScorer(context);
+            }
+
             DocIdSet docIdSet = get(in.getQuery(), context);
             if (docIdSet == null) {
-                if (policy.shouldCache(in.getQuery())) {
-                    docIdSet = cache(context);
-                    put(in.getQuery(), context, docIdSet);
-                } else {
-                    return in.bulkScorer(context);
-                }
+                docIdSet = cache(context);
+                put(in.getQuery(), context, docIdSet);
             }
 
             assert docIdSet != null;
@@ -326,6 +317,45 @@ public class CacheKeyLRUQueryCache extends LRUQueryCache {
             return new DefaultBulkScorer(new ConstantScoreScorer(this, 0f, disi));
         }
 
+        @Override
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+            if (used.compareAndSet(false, true)) {
+                policy.onUse(getQuery());
+            }
+
+            if (policy.shouldCache(in.getQuery()) == false) {
+                return in.scorerSupplier(context);
+            }
+
+            DocIdSet docIdSet = get(in.getQuery(), context);
+
+            if (docIdSet == null) {
+                docIdSet = cache(context);
+                put(in.getQuery(), context, docIdSet);
+            }
+
+            assert docIdSet != null;
+            if (docIdSet == DocIdSet.EMPTY) {
+                return null;
+            }
+            final DocIdSetIterator disi = docIdSet.iterator();
+            if (disi == null) {
+                return null;
+            }
+
+            return new ScorerSupplier() {
+                @Override
+                public Scorer get(boolean randomAccess) throws IOException {
+                    return new ConstantScoreScorer(CachingWrapperWeight.this, 0f, disi);
+                }
+
+                @Override
+                public long cost() {
+                    return disi.cost();
+                }
+            };
+
+        }
     }
 
     private static final class CacheRemovalListener implements RemovalListener<LeafCacheKey, DocIdSet> {

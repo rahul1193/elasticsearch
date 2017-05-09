@@ -39,7 +39,7 @@ archivesBaseName = 'elasticsearch'
 dependencies {
 
   // lucene
-  compile group: 'com.spr.listening.elasticsearch-5.resources', name: 'lucene-core', version: '6.4.1'
+  compile "com.spr.listening.elasticsearch-5.resources:lucene-core:${versions.lucene}"
   //compile "org.apache.lucene:lucene-core:${versions.lucene}"
   compile "org.apache.lucene:lucene-analyzers-common:${versions.lucene}"
   compile "org.apache.lucene:lucene-backward-codecs:${versions.lucene}"

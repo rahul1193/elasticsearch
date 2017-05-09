@@ -19,7 +19,6 @@
 
 package org.elasticsearch.search.aggregations.bucket.histogram;
 
-import org.elasticsearch.common.CheckedFunction;
 import org.elasticsearch.common.ParsingException;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
@@ -33,14 +32,8 @@ import org.elasticsearch.common.xcontent.XContentParser.Token;
 import org.elasticsearch.index.query.QueryParseContext;
 import org.elasticsearch.search.aggregations.AggregatorFactories.Builder;
 import org.elasticsearch.search.aggregations.AggregatorFactory;
-import org.elasticsearch.search.aggregations.support.ValueType;
-import org.elasticsearch.search.aggregations.support.ValuesSource;
+import org.elasticsearch.search.aggregations.support.*;
 import org.elasticsearch.search.aggregations.support.ValuesSource.Numeric;
-import org.elasticsearch.search.aggregations.support.ValuesSourceAggregationBuilder;
-import org.elasticsearch.search.aggregations.support.ValuesSourceAggregatorFactory;
-import org.elasticsearch.search.aggregations.support.ValuesSourceConfig;
-import org.elasticsearch.search.aggregations.support.ValuesSourceParserHelper;
-import org.elasticsearch.search.aggregations.support.ValuesSourceType;
 import org.elasticsearch.search.internal.SearchContext;
 
 import java.io.IOException;
@@ -99,17 +92,12 @@ public class DateHistogramAggregationBuilder
             }
         }, Histogram.INTERVAL_FIELD, ObjectParser.ValueType.LONG);
 
-        PARSER.declareField(DateHistogramAggregationBuilder::offset, (XContentParser p) -> {
-            long value;
-            if (p.currentToken() == Token.VALUE_NUMBER) {
-                value = p.longValue();
+        PARSER.declareField(DateHistogramAggregationBuilder::offset, p -> {
+            if (p.currentToken() == XContentParser.Token.VALUE_NUMBER) {
+                return p.longValue();
             } else {
-                value = DateHistogramAggregationBuilder.parseStringOffset(p.text());
+                return DateHistogramAggregationBuilder.parseStringOffset(p.text());
             }
-            if ("pre_offset".equals(p.currentName())) {
-                return -value;
-            }
-            return value;
         }, Histogram.OFFSET_FIELD, ObjectParser.ValueType.LONG);
 
         PARSER.declareBoolean(DateHistogramAggregationBuilder::keyed, Histogram.KEYED_FIELD);
@@ -122,7 +110,6 @@ public class DateHistogramAggregationBuilder
         PARSER.declareField(DateHistogramAggregationBuilder::order, DateHistogramAggregationBuilder::parseOrder,
                 Histogram.ORDER_FIELD, ObjectParser.ValueType.OBJECT);
         PARSER.declareBoolean(DateHistogramAggregationBuilder::reversePostTimeZone, Histogram.REVERSE_POST_TZ);
-        PARSER.declareBoolean(DateHistogramAggregationBuilder::preZoneAdjustLargeInterval, Histogram.PRE_ZONE_ADJUST_LARGE_INTERVAL);
     }
 
     public static DateHistogramAggregationBuilder parse(String aggregationName, QueryParseContext context) throws IOException {
@@ -137,7 +124,6 @@ public class DateHistogramAggregationBuilder
     private boolean keyed = false;
     private long minDocCount = 0;
     private boolean reversePostTimeZone;
-    private boolean preZoneAdjustLargeInterval;
 
     /** Create a new builder with the given name. */
     public DateHistogramAggregationBuilder(String name) {
@@ -303,11 +289,6 @@ public class DateHistogramAggregationBuilder
         return this;
     }
 
-    public DateHistogramAggregationBuilder preZoneAdjustLargeInterval(boolean preZoneAdjustLargeInterval) {
-        this.preZoneAdjustLargeInterval = preZoneAdjustLargeInterval;
-        return this;
-    }
-
     @Override
     protected XContentBuilder doXContentBody(XContentBuilder builder, Params params) throws IOException {
 
@@ -358,6 +339,7 @@ public class DateHistogramAggregationBuilder
             DateTimeUnit dateTimeUnit = DATE_FIELD_UNITS.get(dateHistogramInterval.toString());
             if (dateTimeUnit != null) {
                 tzRoundingBuilder = Rounding.builder(dateTimeUnit);
+                tzRoundingBuilder.reverseTz(reversePostTimeZone);
             } else {
                 // the interval is a time value?
                 tzRoundingBuilder = Rounding.builder(

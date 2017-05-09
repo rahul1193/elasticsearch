@@ -69,6 +69,7 @@ public abstract class Rounding implements Streamable {
 
         private final DateTimeUnit unit;
         private final long interval;
+        private boolean reverseTz;
 
         private DateTimeZone timeZone = DateTimeZone.UTC;
 
@@ -92,10 +93,15 @@ public abstract class Rounding implements Streamable {
             return this;
         }
 
+        public Builder reverseTz(boolean reverseTz){
+            this.reverseTz = reverseTz;
+            return this;
+        }
+
         public Rounding build() {
             Rounding timeZoneRounding;
             if (unit != null) {
-                timeZoneRounding = new TimeUnitRounding(unit, timeZone);
+                timeZoneRounding = new TimeUnitRounding(unit, timeZone, reverseTz);
             } else {
                 timeZoneRounding = new TimeIntervalRounding(interval, timeZone);
             }
@@ -110,14 +116,16 @@ public abstract class Rounding implements Streamable {
         private DateTimeUnit unit;
         private DateTimeField field;
         private DateTimeZone timeZone;
+        private boolean reverseTz;
 
         TimeUnitRounding() { // for serialization
         }
 
-        TimeUnitRounding(DateTimeUnit unit, DateTimeZone timeZone) {
+        TimeUnitRounding(DateTimeUnit unit, DateTimeZone timeZone, boolean reverseTz) {
             this.unit = unit;
             this.field = unit.field(timeZone);
             this.timeZone = timeZone;
+            this.reverseTz = reverseTz;
         }
 
         @Override
@@ -128,7 +136,7 @@ public abstract class Rounding implements Streamable {
         @Override
         public long round(long utcMillis) {
             long rounded = field.roundFloor(utcMillis);
-            if (timeZone.isFixed() == false) {
+            if (reverseTz == false && timeZone.isFixed() == false) {
                 // special cases for non-fixed time zones with dst transitions
                 if (timeZone.getOffset(utcMillis) != timeZone.getOffset(rounded)) {
                     /*
@@ -162,6 +170,10 @@ public abstract class Rounding implements Streamable {
                 }
             }
             assert rounded == field.roundFloor(rounded);
+
+            if (reverseTz) {
+                rounded -= timeZone.getOffset(rounded);
+            }
             return rounded;
         }
 
@@ -182,12 +194,14 @@ public abstract class Rounding implements Streamable {
             unit = DateTimeUnit.resolve(in.readByte());
             timeZone = DateTimeZone.forID(in.readString());
             field = unit.field(timeZone);
+            reverseTz = in.readBoolean();
         }
 
         @Override
         public void writeTo(StreamOutput out) throws IOException {
             out.writeByte(unit.id());
             out.writeString(timeZone.getID());
+            out.writeBoolean(reverseTz);
         }
 
         @Override

@@ -755,7 +755,7 @@ public class MapperQueryParser extends AnalyzingQueryParser {
         return q;
     }
 
-    private Query applySlop(Query q, int slop) {
+    protected Query applySlop(Query q, int slop) {
         if (q instanceof PhraseQuery) {
             //make sure that the boost hasn't been set beforehand, otherwise we'd lose it
             assert q instanceof BoostQuery == false;

@@ -32,22 +32,12 @@ import org.elasticsearch.index.IndexSettings;
 import org.elasticsearch.index.mapper.MappedFieldType;
 import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
-import org.elasticsearch.script.MockScriptEngine;
-import org.elasticsearch.script.Script;
-import org.elasticsearch.script.ScriptContextRegistry;
-import org.elasticsearch.script.ScriptEngineRegistry;
-import org.elasticsearch.script.ScriptService;
-import org.elasticsearch.script.ScriptSettings;
-import org.elasticsearch.script.ScriptType;
+import org.elasticsearch.script.*;
 import org.elasticsearch.search.aggregations.AggregatorTestCase;
 import org.junit.BeforeClass;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 import static java.util.Collections.singleton;
@@ -167,6 +157,6 @@ public class ScriptedMetricAggregatorTests extends AggregatorTestCase {
             throw new ElasticsearchException(e);
         }
         return new QueryShardContext(0, idxSettings, null, null, null, null, scriptService, xContentRegistry(),
-                null, null, System::currentTimeMillis);
+                null, null, System::currentTimeMillis, null);
     }
 }

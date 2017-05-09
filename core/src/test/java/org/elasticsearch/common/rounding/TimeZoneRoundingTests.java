@@ -38,12 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.lessThan;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.hamcrest.Matchers.startsWith;
+import static org.hamcrest.Matchers.*;
 
 /**
  */
@@ -186,7 +181,7 @@ public class TimeZoneRoundingTests extends ESTestCase {
         for (int i = 0; i < 1000; ++i) {
             DateTimeUnit timeUnit = randomTimeUnit();
             DateTimeZone tz = randomDateTimeZone();
-            Rounding rounding = new Rounding.TimeUnitRounding(timeUnit, tz);
+            Rounding rounding = new Rounding.TimeUnitRounding(timeUnit, tz, false);
             long date = Math.abs(randomLong() % (2 * (long) 10e11)); // 1970-01-01T00:00:00Z - 2033-05-18T05:33:20.000+02:00
             long unitMillis = timeUnit.field(tz).getDurationField().getUnitMillis();
             if (randomBoolean()) {
@@ -431,7 +426,7 @@ public class TimeZoneRoundingTests extends ESTestCase {
         DateTimeZone tz = DateTimeZone.forID("America/Sao_Paulo");
         long start = time("2014-10-18T20:50:00.000", tz);
         long end = time("2014-10-19T01:00:00.000", tz);
-        Rounding tzRounding = new Rounding.TimeUnitRounding(DateTimeUnit.MINUTES_OF_HOUR, tz);
+        Rounding tzRounding = new Rounding.TimeUnitRounding(DateTimeUnit.MINUTES_OF_HOUR, tz, false);
         Rounding dayTzRounding = new Rounding.TimeIntervalRounding(60000, tz);
         for (long time = start; time < end; time = time + 60000) {
             assertThat(tzRounding.nextRoundingValue(time), greaterThan(time));
@@ -444,7 +439,7 @@ public class TimeZoneRoundingTests extends ESTestCase {
             // standard +/-1 hour DST transition, CET
             DateTimeUnit timeUnit = DateTimeUnit.HOUR_OF_DAY;
             DateTimeZone tz = DateTimeZone.forID("CET");
-            Rounding rounding = new Rounding.TimeUnitRounding(timeUnit, tz);
+            Rounding rounding = new Rounding.TimeUnitRounding(timeUnit, tz, false);
 
             // 29 Mar 2015 - Daylight Saving Time Started
             // at 02:00:00 clocks were turned forward 1 hour to 03:00:00
@@ -468,7 +463,7 @@ public class TimeZoneRoundingTests extends ESTestCase {
             // which is not a round value for hourly rounding
             DateTimeUnit timeUnit = DateTimeUnit.HOUR_OF_DAY;
             DateTimeZone tz = DateTimeZone.forID("Asia/Kathmandu");
-            Rounding rounding = new Rounding.TimeUnitRounding(timeUnit, tz);
+            Rounding rounding = new Rounding.TimeUnitRounding(timeUnit, tz, false);
 
             assertInterval(time("1985-12-31T22:00:00.000+05:30"), time("1985-12-31T23:00:00.000+05:30"), rounding, 60, tz);
             assertInterval(time("1985-12-31T23:00:00.000+05:30"), time("1986-01-01T01:00:00.000+05:45"), rounding, 105, tz);
@@ -481,7 +476,7 @@ public class TimeZoneRoundingTests extends ESTestCase {
             // at 02:00:00 clocks were turned backward 0:30 hours to Sunday, 3 March 1991, 01:30:00
             DateTimeUnit timeUnit = DateTimeUnit.HOUR_OF_DAY;
             DateTimeZone tz = DateTimeZone.forID("Australia/Lord_Howe");
-            Rounding rounding = new Rounding.TimeUnitRounding(timeUnit, tz);
+            Rounding rounding = new Rounding.TimeUnitRounding(timeUnit, tz, false);
 
             assertInterval(time("1991-03-03T00:00:00.000+11:00"), time("1991-03-03T01:00:00.000+11:00"), rounding, 60, tz);
             assertInterval(time("1991-03-03T01:00:00.000+11:00"), time("1991-03-03T02:00:00.000+10:30"), rounding, 90, tz);
@@ -501,7 +496,7 @@ public class TimeZoneRoundingTests extends ESTestCase {
             // at 03:45:00 clocks were turned backward 1 hour to 02:45:00
             DateTimeUnit timeUnit = DateTimeUnit.HOUR_OF_DAY;
             DateTimeZone tz = DateTimeZone.forID("Pacific/Chatham");
-            Rounding rounding = new Rounding.TimeUnitRounding(timeUnit, tz);
+            Rounding rounding = new Rounding.TimeUnitRounding(timeUnit, tz, false);
 
             assertInterval(time("2015-04-05T02:00:00.000+13:45"), time("2015-04-05T03:00:00.000+13:45"), rounding, 60, tz);
             assertInterval(time("2015-04-05T03:00:00.000+13:45"), time("2015-04-05T03:00:00.000+12:45"), rounding, 60, tz);
@@ -525,7 +520,7 @@ public class TimeZoneRoundingTests extends ESTestCase {
 
         DateTimeUnit timeUnit = DateTimeUnit.DAY_OF_MONTH;
         DateTimeZone tz = DateTimeZone.forID("Atlantic/Azores");
-        Rounding rounding = new Rounding.TimeUnitRounding(timeUnit, tz);
+        Rounding rounding = new Rounding.TimeUnitRounding(timeUnit, tz, false);
 
         // Sunday, 29 October 2000, 01:00:00 clocks were turned backward 1 hour
         // to Sunday, 29 October 2000, 00:00:00 local standard time instead
@@ -539,7 +534,7 @@ public class TimeZoneRoundingTests extends ESTestCase {
         // We want the overlapping hour to count for the previous day here
 
         tz = DateTimeZone.forID("America/Lima");
-        rounding = new Rounding.TimeUnitRounding(timeUnit, tz);
+        rounding = new Rounding.TimeUnitRounding(timeUnit, tz, false);
 
         // Sunday, 1 April 1990, 00:00:00 clocks were turned backward 1 hour to
         // Saturday, 31 March 1990, 23:00:00 local standard time instead
