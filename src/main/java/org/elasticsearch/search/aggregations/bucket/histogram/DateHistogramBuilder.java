@@ -20,14 +20,13 @@
 package org.elasticsearch.search.aggregations.bucket.histogram;
 
 import org.elasticsearch.Version;
-import org.elasticsearch.common.joda.DateMathParser;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.ToXContentUtils;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.search.aggregations.ValuesSourceAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilderException;
 import org.joda.time.DateTime;
-import org.joda.time.DateTimeUtils;
 
 import java.io.IOException;
 
@@ -206,14 +205,18 @@ public class DateHistogramBuilder extends ValuesSourceAggregationBuilder<DateHis
 
         if (ToXContentUtils.getVersionFromParams(params).onOrAfter(Version.V_5_0_0)) {
 
-            Long preOffsetInLong = convertZoneToOffset(preOffset, preZone);
-            if (preOffsetInLong != null && preOffsetInLong != 0) {
-                builder.field("pre_offset", preOffsetInLong);
+            if (Strings.hasLength(postZone)) {
+                builder.field("time_zone", postZone);
+            } else {
+                if (Strings.hasLength(preZone)) {
+                    builder.field("time_zone", preZone);
+                }
             }
 
-            Long postOffsetInLong = convertZoneToOffset(postOffset, postZone);
-            if (postOffsetInLong != null) {
-                builder.field("post_offset", postOffsetInLong);
+            if (postOffset != null) {
+                builder.field("offset", postOffset);
+            } else if (preOffset != null) {
+                builder.field("offset", preOffset);
             }
 
         } else {
@@ -263,26 +266,6 @@ public class DateHistogramBuilder extends ValuesSourceAggregationBuilder<DateHis
         }
 
         return builder;
-    }
-
-    private Long convertZoneToOffset(String offset, String zone) throws IOException {
-        Long offsetAsLong = 0L;
-        if (offset != null) {
-            offsetAsLong = parseOffset(offset);
-        }
-        if (zone != null) {
-            int offsetInMillis = DateMathParser.parseZone(zone).getOffset(DateTimeUtils.currentTimeMillis());
-            offsetAsLong += offsetInMillis;
-        }
-        return offsetAsLong;
-    }
-
-    private long parseOffset(String offset) throws IOException {
-        if (offset.charAt(0) == '-') {
-            return -TimeValue.parseTimeValue(offset.substring(1), null).millis();
-        }
-        int beginIndex = offset.charAt(0) == '+' ? 1 : 0;
-        return TimeValue.parseTimeValue(offset.substring(beginIndex), null).millis();
     }
 
 }
