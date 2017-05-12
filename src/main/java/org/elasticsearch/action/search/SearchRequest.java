@@ -102,6 +102,7 @@ public class SearchRequest extends ActionRequest<SearchRequest> implements Indic
     public static final IndicesOptions DEFAULT_INDICES_OPTIONS = IndicesOptions.strictExpandOpenAndForbidClosed();
 
     private IndicesOptions indicesOptions = DEFAULT_INDICES_OPTIONS;
+    private int batchedReduceSize = 512;
 
     public SearchRequest() {
     }
@@ -701,31 +702,40 @@ public class SearchRequest extends ActionRequest<SearchRequest> implements Indic
 
     @Override
     public ActionRestRequest getActionRestRequest(Version version) {
-        ActionRestRequest actionRestRequest = super.getActionRestRequest(version);
         if (version.id >= Version.V_5_0_0_ID) {
-            return new SearchRequestV5(actionRestRequest);
+            return new SearchRequestV5();
         } else {
-            return actionRestRequest;
+            return super.getActionRestRequest(version);
         }
     }
 
-    private static class SearchRequestV5 implements ActionRestRequest {
-        ActionRestRequest actionRestRequest;
+    /**
+     * Sets the number of shard results that should be reduced at once on the coordinating node. This value should be used as a protection
+     * mechanism to reduce the memory overhead per search request if the potential number of shards in the request can be large.
+     */
+    public void setBatchedReduceSize(int batchedReduceSize) {
+        if (batchedReduceSize <= 1) {
+            throw new IllegalArgumentException("batchedReduceSize must be >= 2");
+        }
+        this.batchedReduceSize = batchedReduceSize;
+    }
 
-        public SearchRequestV5(ActionRestRequest actionRestRequest) {
-            this.actionRestRequest = actionRestRequest;
+    private class SearchRequestV5 implements ActionRestRequest {
+
+
+        public SearchRequestV5() {
         }
 
         public RestRequest.Method getMethod() {
-            return actionRestRequest.getMethod();
+            return SearchRequest.this.getMethod();
         }
 
         public String getEndPoint() {
-            return actionRestRequest.getEndPoint();
+            return SearchRequest.this.getEndPoint();
         }
 
         public HttpEntity getEntity() throws IOException {
-            HttpEntity entity = actionRestRequest.getEntity();
+            HttpEntity entity = SearchRequest.this.getEntity();
             String json = Strings.valueOf(entity.getContent());
             Map<String, Object> map = XContentHelper.fromJson(json);
             // fields has been deprecated in 5.0 and renamed to stored_fields
@@ -738,18 +748,24 @@ public class SearchRequest extends ActionRequest<SearchRequest> implements Indic
         }
 
         public Map<String, String> getParams() {
-            Map<String, String> params = actionRestRequest.getParams();
+            Map<String, String> params = SearchRequest.this.getParams();
             if (params != null && !params.isEmpty()) {
                 params = new HashMap<>(params);
                 if (params.containsKey("query_cache")) {
                     params.put("request_cache", params.remove("query_cache"));
                 }
             }
+            if (SearchRequest.this.batchedReduceSize != 512) { // default is 512
+                if (params == null) {
+                    params = new HashMap<>();
+                }
+                params.put("batched_reduce_size", String.valueOf(SearchRequest.this.batchedReduceSize));
+            }
             return params;
         }
 
         public HttpEntity getBulkEntity() throws IOException {
-            return actionRestRequest.getBulkEntity();
+            return SearchRequest.this.getBulkEntity();
         }
     }
 }

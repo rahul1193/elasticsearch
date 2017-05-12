@@ -236,10 +236,10 @@ public class DateHistogramBuilder extends ValuesSourceAggregationBuilder<DateHis
             if (postOffset != null) {
                 builder.field("post_offset", postOffset);
             }
-        }
 
-        if (preZoneAdjustLargeInterval) {
-            builder.field("pre_zone_adjust_large_interval", true);
+            if (preZoneAdjustLargeInterval) {
+                builder.field("pre_zone_adjust_large_interval", true);
+            }
         }
 
         if (reversePostTz) {
