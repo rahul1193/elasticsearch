@@ -381,17 +381,12 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
                 logger.debug("cache is removed for key {}", key);
             }
             switch (cause) {
-                case COLLECTED:
-                case EXPIRED:
-                case SIZE:
-                    stats.cacheCount--;
-                    break;
                 case EXPLICIT:
                 case REPLACED:
-                    stats.cacheSize--;
                     stats.cacheCount--;
                     break;
             }
+            stats.cacheSize--;
             if (removed != null) {
                 stats.ramBytesUsed -= HASHTABLE_RAM_BYTES_PER_ENTRY + removed.ramBytesUsed();
             }
