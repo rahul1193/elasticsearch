@@ -101,7 +101,7 @@ public class ParsedQueryCacheStats implements Streamable, ToXContent {
 
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, ToXContent.Params params) throws IOException {
-        builder.startObject(Fields.QUERY_CACHE);
+        builder.startObject(Fields.PARSED_QUERY_CACHE);
         builder.field(Fields.TOTAL_COUNT, getTotalCount());
         builder.field(Fields.HIT_COUNT, getHitCount());
         builder.field(Fields.MISS_COUNT, getMissCount());
@@ -111,7 +111,7 @@ public class ParsedQueryCacheStats implements Streamable, ToXContent {
     }
 
     static final class Fields {
-        static final String QUERY_CACHE = "query_cache";
+        static final String PARSED_QUERY_CACHE = "parsed_query_cache";
         static final String TOTAL_COUNT = "total_count";
         static final String HIT_COUNT = "hit_count";
         static final String MISS_COUNT = "miss_count";

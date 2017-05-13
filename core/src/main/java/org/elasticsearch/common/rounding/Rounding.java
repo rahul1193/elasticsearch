@@ -47,7 +47,7 @@ public abstract class Rounding implements Streamable {
      * interval based rounding, if the interval is 3, {@code nextRoundValue(6) = 9 }.
      *
      * @param value The current rounding value
-     * @return      The next rounding value;
+     * @return The next rounding value;
      */
     public abstract long nextRoundingValue(long value);
 
@@ -93,7 +93,7 @@ public abstract class Rounding implements Streamable {
             return this;
         }
 
-        public Builder reverseTz(boolean reverseTz){
+        public Builder reverseTz(boolean reverseTz) {
             this.reverseTz = reverseTz;
             return this;
         }
@@ -114,7 +114,8 @@ public abstract class Rounding implements Streamable {
         static final byte ID = 1;
 
         private DateTimeUnit unit;
-        private DateTimeField field;
+        private DateTimeField tzField;
+        private DateTimeField utcField;
         private DateTimeZone timeZone;
         private boolean reverseTz;
 
@@ -123,7 +124,8 @@ public abstract class Rounding implements Streamable {
 
         TimeUnitRounding(DateTimeUnit unit, DateTimeZone timeZone, boolean reverseTz) {
             this.unit = unit;
-            this.field = unit.field(timeZone);
+            this.tzField = unit.field(timeZone);
+            this.utcField = unit.field(DateTimeZone.UTC);
             this.timeZone = timeZone;
             this.reverseTz = reverseTz;
         }
@@ -135,8 +137,16 @@ public abstract class Rounding implements Streamable {
 
         @Override
         public long round(long utcMillis) {
+            if (reverseTz) {
+                return roundInternal(utcMillis, utcField, true);
+            } else {
+                return roundInternal(utcMillis, tzField, false);
+            }
+        }
+
+        private long roundInternal(long utcMillis, DateTimeField field, boolean reverseTz) {
             long rounded = field.roundFloor(utcMillis);
-            if (reverseTz == false && timeZone.isFixed() == false) {
+            if (!reverseTz && !timeZone.isFixed()) {
                 // special cases for non-fixed time zones with dst transitions
                 if (timeZone.getOffset(utcMillis) != timeZone.getOffset(rounded)) {
                     /*
@@ -179,12 +189,12 @@ public abstract class Rounding implements Streamable {
 
         @Override
         public long nextRoundingValue(long utcMillis) {
-            long floor = round(utcMillis);
+            long floor = roundInternal(utcMillis, tzField, false);
             // add one unit and round to get to next rounded value
-            long next = round(field.add(floor, 1));
+            long next = roundInternal(tzField.add(floor, 1), tzField, false);
             if (next == floor) {
                 // in rare case we need to add more than one unit
-                next = round(field.add(floor, 2));
+                next = roundInternal(tzField.add(floor, 2), tzField, false);
             }
             return next;
         }
@@ -193,7 +203,7 @@ public abstract class Rounding implements Streamable {
         public void readFrom(StreamInput in) throws IOException {
             unit = DateTimeUnit.resolve(in.readByte());
             timeZone = DateTimeZone.forID(in.readString());
-            field = unit.field(timeZone);
+            tzField = unit.field(timeZone);
             reverseTz = in.readBoolean();
         }
 
@@ -368,9 +378,14 @@ public abstract class Rounding implements Streamable {
             Rounding rounding = null;
             byte id = in.readByte();
             switch (id) {
-                case TimeUnitRounding.ID: rounding = new TimeUnitRounding(); break;
-                case TimeIntervalRounding.ID: rounding = new TimeIntervalRounding(); break;
-                default: throw new ElasticsearchException("unknown rounding id [" + id + "]");
+                case TimeUnitRounding.ID:
+                    rounding = new TimeUnitRounding();
+                    break;
+                case TimeIntervalRounding.ID:
+                    rounding = new TimeIntervalRounding();
+                    break;
+                default:
+                    throw new ElasticsearchException("unknown rounding id [" + id + "]");
             }
             rounding.readFrom(in);
             return rounding;
