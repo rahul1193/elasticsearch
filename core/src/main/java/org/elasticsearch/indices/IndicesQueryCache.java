@@ -39,6 +39,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
 public class IndicesQueryCache extends AbstractComponent implements QueryCache, Closeable {
@@ -70,7 +71,7 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
         logger.debug("using [node] query cache with size [{}] max filter count [{}]",
             size, count);
         if (INDICES_QUERIES_CACHE_CACHEABLE_SETTING.get(settings)) {
-            cache = new CacheKeyLRUQueryCache(settings, count, this::getOrCreateStats);
+            cache = new CacheKeyLRUQueryCache(settings, size.getBytes(), this::getOrCreateStats);
         } else if (INDICES_QUERIES_CACHE_ALL_SEGMENTS_SETTING.get(settings)) {
             cache = new ElasticsearchLRUQueryCache(count, size.getBytes(), context -> true);
         } else {
@@ -192,14 +193,14 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
 
     public static class Stats implements Cloneable {
 
-        public volatile long ramBytesUsed;
-        public volatile long hitCount;
-        public volatile long missCount;
-        public volatile long cacheCount;
-        public volatile long cacheSize;
+        public final AtomicLong ramBytesUsed = new AtomicLong();
+        public final AtomicLong hitCount = new AtomicLong();
+        public final AtomicLong missCount = new AtomicLong();
+        public final AtomicLong cacheCount = new AtomicLong();
+        public final AtomicLong cacheSize = new AtomicLong();
 
         QueryCacheStats toQueryCacheStats() {
-            return new QueryCacheStats(ramBytesUsed, hitCount, missCount, cacheCount, cacheSize);
+            return new QueryCacheStats(ramBytesUsed.get(), hitCount.get(), missCount.get(), cacheCount.get(), cacheSize.get());
         }
     }
 
@@ -217,7 +218,7 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
         if (stats == null) {
             return true;
         }
-        return stats.cacheSize == 0 && stats.ramBytesUsed == 0;
+        return stats.cacheSize.get() == 0 && stats.ramBytesUsed.get() == 0;
     }
 
     public void onClose(ShardId shardId) {
@@ -271,8 +272,8 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
             super.onClear();
             for (Stats stats : shardStats.values()) {
                 // don't throw away hit/miss
-                stats.cacheSize = 0;
-                stats.ramBytesUsed = 0;
+                stats.cacheSize.set(0);
+                stats.ramBytesUsed.set(0);
             }
             sharedRamBytesUsed = 0;
         }
@@ -293,9 +294,9 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
         protected void onDocIdSetCache(Object readerCoreKey, long ramBytesUsed) {
             super.onDocIdSetCache(readerCoreKey, ramBytesUsed);
             final Stats shardStats = getOrCreateStats(readerCoreKey);
-            shardStats.cacheSize += 1;
-            shardStats.cacheCount += 1;
-            shardStats.ramBytesUsed += ramBytesUsed;
+            shardStats.cacheSize.incrementAndGet();
+            shardStats.cacheCount.incrementAndGet();
+            shardStats.ramBytesUsed.addAndGet(ramBytesUsed);
 
             StatsAndCount statsAndCount = stats2.get(readerCoreKey);
             if (statsAndCount == null) {
@@ -319,8 +320,8 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
                 // instead of relying on close listeners
                 final StatsAndCount statsAndCount = stats2.get(readerCoreKey);
                 final Stats shardStats = statsAndCount.stats;
-                shardStats.cacheSize -= numEntries;
-                shardStats.ramBytesUsed -= sumRamBytesUsed;
+                shardStats.cacheSize.addAndGet(-numEntries);
+                shardStats.ramBytesUsed.addAndGet(-sumRamBytesUsed);
                 statsAndCount.count -= numEntries;
                 if (statsAndCount.count == 0) {
                     stats2.remove(readerCoreKey);
@@ -332,14 +333,14 @@ public class IndicesQueryCache extends AbstractComponent implements QueryCache, 
         protected void onHit(Object readerCoreKey, Query filter) {
             super.onHit(readerCoreKey, filter);
             final Stats shardStats = getStats(readerCoreKey);
-            shardStats.hitCount += 1;
+            shardStats.hitCount.incrementAndGet();
         }
 
         @Override
         protected void onMiss(Object readerCoreKey, Query filter) {
             super.onMiss(readerCoreKey, filter);
             final Stats shardStats = getOrCreateStats(readerCoreKey);
-            shardStats.missCount += 1;
+            shardStats.missCount.incrementAndGet();
         }
     }
 }

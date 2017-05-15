@@ -23,10 +23,22 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.RemovalListener;
+import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BulkScorer;
+import org.apache.lucene.search.ConstantScoreScorer;
+import org.apache.lucene.search.ConstantScoreWeight;
+import org.apache.lucene.search.DocIdSet;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryCachingPolicy;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.Weight;
+import org.apache.lucene.search.XLRUQueryCache;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.elasticsearch.common.logging.Loggers;
@@ -34,8 +46,11 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.indices.IndicesQueryCache;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.ConcurrentMap;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
@@ -44,7 +59,7 @@ import java.util.function.Function;
  */
 public class CacheKeyLRUQueryCache extends XLRUQueryCache {
 
-    private static final long HASHTABLE_RAM_BYTES_PER_ENTRY =
+    private static final int HASHTABLE_RAM_BYTES_PER_ENTRY =
         2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF // key + value
             * 2; // hash tables need to be oversized to avoid collisions, assume 2x capacity
 
@@ -52,15 +67,16 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
     private final Cache<LeafCacheKey, DocIdSet> cache;
     private final Function<Object, IndicesQueryCache.Stats> shardStatsSupplier;
 
-    public CacheKeyLRUQueryCache(Settings settings, int maxSize, Function<Object, IndicesQueryCache.Stats> shardStatsSupplier) {
-        super(maxSize, Long.MAX_VALUE, leafReaderContext -> true);
-        assert maxSize > 0;
+    public CacheKeyLRUQueryCache(Settings settings, long maxBytes, Function<Object, IndicesQueryCache.Stats> shardStatsSupplier) {
+        super(Integer.MAX_VALUE, maxBytes, leafReaderContext -> true);
+        assert maxBytes > 0;
         logger = Loggers.getLogger(getClass(), settings);
         this.shardStatsSupplier = shardStatsSupplier;
         cache = Caffeine.newBuilder()
-            .maximumSize(maxSize)
             .removalListener(new CacheRemovalListener(settings, shardStatsSupplier))
             .executor(Runnable::run)
+            .maximumWeight(maxBytes)
+            .weigher(new CacheKeyQueryCacheWeigher())
             .build();
     }
 
@@ -71,7 +87,7 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
             logger.debug("shard stats is null for key {}", readerCoreKey);
             return;
         }
-        shardStats.hitCount++;
+        shardStats.hitCount.incrementAndGet();
     }
 
     @Override
@@ -81,7 +97,7 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
             logger.debug("shard stats is null for key {}", readerCoreKey);
             return;
         }
-        shardStats.missCount++;
+        shardStats.missCount.incrementAndGet();
     }
 
     @Override
@@ -98,9 +114,9 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
     protected void onDocIdSetCache(Object readerCoreKey, long ramBytesUsed) {
         IndicesQueryCache.Stats shardStats = this.shardStatsSupplier.apply(readerCoreKey);
         if (shardStats != null) {
-            shardStats.cacheSize++;
-            shardStats.cacheCount++;
-            shardStats.ramBytesUsed += ramBytesUsed;
+            shardStats.cacheSize.incrementAndGet();
+            shardStats.cacheCount.incrementAndGet();
+            shardStats.ramBytesUsed.addAndGet(ramBytesUsed);
         }
     }
 
@@ -140,15 +156,7 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
 
     @Override
     public void clear() {
-        ConcurrentMap<LeafCacheKey, DocIdSet> map = cache.asMap();
         cache.invalidateAll();
-        for (LeafCacheKey leafCacheKey : map.keySet()) {
-            IndicesQueryCache.Stats shardStats = this.shardStatsSupplier.apply(leafCacheKey);
-            if (shardStats != null) {
-                shardStats.ramBytesUsed = 0;
-                shardStats.cacheSize = 0;
-            }
-        }
     }
 
     @Override
@@ -228,6 +236,21 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
         @Override
         public boolean equals(Object obj) {
             return obj == this || (obj instanceof LeafCacheKey && leaf == ((LeafCacheKey) obj).leaf && cacheKey.equals(((LeafCacheKey) obj).cacheKey));
+        }
+    }
+
+    private static final class CacheKeyQueryCacheWeigher implements Weigher<LeafCacheKey, DocIdSet> {
+
+        @Override
+        public int weigh(LeafCacheKey key, DocIdSet value) {
+            int weight = HASHTABLE_RAM_BYTES_PER_ENTRY;
+            long byteValue = value.ramBytesUsed();
+            if (byteValue + weight > Integer.MAX_VALUE) {
+                weight = Integer.MAX_VALUE;
+            } else {
+                weight += byteValue;
+            }
+            return weight;
         }
     }
 
@@ -380,15 +403,9 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
             } else {
                 logger.debug("cache is removed for key {}", key);
             }
-            switch (cause) {
-                case EXPLICIT:
-                case REPLACED:
-                    stats.cacheCount--;
-                    break;
-            }
-            stats.cacheSize--;
+            stats.cacheSize.decrementAndGet();
             if (removed != null) {
-                stats.ramBytesUsed -= HASHTABLE_RAM_BYTES_PER_ENTRY + removed.ramBytesUsed();
+                stats.ramBytesUsed.addAndGet(-HASHTABLE_RAM_BYTES_PER_ENTRY - removed.ramBytesUsed());
             }
         }
     }
