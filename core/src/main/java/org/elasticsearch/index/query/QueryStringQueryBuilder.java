@@ -19,6 +19,7 @@
 
 package org.elasticsearch.index.query;
 
+import com.spr.elasticsearch.index.query.ParsedQueryCache;
 import org.apache.lucene.queryparser.classic.MapperQueryParser;
 import org.apache.lucene.queryparser.classic.QueryParserSettings;
 import org.apache.lucene.search.BooleanQuery;
@@ -29,6 +30,7 @@ import org.apache.lucene.util.automaton.Operations;
 import org.elasticsearch.Version;
 import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.ParsingException;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.lucene.search.Queries;
@@ -37,31 +39,13 @@ import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.index.analysis.NamedAnalyzer;
-import org.elasticsearch.index.mapper.DateFieldMapper;
-import org.elasticsearch.index.mapper.IpFieldMapper;
-import org.elasticsearch.index.mapper.KeywordFieldMapper;
-import org.elasticsearch.index.mapper.MappedFieldType;
-import org.elasticsearch.index.mapper.MapperService;
-import org.elasticsearch.index.mapper.NumberFieldMapper;
-import org.elasticsearch.index.mapper.ScaledFloatFieldMapper;
-import org.elasticsearch.index.mapper.StringFieldMapper;
-import org.elasticsearch.index.mapper.TextFieldMapper;
-import org.elasticsearch.index.mapper.TimestampFieldMapper;
+import org.elasticsearch.index.cache.query.CacheableQueryWrapper;
+import org.elasticsearch.index.mapper.*;
 import org.elasticsearch.index.query.support.QueryParsers;
 import org.joda.time.DateTimeZone;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * A query that parses a query string and runs it. There are two modes that this operates. The first,
@@ -116,6 +100,7 @@ public class QueryStringQueryBuilder extends AbstractQueryBuilder<QueryStringQue
     private static final ParseField TIME_ZONE_FIELD = new ParseField("time_zone");
     private static final ParseField SPLIT_ON_WHITESPACE = new ParseField("split_on_whitespace");
     private static final ParseField ALL_FIELDS_FIELD = new ParseField("all_fields");
+    private static final ParseField CACHE_KEY = new ParseField("_cache_key");
 
     // Mapping types the "all-ish" query can be executed against
     public static final Set<String> ALLOWED_QUERY_MAPPER_TYPES;
@@ -188,6 +173,8 @@ public class QueryStringQueryBuilder extends AbstractQueryBuilder<QueryStringQue
 
     private Boolean useAllFields;
 
+    private String cacheKey;
+
     /** To limit effort spent determinizing regexp queries. */
     private int maxDeterminizedStates = DEFAULT_MAX_DETERMINED_STATES;
 
@@ -244,6 +231,7 @@ public class QueryStringQueryBuilder extends AbstractQueryBuilder<QueryStringQue
         } else {
             splitOnWhitespace = DEFAULT_SPLIT_ON_WHITESPACE;
         }
+        cacheKey = in.readOptionalString();
     }
 
     @Override
@@ -286,6 +274,7 @@ public class QueryStringQueryBuilder extends AbstractQueryBuilder<QueryStringQue
             out.writeBoolean(this.splitOnWhitespace);
             out.writeOptionalBoolean(this.useAllFields);
         }
+        out.writeOptionalString(cacheKey);
     }
 
     public String queryString() {
@@ -627,6 +616,15 @@ public class QueryStringQueryBuilder extends AbstractQueryBuilder<QueryStringQue
         return splitOnWhitespace;
     }
 
+    public QueryStringQueryBuilder cacheKey(String cacheKey) {
+        this.cacheKey = cacheKey;
+        return this;
+    }
+
+    public boolean canCache() {
+        return Strings.isNotEmpty(this.cacheKey);
+    }
+
     @Override
     protected void doXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject(NAME);
@@ -686,6 +684,9 @@ public class QueryStringQueryBuilder extends AbstractQueryBuilder<QueryStringQue
             builder.field(ALL_FIELDS_FIELD.getPreferredName(), this.useAllFields);
         }
         printBoostAndQueryName(builder);
+        if (this.cacheKey != null) {
+            builder.field(CACHE_KEY.getPreferredName(), this.cacheKey);
+        }
         builder.endObject();
     }
 
@@ -718,6 +719,7 @@ public class QueryStringQueryBuilder extends AbstractQueryBuilder<QueryStringQue
         Fuzziness fuzziness = QueryStringQueryBuilder.DEFAULT_FUZZINESS;
         String fuzzyRewrite = null;
         String rewrite = null;
+        String cacheKey = null;
         boolean splitOnWhitespace = DEFAULT_SPLIT_ON_WHITESPACE;
         Boolean useAllFields = null;
         Map<String, Float> fieldsAndWeights = new HashMap<>();
@@ -801,6 +803,8 @@ public class QueryStringQueryBuilder extends AbstractQueryBuilder<QueryStringQue
                     // ignore, deprecated setting
                 } else if (ALL_FIELDS_FIELD.match(currentFieldName)) {
                     useAllFields = parser.booleanValue();
+                } else if (CACHE_KEY.match(currentFieldName)) {
+                    cacheKey = parser.textOrNull();
                 } else if (TIME_ZONE_FIELD.match(currentFieldName)) {
                     try {
                         timeZone = parser.text();
@@ -859,6 +863,7 @@ public class QueryStringQueryBuilder extends AbstractQueryBuilder<QueryStringQue
         queryStringQuery.queryName(queryName);
         queryStringQuery.splitOnWhitespace(splitOnWhitespace);
         queryStringQuery.useAllFields(useAllFields);
+        queryStringQuery.cacheKey(cacheKey);
         return Optional.of(queryStringQuery);
     }
 
@@ -935,6 +940,15 @@ public class QueryStringQueryBuilder extends AbstractQueryBuilder<QueryStringQue
 
     @Override
     protected Query doToQuery(QueryShardContext context) throws IOException {
+        if (this.canCache()) {
+            Optional<ParsedQueryCache> parsedQueryCache = context.getParsedQueryCache();
+            if (parsedQueryCache.isPresent()) {
+                Query cachedQuery = parsedQueryCache.get().get(cacheKey);
+                if (cachedQuery != null) {
+                    return cachedQuery;
+                }
+            }
+        }
         //TODO would be nice to have all the settings in one place: some change though at query execution time
         //e.g. field names get expanded to concrete names, defaults get resolved sometimes to settings values etc.
         if (splitOnWhitespace == false && autoGeneratePhraseQueries) {
@@ -1059,6 +1073,11 @@ public class QueryStringQueryBuilder extends AbstractQueryBuilder<QueryStringQue
             query = new BoostQuery(query, boosts.get(i));
         }
 
+        if (this.canCache()) {
+            Query finalQuery = new CacheableQueryWrapper(query, cacheKey);
+            context.getParsedQueryCache().ifPresent(parsedQueryCache -> parsedQueryCache.put(cacheKey, finalQuery));
+            return finalQuery;
+        }
         return query;
     }
 
