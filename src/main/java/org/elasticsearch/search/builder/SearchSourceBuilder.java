@@ -35,6 +35,7 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.*;
 import org.elasticsearch.index.query.FilterBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.facet.FacetBuilder;
 import org.elasticsearch.search.fetch.source.FetchSourceContext;
@@ -315,13 +316,14 @@ public class SearchSourceBuilder implements ToXContent {
      * An optional terminate_after to terminate the search after
      * collecting <code>terminateAfter</code> documents
      */
-    public  SearchSourceBuilder terminateAfter(int terminateAfter) {
+    public SearchSourceBuilder terminateAfter(int terminateAfter) {
         if (terminateAfter <= 0) {
             throw new ElasticsearchIllegalArgumentException("terminateAfter must be > 0");
         }
         this.terminateAfter = terminateAfter;
         return this;
     }
+
     /**
      * Adds a sort against the given field name and the sort ordering.
      *
@@ -456,6 +458,7 @@ public class SearchSourceBuilder implements ToXContent {
 
     /**
      * Set the rescore window size for rescores that don't specify their window.
+     *
      * @param defaultRescoreWindowSize
      * @return
      */
@@ -649,7 +652,7 @@ public class SearchSourceBuilder implements ToXContent {
         return this;
     }
 
-    public SearchSourceBuilder targetClusterVersion(Version version){
+    public SearchSourceBuilder targetClusterVersion(Version version) {
         this.targetClusterVersion = version;
         return this;
     }
@@ -658,12 +661,11 @@ public class SearchSourceBuilder implements ToXContent {
      * Adds a partial field based on _source, with an "include" and/or "exclude" set which can include simple wildcard
      * elements.
      *
-     * @deprecated since 1.0.0
-     * use {@link SearchSourceBuilder#fetchSource(String, String)} instead
-     *
      * @param name    The name of the field
      * @param include An optional include (optionally wildcarded) pattern from _source
      * @param exclude An optional exclude (optionally wildcarded) pattern from _source
+     * @deprecated since 1.0.0
+     * use {@link SearchSourceBuilder#fetchSource(String, String)} instead
      */
     @Deprecated
     public SearchSourceBuilder partialField(String name, @Nullable String include, @Nullable String exclude) {
@@ -678,12 +680,11 @@ public class SearchSourceBuilder implements ToXContent {
      * Adds a partial field based on _source, with an "includes" and/or "excludes set which can include simple wildcard
      * elements.
      *
-     * @deprecated since 1.0.0
-     * use {@link SearchSourceBuilder#fetchSource(String[], String[])} instead
-     *
      * @param name     The name of the field
      * @param includes An optional list of includes (optionally wildcarded) patterns from _source
      * @param excludes An optional list of excludes (optionally wildcarded) patterns from _source
+     * @deprecated since 1.0.0
+     * use {@link SearchSourceBuilder#fetchSource(String[], String[])} instead
      */
     @Deprecated
     public SearchSourceBuilder partialField(String name, @Nullable String[] includes, @Nullable String[] excludes) {
@@ -776,7 +777,11 @@ public class SearchSourceBuilder implements ToXContent {
 
         if (postFilterBuilder != null) {
             builder.field("post_filter");
-            postFilterBuilder.toXContent(builder, params);
+            if (ToXContentUtils.getVersionFromParams(params).onOrAfter(Version.V_5_0_0)) {
+                QueryBuilders.constantScoreQuery(postFilterBuilder).toXContent(builder, params);
+            } else {
+                postFilterBuilder.toXContent(builder, params);
+            }
         }
 
         if (filterBinary != null) {

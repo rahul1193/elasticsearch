@@ -25,7 +25,6 @@ import org.elasticsearch.action.ActionResponse;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequestBuilder;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthStatus;
-import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequestBuilder;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
@@ -159,6 +158,15 @@ public class RestClientTest extends AbstractRestClientTest {
         ImmutableOpenMap<String, Settings> settings = client.admin().indices().getIndex(new GetIndexRequest().addFeatures(GetIndexRequest.Feature.SETTINGS)).actionGet()
                 .getSettings();
         assert settings != null;
+    }
+
+    @Test
+    public void postFilterTest() {
+        SearchRequestBuilder searchRequestBuilder = new SearchRequestBuilder(client);
+        searchRequestBuilder.setIndices("tweet_p999999_v7");
+        searchRequestBuilder.setPostFilter(FilterBuilders.boolFilter().must(FilterBuilders.termFilter("ln", "en")));
+        SearchResponse searchResponse = searchRequestBuilder.execute().actionGet();
+        assert searchResponse.getHits().getMaxScore() == 1.0;
     }
 
     @Test
