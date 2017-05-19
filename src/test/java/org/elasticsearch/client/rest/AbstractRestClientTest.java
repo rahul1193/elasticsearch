@@ -91,7 +91,7 @@ public abstract class AbstractRestClientTest {
         documentary
     }
 
-    private static final boolean USE_REST = false;
+    private static final boolean USE_REST = true;
 
     @Before
     public void setUp() {
