@@ -20,10 +20,14 @@
 package org.elasticsearch.search.sort;
 
 import com.google.common.collect.Maps;
+import org.elasticsearch.Version;
+import org.elasticsearch.common.xcontent.ToXContentUtils;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.index.query.FilterBuilder;
+import org.elasticsearch.script.ScriptService;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -137,20 +141,33 @@ public class ScriptSortBuilder extends SortBuilder {
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject("_script");
-        builder.field("script", script);
         builder.field("type", type);
-        if (order == SortOrder.DESC) {
-            builder.field("reverse", true);
+        if (ToXContentUtils.getVersionFromParams(params).onOrAfter(Version.V_5_0_0)) {
+            writeScriptObject(builder);
+            if (sortMode != null) {
+                builder.field("mode", SortMode.fromString(sortMode));
+            }
+            if (order != null) {
+                builder.field("order", order.toString());
+            }
+        } else {
+            builder.field("script", script);
+            if (lang != null) {
+                builder.field("lang", lang);
+            }
+            if (this.params != null) {
+                builder.field("params", this.params);
+            }
+
+            if (order == SortOrder.DESC) {
+                builder.field("reverse", true);
+            }
+
+            if (sortMode != null) {
+                builder.field("mode", sortMode);
+            }
         }
-        if (lang != null) {
-            builder.field("lang", lang);
-        }
-        if (this.params != null) {
-            builder.field("params", this.params);
-        }
-        if (sortMode != null) {
-            builder.field("mode", sortMode);
-        }
+
         if (nestedPath != null) {
             builder.field("nested_path", nestedPath);
         }
@@ -159,5 +176,18 @@ public class ScriptSortBuilder extends SortBuilder {
         }
         builder.endObject();
         return builder;
+    }
+
+    private void writeScriptObject(XContentBuilder builder) throws IOException {
+        builder.startObject("script");
+        builder.field(ScriptService.ScriptType.INLINE.name().toLowerCase(Locale.ROOT), script);
+        if (this.lang != null) {
+            builder.field("lang", lang);
+        }
+
+        if (this.params != null) {
+            builder.field("params", this.params);
+        }
+        builder.endObject();
     }
 }

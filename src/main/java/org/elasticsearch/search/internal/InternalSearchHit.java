@@ -43,6 +43,7 @@ import org.elasticsearch.search.lookup.SourceLookup;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import static org.elasticsearch.common.lucene.Lucene.readExplanation;
@@ -411,8 +412,10 @@ public class InternalSearchHit implements SearchHit {
         sort {
             @Override
             public void apply(XContentObject in, InternalSearchHit response) throws IOException {
-                response.sortValues = null;
-
+                List<Object> objects = in.getAsObjects(this.name());
+                if (objects != null && !objects.isEmpty()) {
+                    response.sortValues = objects.toArray(new Object[objects.size()]);
+                }
             }
 
         },
@@ -420,7 +423,7 @@ public class InternalSearchHit implements SearchHit {
             @Override
             public void apply(XContentObject in, InternalSearchHit response) throws IOException {
                 XContentObject xFields = in.getAsXContentObject(this);
-                response.fields =  new HashMap<>(xFields.size());
+                response.fields = new HashMap<>(xFields.size());
                 for (String fieldName : xFields.keySet()) {
                     SearchHitField searchHitField = InternalSearchHitField.readSearchHitField(fieldName, xFields);
                     response.fields.put(fieldName, searchHitField);

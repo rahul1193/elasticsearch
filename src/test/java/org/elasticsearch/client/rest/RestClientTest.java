@@ -116,6 +116,7 @@ import org.elasticsearch.search.aggregations.metrics.stats.extended.ExtendedStat
 import org.elasticsearch.search.aggregations.metrics.sum.Sum;
 import org.elasticsearch.search.aggregations.metrics.tophits.TopHits;
 import org.elasticsearch.search.aggregations.metrics.valuecount.ValueCount;
+import org.elasticsearch.search.sort.ScriptSortBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.Suggest;
 import org.elasticsearch.search.suggest.SuggestBuilders;
@@ -143,6 +144,35 @@ public class RestClientTest extends AbstractRestClientTest {
     @After
     public void tearDown() {
         super.tearDown();
+    }
+
+    @Test
+    public void testSortSettings() {
+        SearchRequestBuilder searchRequestBuilder = new SearchRequestBuilder(client);
+        searchRequestBuilder.addSort(new ScriptSortBuilder("doc['t'].value", "number").order(SortOrder.DESC));
+        searchRequestBuilder.setIndices("tweet_p999999_v7");
+        searchRequestBuilder.setSize(2);
+        searchRequestBuilder.setFrom(0);
+        searchRequestBuilder.setFetchSource(false);
+        SearchResponse searchResponse = searchRequestBuilder.execute().actionGet();
+        SearchHit[] hits = searchResponse.getHits().getHits();
+        SearchHit hit1 = hits[0];
+        SearchHit hit2 = hits[1];
+        assert (Double) hit2.sortValues()[0] < (Double) hit1.sortValues()[0];
+    }
+
+    @Test
+    public void testSortSettings1_4() {
+        SearchRequestBuilder searchRequestBuilder = new SearchRequestBuilder(client);
+        searchRequestBuilder.addSort(new ScriptSortBuilder("doc['id'].value", "number").order(SortOrder.DESC));
+        searchRequestBuilder.setIndices("rahul_test_index");
+        searchRequestBuilder.setSize(1);
+        searchRequestBuilder.setFrom(0);
+        searchRequestBuilder.setFetchSource(false);
+        SearchResponse searchResponse = searchRequestBuilder.execute().actionGet();
+        SearchHit[] hits = searchResponse.getHits().getHits();
+        SearchHit hit1 = hits[0];
+        assert 4 < (Double) hit1.sortValues()[0];
     }
 
     @Test
