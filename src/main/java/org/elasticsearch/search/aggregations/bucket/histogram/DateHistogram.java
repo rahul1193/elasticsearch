@@ -18,6 +18,7 @@
  */
 package org.elasticsearch.search.aggregations.bucket.histogram;
 
+import org.elasticsearch.common.Strings;
 import org.joda.time.DateTime;
 
 import java.util.List;
@@ -84,6 +85,23 @@ public interface DateHistogram extends Histogram {
         private final String expression;
 
         public Interval(String expression) {
+            if (Strings.hasLength(expression)) {
+                char lastChar = expression.charAt(expression.length() - 1);
+                switch (lastChar) {
+                    case '0':
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
+                    case '9':
+                        expression += "ms";
+                        break;
+                }
+            }
             this.expression = expression;
         }
 

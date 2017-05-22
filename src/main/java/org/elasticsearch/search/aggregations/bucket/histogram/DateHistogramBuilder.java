@@ -191,6 +191,9 @@ public class DateHistogramBuilder extends ValuesSourceAggregationBuilder<DateHis
         }
         if (interval instanceof Number) {
             interval = TimeValue.timeValueMillis(((Number) interval).longValue()).toString();
+            if (ToXContentUtils.getVersionFromParams(params).onOrAfter(Version.V_5_0_0)) {
+                interval += "ms";
+            }
         }
         builder.field("interval", interval);
 
