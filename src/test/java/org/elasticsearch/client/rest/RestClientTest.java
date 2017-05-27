@@ -64,12 +64,17 @@ import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.IndicesAdminClient;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.Strings;
+import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.elasticsearch.common.geo.GeoPoint;
+import org.elasticsearch.common.inject.ModulesBuilder;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.DistanceUnit;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.common.xcontent.XContentHelper;
+import org.elasticsearch.common.xcontent.XContentObject;
+import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.index.engine.DocumentMissingException;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
 import org.elasticsearch.index.query.ConstantScoreQueryBuilder;
@@ -80,6 +85,7 @@ import org.elasticsearch.indices.IndexAlreadyExistsException;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.TransportSearchModule;
 import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
@@ -144,6 +150,22 @@ public class RestClientTest extends AbstractRestClientTest {
     @After
     public void tearDown() {
         super.tearDown();
+    }
+
+    @Test
+    public void testResponse() throws IOException {
+        ModulesBuilder modules = new ModulesBuilder();
+        modules.add(new TransportSearchModule());
+        modules.createInjector();
+        XContentParser parser = XContentHelper.createParser(new BytesArray(
+                "{\"took\":7,\"timed_out\":false,\"_shards\":{\"total\":4,\"successful\":4," +
+                        "\"failed\":0},\"hits\":{\"total\":5672879,\"max_score\":0.0,\"hits\":[]}," +
+                        "\"aggregations\":{\"global\":{\"buckets\":[{\"doc_count\":0," +
+                        "\"Topics_dimension_daily_terms\":{\"buckets\":{\"57eb671fe4b0086b1d8a966d\":{\"doc_count\":0,\"Topics_dimension_minute_histogram\":{\"buckets\":[],\"_type\":\"date_histogram\"}}},\"_type\":\"filters\"}}],\"_type\":\"filters\"},\"groupBy\":{\"buckets\":[{\"doc_count\":0,\"Topics\":{\"buckets\":{\"57eb671fe4b0086b1d8a966d\":{\"doc_count\":0,\"Topics_dimension_minute_histogram\":{\"buckets\":[],\"_type\":\"date_histogram\"}}},\"_type\":\"filters\"}}],\"_type\":\"filters\"}}}"));
+        XContentObject xContentObject = parser.xContentObject();
+        SearchResponse searchResponse = new SearchResponse();
+        searchResponse.readFrom(xContentObject);
+        System.out.println(searchResponse);
     }
 
     @Test

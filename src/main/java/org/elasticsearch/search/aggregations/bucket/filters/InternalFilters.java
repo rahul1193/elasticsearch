@@ -179,16 +179,27 @@ public class InternalFilters extends InternalAggregation implements Filters {
 
     public void readFrom(XContentObject in) throws IOException {
         this.name = in.get(CommonJsonField._name);
-        Map<String, XContentObject> bucketsXContent = in.getAsXContentObjectsMap(CommonJsonField.buckets);
-        List<Bucket> buckets = Lists.newArrayListWithCapacity(bucketsXContent.size());
-        for (Map.Entry<String, XContentObject> entry : bucketsXContent.entrySet()) {
-            XContentObject xBucket = entry.getValue();
-            InternalAggregations aggregations = InternalAggregations.readAggregations(xBucket);
-            buckets.add(new Bucket(entry.getKey(), xBucket.getAsLong(CommonJsonField.doc_count), aggregations));
+        Map<String, Object> internalMap = in.getInternalMap();
+        Object o = internalMap.get(CommonJsonField.buckets.name());
+        if (Collection.class.isAssignableFrom(o.getClass())) {
+            List<XContentObject> bucketsXContents = in.getAsXContentObjects(CommonJsonField.buckets);
+            List<Bucket> buckets = Lists.newArrayListWithCapacity(bucketsXContents.size());
+            for (XContentObject xBucket : bucketsXContents) {
+                InternalAggregations aggregations = InternalAggregations.readAggregations(xBucket);
+                buckets.add(new Bucket(null, xBucket.getAsLong(CommonJsonField.doc_count), aggregations));
+            }
+            this.buckets = buckets;
+        } else {
+            Map<String, XContentObject> xContentBuckets = in.getAsXContentObjectsMap(CommonJsonField.buckets);
+            List<Bucket> buckets = Lists.newArrayListWithCapacity(xContentBuckets.size());
+            for (Map.Entry<String, XContentObject> entry : xContentBuckets.entrySet()) {
+                XContentObject xBucket = entry.getValue();
+                InternalAggregations aggregations = InternalAggregations.readAggregations(xBucket);
+                buckets.add(new Bucket(entry.getKey(), xBucket.getAsLong(CommonJsonField.doc_count), aggregations));
+            }
+            this.buckets = buckets;
         }
-        this.buckets = buckets;
         this.bucketMap = null;
-
     }
 
     @Override
