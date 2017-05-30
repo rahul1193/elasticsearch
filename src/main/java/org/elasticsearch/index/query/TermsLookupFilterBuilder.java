@@ -115,9 +115,11 @@ public class TermsLookupFilterBuilder extends BaseFilterBuilder {
             boolFilter.must(this);
             boolFilter.cache(true);
             boolFilter.cacheKey(cacheKey);
-            cache = null;
-            cacheKey = null; // avoid recursion
+            boolean cacheCopy = cache;
+            String cacheKeyCopy = cacheKey; // avoid recursion
             boolFilter.doXContent(builder, params);
+            this.cache = cacheCopy;
+            this.cacheKey = cacheKeyCopy;
         } else {
             doLookupXContent(builder, params);
         }
