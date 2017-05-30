@@ -81,6 +81,7 @@ import org.elasticsearch.index.query.ConstantScoreQueryBuilder;
 import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.IdsQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.TermsLookupFilterBuilder;
 import org.elasticsearch.indices.IndexAlreadyExistsException;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.search.SearchHit;
@@ -1697,6 +1698,29 @@ public class RestClientTest extends AbstractRestClientTest {
                 .setQuery(QueryBuilders.termQuery("color", "red")).get();
         assertNotNull(existsResponse);
         assertTrue(existsResponse.exists());
+    }
+
+    @Test
+    public void testTermsLookupFilter() throws ExecutionException, InterruptedException {
+        indexDocument(100);
+
+        IndexResponse indexResponse = indexDocument();
+        String index = indexResponse.getIndex();
+        String type = indexResponse.getType();
+        String id = indexResponse.getId();
+
+        TermsLookupFilterBuilder filter = FilterBuilders.termsLookupFilter("color");
+        filter.lookupIndex(index);
+        filter.lookupType(type);
+        filter.lookupId(id);
+        filter.lookupPath("color");
+        filter.cache(true);
+        filter.cacheKey("LST_TEST_" + UUID.randomUUID().toString());
+        SearchResponse lookupResponse = client.prepareSearch(index).setQuery(QueryBuilders.constantScoreQuery(filter)).get();
+        assertNotNull(lookupResponse);
+        assertNotNull(lookupResponse.getHits());
+        assertTrue(lookupResponse.getHits().getTotalHits() > 1);
+        assertTrue(lookupResponse.getHits().getTotalHits() < 101);
     }
 
     @Test

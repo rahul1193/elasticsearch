@@ -19,6 +19,10 @@
 
 package org.elasticsearch.index.query;
 
+import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.elasticsearch.Version;
+import org.elasticsearch.common.xcontent.ToXContentUtils;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
 import java.io.IOException;
@@ -106,6 +110,20 @@ public class TermsLookupFilterBuilder extends BaseFilterBuilder {
 
     @Override
     public void doXContent(XContentBuilder builder, Params params) throws IOException {
+        if (ToXContentUtils.getVersionFromParams(params).onOrAfter(Version.V_5_0_0) && BooleanUtils.isTrue(cache) && StringUtils.isNotBlank(cacheKey)) {
+            BoolFilterBuilder boolFilter = FilterBuilders.boolFilter();
+            boolFilter.must(this);
+            boolFilter.cache(true);
+            boolFilter.cacheKey(cacheKey);
+            cache = null;
+            cacheKey = null; // avoid recursion
+            boolFilter.doXContent(builder, params);
+        } else {
+            doLookupXContent(builder, params);
+        }
+    }
+
+    private void doLookupXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject(TermsFilterParser.NAME);
 
         builder.startObject(name);
