@@ -111,17 +111,23 @@ public class TermsLookupFilterBuilder extends BaseFilterBuilder {
     @Override
     public void doXContent(XContentBuilder builder, Params params) throws IOException {
         if (ToXContentUtils.getVersionFromParams(params).onOrAfter(Version.V_5_0_0) && BooleanUtils.isTrue(cache) && StringUtils.isNotBlank(cacheKey)) {
-            BoolFilterBuilder boolFilter = FilterBuilders.boolFilter();
-            boolFilter.must(this);
-            boolFilter.cache(true);
-            boolFilter.cacheKey(cacheKey);
-            boolean cacheCopy = cache;
-            String cacheKeyCopy = cacheKey; // avoid recursion
-            boolFilter.doXContent(builder, params);
-            this.cache = cacheCopy;
-            this.cacheKey = cacheKeyCopy;
+            BoolFilterBuilder boolFilter = FilterBuilders.boolFilter().must(this).cache(true).cacheKey(cacheKey);
+            doCopyingCacheKey(builder, params, boolFilter);
         } else {
             doLookupXContent(builder, params);
+        }
+    }
+
+    private void doCopyingCacheKey(XContentBuilder builder, Params params, BoolFilterBuilder boolFilter) throws IOException {
+        boolean cacheCopy = cache;
+        String cacheKeyCopy = cacheKey;
+        cache = null; // avoid recursion
+        cacheKey = null;
+        try {
+            boolFilter.doXContent(builder, params);
+        } finally {
+            this.cache = cacheCopy;
+            this.cacheKey = cacheKeyCopy;
         }
     }
 
