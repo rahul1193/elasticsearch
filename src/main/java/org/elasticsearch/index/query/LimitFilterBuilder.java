@@ -19,6 +19,8 @@
 
 package org.elasticsearch.index.query;
 
+import org.elasticsearch.Version;
+import org.elasticsearch.common.xcontent.ToXContentUtils;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
 import java.io.IOException;
@@ -33,8 +35,13 @@ public class LimitFilterBuilder extends BaseFilterBuilder {
 
     @Override
     protected void doXContent(XContentBuilder builder, Params params) throws IOException {
-        builder.startObject(LimitFilterParser.NAME);
-        builder.field("value", limit);
-        builder.endObject();
+        if (ToXContentUtils.getVersionFromParams(params).onOrAfter(Version.V_5_0_0)) {
+            // not supported in es5
+            FilterBuilders.matchAllFilter().doXContent(builder, params);
+        } else {
+            builder.startObject(LimitFilterParser.NAME);
+            builder.field("value", limit);
+            builder.endObject();
+        }
     }
 }

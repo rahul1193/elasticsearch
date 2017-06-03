@@ -50,6 +50,10 @@ public class SignificantTermsBuilder extends AggregationBuilder<SignificantTerms
     private FilterBuilder filterBuilder;
     private SignificanceHeuristicBuilder significanceHeuristicBuilder;
 
+
+    private String[] includeValues;
+    private String[] excludeValues;
+
     /**
      * Sole constructor.
      */
@@ -158,6 +162,28 @@ public class SignificantTermsBuilder extends AggregationBuilder<SignificantTerms
         return this;
     }
 
+
+    /**
+     * pass in the values to include, supported only in es5, for older versions use {@link #include(String, int)}
+     *
+     * @see java.util.regex.Pattern#compile(String, int)
+     */
+    public SignificantTermsBuilder include(String[] includeValues) {
+        this.includeValues = includeValues;
+        return this;
+    }
+
+    /**
+     * pass in the values to exclude, supported only in es5, for older versions use {@link #exclude(String, int)}
+     *
+     * @see java.util.regex.Pattern#compile(String, int)
+     */
+    public SignificantTermsBuilder exclude(String[] excludeValues) {
+        this.excludeValues = excludeValues;
+        return this;
+    }
+
+
     @Override
     protected XContentBuilder internalXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject();
@@ -168,24 +194,41 @@ public class SignificantTermsBuilder extends AggregationBuilder<SignificantTerms
         if (executionHint != null) {
             builder.field(AbstractTermsParametersParser.EXECUTION_HINT_FIELD_NAME.getPreferredName(), executionHint);
         }
-        if (includePattern != null) {
-            if (includeFlags == 0) {
-                builder.field("include", includePattern);
+        if (includeValues != null) {
+            if (ToXContentUtils.getVersionFromParams(params).onOrAfter(Version.V_5_0_0)) {
+                builder.array("include", includeValues);
             } else {
-                builder.startObject("include")
-                        .field("pattern", includePattern);
-                writeFlags(params, builder, includeFlags);
-                builder.endObject();
+                throw new UnsupportedOperationException("includeValues is not supported for versions before 5, use include regex instead");
+            }
+        } else {
+            if (includePattern != null) {
+                if (includeFlags == 0) {
+                    builder.field("include", includePattern);
+                } else {
+                    builder.startObject("include")
+                            .field("pattern", includePattern);
+                    writeFlags(params, builder, includeFlags);
+                    builder.endObject();
+                }
             }
         }
-        if (excludePattern != null) {
-            if (excludeFlags == 0) {
-                builder.field("exclude", excludePattern);
+
+        if (excludeValues != null) {
+            if (ToXContentUtils.getVersionFromParams(params).onOrAfter(Version.V_5_0_0)) {
+                builder.array("exclude", excludeValues);
             } else {
-                builder.startObject("exclude")
-                        .field("pattern", excludePattern);
-                writeFlags(params, builder, excludeFlags);
-                builder.endObject();
+                throw new UnsupportedOperationException("excludeValues is not supported for versions before 5, use exclude regex instead");
+            }
+        } else {
+            if (excludePattern != null) {
+                if (excludeFlags == 0) {
+                    builder.field("exclude", excludePattern);
+                } else {
+                    builder.startObject("exclude")
+                            .field("pattern", excludePattern);
+                    writeFlags(params, builder, excludeFlags);
+                    builder.endObject();
+                }
             }
         }
 
