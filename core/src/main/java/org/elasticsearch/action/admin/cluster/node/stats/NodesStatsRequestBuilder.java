@@ -145,4 +145,9 @@ public class NodesStatsRequestBuilder extends NodesOperationRequestBuilder<Nodes
         request.ingest(ingest);
         return this;
     }
+
+    public NodesStatsRequestBuilder parsedQueryCache(boolean parsedQueryCache) {
+        request.parsedQueryCache(parsedQueryCache);
+        return this;
+    }
 }

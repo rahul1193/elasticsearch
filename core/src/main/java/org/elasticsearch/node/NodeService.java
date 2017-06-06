@@ -98,7 +98,7 @@ public class NodeService extends AbstractComponent implements Closeable {
 
     public NodeStats stats(CommonStatsFlags indices, boolean os, boolean process, boolean jvm, boolean threadPool,
                            boolean fs, boolean transport, boolean http, boolean circuitBreaker,
-                           boolean script, boolean discoveryStats, boolean ingest) {
+                           boolean script, boolean discoveryStats, boolean ingest, boolean parsedQueryCache) {
         // for indices stats we want to include previous allocated shards stats as well (it will
         // only be applied to the sensible ones to use, like refresh/merge/flush/indexing stats)
         return new NodeStats(discovery.localNode(), System.currentTimeMillis(),
@@ -113,7 +113,8 @@ public class NodeService extends AbstractComponent implements Closeable {
                 circuitBreaker ? circuitBreakerService.stats() : null,
                 script ? scriptService.stats() : null,
                 discoveryStats ? discovery.stats() : null,
-                ingest ? ingestService.getPipelineExecutionService().stats() : null
+                ingest ? ingestService.getPipelineExecutionService().stats() : null,
+                parsedQueryCache && indicesService.getParsedQueryCache() != null ? indicesService.getParsedQueryCache().getStats() : null
         );
     }
 

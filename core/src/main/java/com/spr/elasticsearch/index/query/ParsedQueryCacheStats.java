@@ -22,7 +22,7 @@ package com.spr.elasticsearch.index.query;
 import org.apache.lucene.search.DocIdSet;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
-import org.elasticsearch.common.io.stream.Streamable;
+import org.elasticsearch.common.io.stream.Writeable;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
@@ -30,13 +30,19 @@ import java.io.IOException;
 
 /**
  */
-public class ParsedQueryCacheStats implements Streamable, ToXContent {
+public class ParsedQueryCacheStats implements Writeable, ToXContent {
 
     private long hitCount;
     private long missCount;
     private long cacheCount;
 
     public ParsedQueryCacheStats() {
+    }
+
+    public ParsedQueryCacheStats(StreamInput in) throws IOException {
+        hitCount = in.readLong();
+        missCount = in.readLong();
+        cacheCount = in.readLong();
     }
 
     public ParsedQueryCacheStats(long hitCount, long missCount, long cacheCount) {
@@ -77,19 +83,6 @@ public class ParsedQueryCacheStats implements Streamable, ToXContent {
      */
     public long getCacheCount() {
         return cacheCount;
-    }
-
-    public static ParsedQueryCacheStats readQueryCacheStats(StreamInput in) throws IOException {
-        ParsedQueryCacheStats stats = new ParsedQueryCacheStats();
-        stats.readFrom(in);
-        return stats;
-    }
-
-    @Override
-    public void readFrom(StreamInput in) throws IOException {
-        hitCount = in.readLong();
-        missCount = in.readLong();
-        cacheCount = in.readLong();
     }
 
     @Override

@@ -135,9 +135,6 @@ public class TransportIndicesStatsAction extends TransportBroadcastByNodeAction<
         if (request.queryCache()) {
             flags.set(CommonStatsFlags.Flag.QueryCache);
         }
-        if (request.parsedQueryCache()) {
-            flags.set(CommonStatsFlags.Flag.ParsedQueryCache);
-        }
         if (request.fieldData()) {
             flags.set(CommonStatsFlags.Flag.FieldData);
             flags.fieldDataFields(request.fieldDataFields());
@@ -163,6 +160,6 @@ public class TransportIndicesStatsAction extends TransportBroadcastByNodeAction<
             flags.set(CommonStatsFlags.Flag.Recovery);
         }
 
-        return new ShardStats(indexShard.routingEntry(), indexShard.shardPath(), new CommonStats(indicesService.getParsedQueryCache(), indicesService.getIndicesQueryCache(), indexShard, flags), indexShard.commitStats());
+        return new ShardStats(indexShard.routingEntry(), indexShard.shardPath(), new CommonStats(indicesService.getIndicesQueryCache(), indexShard, flags), indexShard.commitStats());
     }
 }

@@ -519,7 +519,7 @@ public class IndexShardTests extends IndexShardTestCase {
     public void testShardStats() throws IOException {
         IndexShard shard = newStartedShard();
         ShardStats stats = new ShardStats(shard.routingEntry(), shard.shardPath(),
-            new CommonStats(null, new IndicesQueryCache(Settings.EMPTY), shard, new CommonStatsFlags()), shard.commitStats());
+            new CommonStats(new IndicesQueryCache(Settings.EMPTY), shard, new CommonStatsFlags()), shard.commitStats());
         assertEquals(shard.shardPath().getRootDataPath().toString(), stats.getDataPath());
         assertEquals(shard.shardPath().getRootStatePath().toString(), stats.getStatePath());
         assertEquals(shard.shardPath().isCustomDataPath(), stats.isCustomDataPath());

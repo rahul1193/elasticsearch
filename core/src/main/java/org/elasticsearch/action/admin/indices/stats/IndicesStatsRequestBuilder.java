@@ -117,11 +117,6 @@ public class IndicesStatsRequestBuilder extends BroadcastOperationRequestBuilder
         return this;
     }
 
-    public IndicesStatsRequestBuilder setParsedQueryCache(boolean parsedQueryCache) {
-        request.parsedQueryCache(parsedQueryCache);
-        return this;
-    }
-
     public IndicesStatsRequestBuilder setFieldData(boolean fieldData) {
         request.fieldData(fieldData);
         return this;

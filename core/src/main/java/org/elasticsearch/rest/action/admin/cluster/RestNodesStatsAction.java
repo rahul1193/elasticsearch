@@ -71,6 +71,7 @@ public class RestNodesStatsAction extends BaseRestHandler {
         metrics.put("script", r -> r.script(true));
         metrics.put("discovery", r -> r.discovery(true));
         metrics.put("ingest", r -> r.ingest(true));
+        metrics.put("parsed_query_cache", r -> r.parsedQueryCache(true));
         METRICS = Collections.unmodifiableMap(metrics);
     }
 

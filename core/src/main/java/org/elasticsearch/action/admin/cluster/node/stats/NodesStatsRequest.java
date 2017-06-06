@@ -43,6 +43,7 @@ public class NodesStatsRequest extends BaseNodesRequest<NodesStatsRequest> {
     private boolean script;
     private boolean discovery;
     private boolean ingest;
+    private boolean parsedQueryCache;
 
     public NodesStatsRequest() {
     }
@@ -71,6 +72,7 @@ public class NodesStatsRequest extends BaseNodesRequest<NodesStatsRequest> {
         this.script = true;
         this.discovery = true;
         this.ingest = true;
+        this.parsedQueryCache = true;
         return this;
     }
 
@@ -90,6 +92,7 @@ public class NodesStatsRequest extends BaseNodesRequest<NodesStatsRequest> {
         this.script = false;
         this.discovery = false;
         this.ingest = false;
+        this.parsedQueryCache = false;
         return this;
     }
 
@@ -265,6 +268,18 @@ public class NodesStatsRequest extends BaseNodesRequest<NodesStatsRequest> {
         return this;
     }
 
+    public boolean parsedQueryCache() {
+        return parsedQueryCache;
+    }
+
+    /**
+     * Should parsed query cache  statistics be returned.
+     */
+    public NodesStatsRequest parsedQueryCache(boolean parsedQueryCache) {
+        this.parsedQueryCache = parsedQueryCache;
+        return this;
+    }
+
     @Override
     public void readFrom(StreamInput in) throws IOException {
         super.readFrom(in);
@@ -280,6 +295,7 @@ public class NodesStatsRequest extends BaseNodesRequest<NodesStatsRequest> {
         script = in.readBoolean();
         discovery = in.readBoolean();
         ingest = in.readBoolean();
+        parsedQueryCache = in.readBoolean();
     }
 
     @Override
@@ -297,5 +313,6 @@ public class NodesStatsRequest extends BaseNodesRequest<NodesStatsRequest> {
         out.writeBoolean(script);
         out.writeBoolean(discovery);
         out.writeBoolean(ingest);
+        out.writeBoolean(parsedQueryCache);
     }
 }

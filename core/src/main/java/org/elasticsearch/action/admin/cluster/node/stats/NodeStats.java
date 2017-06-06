@@ -19,6 +19,7 @@
 
 package org.elasticsearch.action.admin.cluster.node.stats;
 
+import com.spr.elasticsearch.index.query.ParsedQueryCacheStats;
 import org.elasticsearch.action.support.nodes.BaseNodeResponse;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.common.Nullable;
@@ -85,6 +86,9 @@ public class NodeStats extends BaseNodeResponse implements ToXContent {
     @Nullable
     private IngestStats ingestStats;
 
+    @Nullable
+    private ParsedQueryCacheStats parsedQueryCacheStats;
+
     NodeStats() {
     }
 
@@ -94,7 +98,8 @@ public class NodeStats extends BaseNodeResponse implements ToXContent {
                      @Nullable AllCircuitBreakerStats breaker,
                      @Nullable ScriptStats scriptStats,
                      @Nullable DiscoveryStats discoveryStats,
-                     @Nullable IngestStats ingestStats) {
+                     @Nullable IngestStats ingestStats,
+                     @Nullable ParsedQueryCacheStats parsedQueryCacheStats) {
         super(node);
         this.timestamp = timestamp;
         this.indices = indices;
@@ -109,6 +114,7 @@ public class NodeStats extends BaseNodeResponse implements ToXContent {
         this.scriptStats = scriptStats;
         this.discoveryStats = discoveryStats;
         this.ingestStats = ingestStats;
+        this.parsedQueryCacheStats = parsedQueryCacheStats;
     }
 
     public long getTimestamp() {
@@ -198,6 +204,11 @@ public class NodeStats extends BaseNodeResponse implements ToXContent {
         return ingestStats;
     }
 
+    @Nullable
+    public ParsedQueryCacheStats getParsedQueryCacheStats() {
+        return parsedQueryCacheStats;
+    }
+
     public static NodeStats readNodeStats(StreamInput in) throws IOException {
         NodeStats nodeInfo = new NodeStats();
         nodeInfo.readFrom(in);
@@ -222,6 +233,7 @@ public class NodeStats extends BaseNodeResponse implements ToXContent {
         scriptStats = in.readOptionalWriteable(ScriptStats::new);
         discoveryStats = in.readOptionalWriteable(DiscoveryStats::new);
         ingestStats = in.readOptionalWriteable(IngestStats::new);
+        parsedQueryCacheStats = in.readOptionalWriteable(ParsedQueryCacheStats::new);
     }
 
     @Override
@@ -245,6 +257,7 @@ public class NodeStats extends BaseNodeResponse implements ToXContent {
         out.writeOptionalWriteable(scriptStats);
         out.writeOptionalWriteable(discoveryStats);
         out.writeOptionalWriteable(ingestStats);
+        out.writeOptionalWriteable(parsedQueryCacheStats);
     }
 
     @Override
@@ -304,6 +317,9 @@ public class NodeStats extends BaseNodeResponse implements ToXContent {
         }
         if (getIngestStats() != null) {
             getIngestStats().toXContent(builder, params);
+        }
+        if (getParsedQueryCacheStats() != null) {
+            getParsedQueryCacheStats().toXContent(builder, params);
         }
         return builder;
     }
