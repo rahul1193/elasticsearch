@@ -77,11 +77,7 @@ import org.elasticsearch.common.xcontent.XContentObject;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.index.engine.DocumentMissingException;
 import org.elasticsearch.index.engine.VersionConflictEngineException;
-import org.elasticsearch.index.query.ConstantScoreQueryBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
-import org.elasticsearch.index.query.IdsQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.TermsLookupFilterBuilder;
+import org.elasticsearch.index.query.*;
 import org.elasticsearch.indices.IndexAlreadyExistsException;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.search.SearchHit;
@@ -123,6 +119,7 @@ import org.elasticsearch.search.aggregations.metrics.stats.extended.ExtendedStat
 import org.elasticsearch.search.aggregations.metrics.sum.Sum;
 import org.elasticsearch.search.aggregations.metrics.tophits.TopHits;
 import org.elasticsearch.search.aggregations.metrics.valuecount.ValueCount;
+import org.elasticsearch.search.fetch.source.FetchSourceContext;
 import org.elasticsearch.search.sort.ScriptSortBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.Suggest;
@@ -197,6 +194,18 @@ public class RestClientTest extends AbstractRestClientTest {
         SearchHit hit1 = hits[0];
         assert 4 < (Double) hit1.sortValues()[0];
     }
+
+    @Test
+    public void testMultiGet() {
+        MultiGetRequestBuilder requestBuilder = new MultiGetRequestBuilder(client);
+        requestBuilder.add(new MultiGetRequest.Item("tweet_p999999_v4", "tweet", "678818515042742272")
+                .fetchSourceContext(new FetchSourceContext(false)));
+        MultiGetResponse multiGetItemResponses = requestBuilder.execute().actionGet();
+        for (MultiGetItemResponse multiGetItemResponse : multiGetItemResponses.getResponses()) {
+            assert multiGetItemResponse.getResponse().getSource() == null;
+        }
+    }
+
 
     @Test
     public void testUpdateSettings() {

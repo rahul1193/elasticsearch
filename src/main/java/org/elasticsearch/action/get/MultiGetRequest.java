@@ -257,6 +257,19 @@ public class MultiGetRequest extends ActionRequest<MultiGetRequest> implements I
                     .putIfNotNull("_id", id);
             if (this.fields != null && this.fields.length > 0) {
                 builder.put("_source", this.fields);
+            } else if (fetchSourceContext != null) {
+                if (fetchSourceContext.fetchSource() == false) {
+                    builder.put("_source", false);
+                } else {
+                    LinkedHashMap<Object, Object> fetchSource = new LinkedHashMap<>(2);
+                    builder.put("_source", fetchSource);
+                    if (fetchSourceContext.includes() != null) {
+                        fetchSource.put("include", fetchSourceContext.includes());
+                    }
+                    if (fetchSourceContext.includes() != null) {
+                        fetchSource.put("exclude", fetchSourceContext.excludes());
+                    }
+                }
             }
             return builder.map();
         }
@@ -553,7 +566,7 @@ public class MultiGetRequest extends ActionRequest<MultiGetRequest> implements I
         } else if (realtime == 1) {
             this.realtime = true;
         }
-        if(in.getVersion().onOrAfter(Version.V_1_4_0_Beta1)) {
+        if (in.getVersion().onOrAfter(Version.V_1_4_0_Beta1)) {
             ignoreErrorsOnGeneratedFields = in.readBoolean();
         }
 
@@ -576,7 +589,7 @@ public class MultiGetRequest extends ActionRequest<MultiGetRequest> implements I
         } else {
             out.writeByte((byte) 1);
         }
-        if(out.getVersion().onOrAfter(Version.V_1_4_0_Beta1)) {
+        if (out.getVersion().onOrAfter(Version.V_1_4_0_Beta1)) {
             out.writeBoolean(ignoreErrorsOnGeneratedFields);
         }
 
