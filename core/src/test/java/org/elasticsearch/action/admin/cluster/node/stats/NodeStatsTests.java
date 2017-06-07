@@ -40,12 +40,7 @@ import org.elasticsearch.threadpool.ThreadPoolStats;
 import org.elasticsearch.transport.TransportStats;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
@@ -390,6 +385,6 @@ public class NodeStatsTests extends ESTestCase {
         }
         //TODO NodeIndicesStats are not tested here, way too complicated to create, also they need to be migrated to Writeable yet
         return new NodeStats(node, randomNonNegativeLong(), null, osStats, processStats, jvmStats, threadPoolStats, fsInfo,
-                transportStats, httpStats, allCircuitBreakerStats, scriptStats, discoveryStats, ingestStats);
+                transportStats, httpStats, allCircuitBreakerStats, scriptStats, discoveryStats, ingestStats, null);
     }
 }

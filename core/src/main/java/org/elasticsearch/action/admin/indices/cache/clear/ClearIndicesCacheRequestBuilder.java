@@ -51,4 +51,9 @@ public class ClearIndicesCacheRequestBuilder extends BroadcastOperationRequestBu
         return this;
     }
 
+    public ClearIndicesCacheRequestBuilder parsedQueryCache(boolean parsedQueryCache) {
+        request.parsedQueryCache(parsedQueryCache);
+        return this;
+    }
+
 }

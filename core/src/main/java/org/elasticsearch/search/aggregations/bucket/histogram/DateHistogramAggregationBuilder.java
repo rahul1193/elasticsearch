@@ -142,6 +142,7 @@ public class DateHistogramAggregationBuilder
         dateHistogramInterval = in.readOptionalWriteable(DateHistogramInterval::new);
         offset = in.readLong();
         extendedBounds = in.readOptionalWriteable(ExtendedBounds::new);
+        reversePostTimeZone = in.readBoolean();
     }
 
     @Override
@@ -157,6 +158,7 @@ public class DateHistogramAggregationBuilder
         out.writeOptionalWriteable(dateHistogramInterval);
         out.writeLong(offset);
         out.writeOptionalWriteable(extendedBounds);
+        out.writeBoolean(reversePostTimeZone);
     }
 
     /** Get the current interval in milliseconds that is set on this builder. */

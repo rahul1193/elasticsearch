@@ -27,11 +27,7 @@ import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.rest.BaseRestHandler;
-import org.elasticsearch.rest.BytesRestResponse;
-import org.elasticsearch.rest.RestController;
-import org.elasticsearch.rest.RestRequest;
-import org.elasticsearch.rest.RestResponse;
+import org.elasticsearch.rest.*;
 import org.elasticsearch.rest.action.RestBuilderListener;
 
 import java.io.IOException;
@@ -90,6 +86,9 @@ public class RestClearIndicesCacheAction extends BaseRestHandler {
             if (Fields.RECYCLER.match(entry.getKey())) {
                 clearIndicesCacheRequest.recycler(request.paramAsBoolean(entry.getKey(), clearIndicesCacheRequest.recycler()));
             }
+            if(Fields.PARSED_QUERY_CACHE.match(entry.getKey())) {
+                clearIndicesCacheRequest.parsedQueryCache(request.paramAsBoolean(entry.getKey(), clearIndicesCacheRequest.parsedQueryCache()));
+            }
             if (Fields.FIELDS.match(entry.getKey())) {
                 clearIndicesCacheRequest.fields(request.paramAsStringArray(entry.getKey(), clearIndicesCacheRequest.fields()));
             }
@@ -102,6 +101,7 @@ public class RestClearIndicesCacheAction extends BaseRestHandler {
         public static final ParseField QUERY = new ParseField("query", "filter", "filter_cache");
         public static final ParseField REQUEST = new ParseField("request", "request_cache");
         public static final ParseField FIELD_DATA = new ParseField("field_data", "fielddata");
+        public static final ParseField PARSED_QUERY_CACHE = new ParseField("parsed_query", "parsed_query_cache");
         public static final ParseField RECYCLER = new ParseField("recycler");
         public static final ParseField FIELDS = new ParseField("fields");
     }

@@ -41,7 +41,6 @@ import org.elasticsearch.transport.TransportService;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.function.Consumer;
 
 
 /**
@@ -101,6 +100,12 @@ public class TransportClearIndicesCacheAction extends TransportBroadcastByNodeAc
                 clearedAtLeastOne = true;
                 indicesService.clearRequestCache(shard);
             }
+
+            if (request.parsedQueryCache()) {
+                clearedAtLeastOne = true;
+                service.parsedQueryCache().ifPresent(ParsedQueryCache::clear);
+            }
+
             if (request.recycler()) {
                 logger.debug("Clear CacheRecycler on index [{}]", service.index());
                 clearedAtLeastOne = true;

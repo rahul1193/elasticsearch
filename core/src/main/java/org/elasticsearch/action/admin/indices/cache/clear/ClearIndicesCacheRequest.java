@@ -34,8 +34,9 @@ public class ClearIndicesCacheRequest extends BroadcastRequest<ClearIndicesCache
     private boolean fieldDataCache = false;
     private boolean recycler = false;
     private boolean requestCache = false;
+    private boolean parsedQueryCache = false;
     private String[] fields = null;
-    
+
 
     public ClearIndicesCacheRequest() {
     }
@@ -84,7 +85,16 @@ public class ClearIndicesCacheRequest extends BroadcastRequest<ClearIndicesCache
         this.recycler = recycler;
         return this;
     }
-    
+
+    public ClearIndicesCacheRequest parsedQueryCache(boolean parsedQueryCache){
+        this.parsedQueryCache = parsedQueryCache;
+        return this;
+    }
+
+    public boolean parsedQueryCache(){
+        return parsedQueryCache;
+    }
+
     public boolean recycler() {
         return this.recycler;
     }
@@ -97,6 +107,7 @@ public class ClearIndicesCacheRequest extends BroadcastRequest<ClearIndicesCache
         recycler = in.readBoolean();
         fields = in.readStringArray();
         requestCache = in.readBoolean();
+        parsedQueryCache = in.readBoolean();
     }
 
     @Override
@@ -107,5 +118,6 @@ public class ClearIndicesCacheRequest extends BroadcastRequest<ClearIndicesCache
         out.writeBoolean(recycler);
         out.writeStringArrayNullable(fields);
         out.writeBoolean(requestCache);
+        out.writeBoolean(parsedQueryCache);
     }
 }
