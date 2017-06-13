@@ -22,7 +22,9 @@ package org.elasticsearch.index.analysis;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Mode;
+import org.apache.lucene.analysis.ja.SprJapaneseAnalyzer;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
+import org.apache.lucene.analysis.util.CharArraySet;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.env.Environment;
@@ -45,6 +47,7 @@ public class KuromojiTokenizerFactory extends AbstractTokenizerFactory {
     private final int nBestCost;
 
     private boolean discartPunctuation;
+    private final SprJapaneseAnalyzer analyzer;
 
     public KuromojiTokenizerFactory(IndexSettings indexSettings, Environment env, String name, Settings settings) {
         super(indexSettings, name, settings);
@@ -53,6 +56,7 @@ public class KuromojiTokenizerFactory extends AbstractTokenizerFactory {
         discartPunctuation = settings.getAsBoolean("discard_punctuation", false);
         nBestCost = settings.getAsInt(NBEST_COST, -1);
         nBestExamples = settings.get(NBEST_EXAMPLES);
+        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, CharArraySet.EMPTY_SET, SprJapaneseAnalyzer.getDefaultStopTags(), settings);
     }
 
     public static UserDictionary getUserDictionary(Environment env, Settings settings) {
@@ -89,13 +93,6 @@ public class KuromojiTokenizerFactory extends AbstractTokenizerFactory {
 
     @Override
     public Tokenizer create() {
-        JapaneseTokenizer t = new JapaneseTokenizer(userDictionary, discartPunctuation, mode);
-        int nBestCost = this.nBestCost;
-        if (nBestExamples != null) {
-            nBestCost = Math.max(nBestCost, t.calcNBestCost(nBestExamples));
-        }
-        t.setNBestCost(nBestCost);
-        return t;
+        return analyzer.getTokenizer();
     }
-
 }

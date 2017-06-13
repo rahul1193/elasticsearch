@@ -4,6 +4,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.StopwordAnalyzerBase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.cjk.CJKWidthFilter;
 import org.apache.lucene.analysis.core.LowerCaseFilter;
 import org.apache.lucene.analysis.core.StopFilter;
@@ -54,5 +55,12 @@ public class SprJapaneseAnalyzer extends StopwordAnalyzerBase {
 
     public static Set<String> getDefaultStopTags() {
         return DEFAULT_STOP_TAGS;
+    }
+
+    /**
+     * @return The base tokenizer without the additional filters, used in createComponents() method.
+     */
+    public Tokenizer getTokenizer() {
+        return new JapaneseTokenizer(userDict, false, JapaneseTokenizer.DEFAULT_MODE);
     }
 }
