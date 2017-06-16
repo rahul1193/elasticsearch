@@ -208,6 +208,8 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
         final Object leaf = context.reader().getCoreCacheKey();
         final String key = ((BooleanQuery) query).getCacheKey();
         cache.put(LeafCacheKey.of(leaf, key), set);
+        // we just created a new leaf cache, need to register a close listener
+        context.reader().addCoreClosedListener(this::clearCoreCacheKey);
         onDocIdSetCache(leaf, HASHTABLE_RAM_BYTES_PER_ENTRY + set.ramBytesUsed());
     }
 
