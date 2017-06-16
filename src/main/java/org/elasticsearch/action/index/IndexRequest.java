@@ -20,13 +20,11 @@
 package org.elasticsearch.action.index;
 
 import com.google.common.base.Charsets;
-import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
 import org.apache.http.HttpEntity;
 import org.apache.http.nio.entity.NStringEntity;
 import org.elasticsearch.*;
 import org.elasticsearch.action.*;
-import org.elasticsearch.action.support.replication.ReplicationType;
 import org.elasticsearch.action.support.replication.ShardReplicationOperationRequest;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
@@ -735,7 +733,11 @@ public class IndexRequest extends ShardReplicationOperationRequest<IndexRequest>
     @Override
     public String getEndPoint() {
         UriBuilder builder = UriBuilder.newBuilder();
-        return builder.slash(index, type, id).build();
+        builder.slash(index, type);
+        if (Strings.hasLength(id)) {
+            builder.slash(id);
+        }
+        return builder.build();
     }
 
     @Override

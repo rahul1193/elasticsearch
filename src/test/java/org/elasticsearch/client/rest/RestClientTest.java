@@ -302,6 +302,17 @@ public class RestClientTest extends AbstractRestClientTest {
         assertEquals(source.get("datePretty"), getResponse.getSourceAsMap().get("datePretty"));
     }
 
+    @Test
+    public void testIndexWithoutId() throws ExecutionException, InterruptedException {
+        IndexRequest request = new IndexRequest(index, STATS_TYPE);
+        Map<String, Object> source = Maps.newHashMap();
+        source.put("datePretty", "2016-02-28T05:30:00+05:30");
+        request.source(source);
+        IndexResponse indexResponse = this.client.index(request).get();
+        GetResponse getResponse = getDocument(indexResponse.getId());
+        assertEquals(source.get("datePretty"), getResponse.getSourceAsMap().get("datePretty"));
+    }
+
     @Test(expected = VersionConflictEngineException.class)
     public void testIndexDocExistsOpTypeCreate() throws Throwable {
         String id = UUID.randomUUID().toString();
