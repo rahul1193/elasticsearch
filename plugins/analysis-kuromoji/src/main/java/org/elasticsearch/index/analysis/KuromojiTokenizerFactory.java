@@ -19,12 +19,12 @@
 
 package org.elasticsearch.index.analysis;
 
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Mode;
 import org.apache.lucene.analysis.ja.SprJapaneseAnalyzer;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
-import org.apache.lucene.analysis.util.CharArraySet;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.env.Environment;
@@ -32,31 +32,28 @@ import org.elasticsearch.index.IndexSettings;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 /**
  */
 public class KuromojiTokenizerFactory extends AbstractTokenizerFactory {
 
     private static final String USER_DICT_OPTION = "user_dictionary";
-    private static final String NBEST_COST = "nbest_cost";
-    private static final String NBEST_EXAMPLES = "nbest_examples";
 
     private final UserDictionary userDictionary;
     private final Mode mode;
-    private final String nBestExamples;
-    private final int nBestCost;
 
-    private boolean discartPunctuation;
     private final SprJapaneseAnalyzer analyzer;
+    private final Supplier<KuromojiUserDictionarySyncService> serviceProvider;
+    private final AtomicBoolean registered = new AtomicBoolean(false);
 
-    public KuromojiTokenizerFactory(IndexSettings indexSettings, Environment env, String name, Settings settings) {
+    public KuromojiTokenizerFactory(IndexSettings indexSettings, Environment env, String name, Settings settings, Supplier<KuromojiUserDictionarySyncService> serviceProvider) {
         super(indexSettings, name, settings);
         mode = getMode(settings);
         userDictionary = getUserDictionary(env, settings);
-        discartPunctuation = settings.getAsBoolean("discard_punctuation", false);
-        nBestCost = settings.getAsInt(NBEST_COST, -1);
-        nBestExamples = settings.get(NBEST_EXAMPLES);
-        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, CharArraySet.EMPTY_SET, SprJapaneseAnalyzer.getDefaultStopTags(), settings);
+        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, CharArraySet.EMPTY_SET, SprJapaneseAnalyzer.getDefaultStopTags(), env.settings());
+        this.serviceProvider = serviceProvider;
     }
 
     public static UserDictionary getUserDictionary(Environment env, Settings settings) {
@@ -93,6 +90,9 @@ public class KuromojiTokenizerFactory extends AbstractTokenizerFactory {
 
     @Override
     public Tokenizer create() {
+        if (registered.compareAndSet(false, true)) {
+            serviceProvider.get().registerDictionaryConsumer(analyzer::setUserDictionary);
+        }
         return analyzer.getTokenizer();
     }
 }
