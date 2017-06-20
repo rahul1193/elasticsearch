@@ -40,10 +40,12 @@ public class TermsLookup implements Writeable, ToXContent {
     private final String id;
     private final String path;
     private String routing;
+    private String cacheKey;
 
     public TermsLookup(TermsLookup copy) {
         this(copy.index, copy.type, copy.id, copy.path);
         this.routing = copy.routing;
+        this.cacheKey = copy.cacheKey;
     }
 
     public TermsLookup(String index, String type, String id, String path) {
@@ -71,6 +73,7 @@ public class TermsLookup implements Writeable, ToXContent {
         path = in.readString();
         index = in.readOptionalString();
         routing = in.readOptionalString();
+        cacheKey = in.readOptionalString();
     }
 
     @Override
@@ -80,6 +83,7 @@ public class TermsLookup implements Writeable, ToXContent {
         out.writeString(path);
         out.writeOptionalString(index);
         out.writeOptionalString(routing);
+        out.writeOptionalString(cacheKey);
     }
 
     public String index() {
@@ -107,6 +111,10 @@ public class TermsLookup implements Writeable, ToXContent {
         return routing;
     }
 
+    public String cacheKey(){
+        return cacheKey;
+    }
+
     public TermsLookup routing(String routing) {
         this.routing = routing;
         return this;
@@ -118,6 +126,7 @@ public class TermsLookup implements Writeable, ToXContent {
         String id = null;
         String path = null;
         String routing = null;
+        String cacheKey = null;
         XContentParser.Token token;
         String currentFieldName = "";
         while ((token = parser.nextToken()) != XContentParser.Token.END_OBJECT) {
@@ -125,31 +134,39 @@ public class TermsLookup implements Writeable, ToXContent {
                 currentFieldName = parser.currentName();
             } else if (token.isValue()) {
                 switch (currentFieldName) {
-                case "index":
-                    index = parser.textOrNull();
-                    break;
-                case "type":
-                    type = parser.text();
-                    break;
-                case "id":
-                    id = parser.text();
-                    break;
-                case "routing":
-                    routing = parser.textOrNull();
-                    break;
-                case "path":
-                    path = parser.text();
-                    break;
-                default:
-                    throw new ParsingException(parser.getTokenLocation(), "[" + TermsQueryBuilder.NAME +
-                        "] query does not support [" + currentFieldName + "] within lookup element");
+                    case "index":
+                        index = parser.textOrNull();
+                        break;
+                    case "type":
+                        type = parser.text();
+                        break;
+                    case "id":
+                        id = parser.text();
+                        break;
+                    case "routing":
+                        routing = parser.textOrNull();
+                        break;
+                    case "path":
+                        path = parser.text();
+                        break;
+                    case "_cache_key":
+                        cacheKey = parser.textOrNull();
+                        break;
+                    default:
+                        throw new ParsingException(parser.getTokenLocation(), "[" + TermsQueryBuilder.NAME +
+                            "] query does not support [" + currentFieldName + "] within lookup element");
                 }
             } else {
                 throw new ParsingException(parser.getTokenLocation(), "[" + TermsQueryBuilder.NAME + "] unknown token ["
                     + token + "] after [" + currentFieldName + "]");
             }
         }
-        return new TermsLookup(index, type, id, path).routing(routing);
+        return new TermsLookup(index, type, id, path).routing(routing).cacheKey(cacheKey);
+    }
+
+    public TermsLookup cacheKey(String cacheKey) {
+        this.cacheKey = cacheKey;
+        return this;
     }
 
     @Override
@@ -168,12 +185,15 @@ public class TermsLookup implements Writeable, ToXContent {
         if (routing != null) {
             builder.field("routing", routing);
         }
+        if (cacheKey != null) {
+            builder.field("_cache_key", cacheKey);
+        }
         return builder;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(index, type, id, path, routing);
+        return Objects.hash(index, type, id, path, routing, cacheKey);
     }
 
     @Override
@@ -186,9 +206,10 @@ public class TermsLookup implements Writeable, ToXContent {
         }
         TermsLookup other = (TermsLookup) obj;
         return Objects.equals(index, other.index) &&
-                Objects.equals(type, other.type) &&
-                Objects.equals(id, other.id) &&
-                Objects.equals(path, other.path) &&
-                Objects.equals(routing, other.routing);
+            Objects.equals(type, other.type) &&
+            Objects.equals(id, other.id) &&
+            Objects.equals(path, other.path) &&
+            Objects.equals(cacheKey, other.cacheKey) &&
+            Objects.equals(routing, other.routing);
     }
 }

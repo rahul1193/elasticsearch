@@ -20,11 +20,7 @@ package org.elasticsearch.index.mapper;
 
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LegacyLongField;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.MultiReader;
+import org.apache.lucene.index.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IOUtils;
 import org.elasticsearch.common.joda.DateMathParser;
@@ -82,7 +78,7 @@ public class LegacyDateFieldTypeTests extends FieldTypeTestCase {
 
     private void doTestIsFieldWithinQuery(DateFieldType ft, DirectoryReader reader,
             DateTimeZone zone, DateMathParser alternateFormat) throws IOException {
-        QueryRewriteContext context = new QueryRewriteContext(null, null, null, xContentRegistry(), null, null, () -> nowInMillis);
+        QueryRewriteContext context = new QueryRewriteContext(null, null, null, xContentRegistry(), null, null, () -> nowInMillis, null);
         assertEquals(Relation.INTERSECTS, ft.isFieldWithinQuery(reader, "2015-10-09", "2016-01-02",
                 randomBoolean(), randomBoolean(), null, null, context));
         assertEquals(Relation.INTERSECTS, ft.isFieldWithinQuery(reader, "2016-01-02", "2016-06-20",

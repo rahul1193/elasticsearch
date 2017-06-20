@@ -60,10 +60,10 @@ public class NodeService extends AbstractComponent implements Closeable {
     private final Discovery discovery;
 
     NodeService(Settings settings, ThreadPool threadPool, MonitorService monitorService, Discovery discovery,
-                       TransportService transportService, IndicesService indicesService, PluginsService pluginService,
-                       CircuitBreakerService circuitBreakerService, ScriptService scriptService,
-                       @Nullable HttpServerTransport httpServerTransport, IngestService ingestService, ClusterService clusterService,
-                       SettingsFilter settingsFilter) {
+                TransportService transportService, IndicesService indicesService, PluginsService pluginService,
+                CircuitBreakerService circuitBreakerService, ScriptService scriptService,
+                @Nullable HttpServerTransport httpServerTransport, IngestService ingestService, ClusterService clusterService,
+                SettingsFilter settingsFilter) {
         super(settings);
         this.threadPool = threadPool;
         this.monitorService = monitorService;
@@ -81,40 +81,41 @@ public class NodeService extends AbstractComponent implements Closeable {
     }
 
     public NodeInfo info(boolean settings, boolean os, boolean process, boolean jvm, boolean threadPool,
-                boolean transport, boolean http, boolean plugin, boolean ingest, boolean indices) {
+                         boolean transport, boolean http, boolean plugin, boolean ingest, boolean indices) {
         return new NodeInfo(Version.CURRENT, Build.CURRENT, discovery.localNode(),
-                settings ? settingsFilter.filter(this.settings) : null,
-                os ? monitorService.osService().info() : null,
-                process ? monitorService.processService().info() : null,
-                jvm ? monitorService.jvmService().info() : null,
-                threadPool ? this.threadPool.info() : null,
-                transport ? transportService.info() : null,
-                http ? (httpServerTransport == null ? null : httpServerTransport.info()) : null,
-                plugin ? (pluginService == null ? null : pluginService.info()) : null,
-                ingest ? (ingestService == null ? null : ingestService.info()) : null,
-                indices ? indicesService.getTotalIndexingBufferBytes() : null
+            settings ? settingsFilter.filter(this.settings) : null,
+            os ? monitorService.osService().info() : null,
+            process ? monitorService.processService().info() : null,
+            jvm ? monitorService.jvmService().info() : null,
+            threadPool ? this.threadPool.info() : null,
+            transport ? transportService.info() : null,
+            http ? (httpServerTransport == null ? null : httpServerTransport.info()) : null,
+            plugin ? (pluginService == null ? null : pluginService.info()) : null,
+            ingest ? (ingestService == null ? null : ingestService.info()) : null,
+            indices ? indicesService.getTotalIndexingBufferBytes() : null
         );
     }
 
     public NodeStats stats(CommonStatsFlags indices, boolean os, boolean process, boolean jvm, boolean threadPool,
                            boolean fs, boolean transport, boolean http, boolean circuitBreaker,
-                           boolean script, boolean discoveryStats, boolean ingest, boolean parsedQueryCache) {
+                           boolean script, boolean discoveryStats, boolean ingest, boolean parsedQueryCache, boolean queryBuilderRewriteCache) {
         // for indices stats we want to include previous allocated shards stats as well (it will
         // only be applied to the sensible ones to use, like refresh/merge/flush/indexing stats)
         return new NodeStats(discovery.localNode(), System.currentTimeMillis(),
-                indices.anySet() ? indicesService.stats(true, indices) : null,
-                os ? monitorService.osService().stats() : null,
-                process ? monitorService.processService().stats() : null,
-                jvm ? monitorService.jvmService().stats() : null,
-                threadPool ? this.threadPool.stats() : null,
-                fs ? monitorService.fsService().stats() : null,
-                transport ? transportService.stats() : null,
-                http ? (httpServerTransport == null ? null : httpServerTransport.stats()) : null,
-                circuitBreaker ? circuitBreakerService.stats() : null,
-                script ? scriptService.stats() : null,
-                discoveryStats ? discovery.stats() : null,
-                ingest ? ingestService.getPipelineExecutionService().stats() : null,
-                parsedQueryCache && indicesService.getParsedQueryCache() != null ? indicesService.getParsedQueryCache().getStats() : null
+            indices.anySet() ? indicesService.stats(true, indices) : null,
+            os ? monitorService.osService().stats() : null,
+            process ? monitorService.processService().stats() : null,
+            jvm ? monitorService.jvmService().stats() : null,
+            threadPool ? this.threadPool.stats() : null,
+            fs ? monitorService.fsService().stats() : null,
+            transport ? transportService.stats() : null,
+            http ? (httpServerTransport == null ? null : httpServerTransport.stats()) : null,
+            circuitBreaker ? circuitBreakerService.stats() : null,
+            script ? scriptService.stats() : null,
+            discoveryStats ? discovery.stats() : null,
+            ingest ? ingestService.getPipelineExecutionService().stats() : null,
+            parsedQueryCache && indicesService.getParsedQueryCache() != null ? indicesService.getParsedQueryCache().getStats() : null,
+            queryBuilderRewriteCache && indicesService.getQueryBuilderRewriteCache() != null ? indicesService.getQueryBuilderRewriteCache().getStats() : null
         );
     }
 

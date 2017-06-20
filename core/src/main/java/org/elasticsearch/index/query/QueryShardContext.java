@@ -19,14 +19,8 @@
 
 package org.elasticsearch.index.query;
 
-import static java.util.Collections.unmodifiableMap;
-
-import java.io.IOException;
-import java.util.*;
-import java.util.function.Function;
-import java.util.function.LongSupplier;
-
 import com.spr.elasticsearch.index.query.ParsedQueryCache;
+import com.spr.elasticsearch.index.query.QueryBuilderRewriteCache;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.queryparser.classic.MapperQueryParser;
@@ -49,22 +43,18 @@ import org.elasticsearch.index.analysis.IndexAnalyzers;
 import org.elasticsearch.index.cache.bitset.BitsetFilterCache;
 import org.elasticsearch.index.fielddata.IndexFieldData;
 import org.elasticsearch.index.fielddata.IndexFieldDataService;
-import org.elasticsearch.index.mapper.ContentPath;
-import org.elasticsearch.index.mapper.DocumentMapper;
-import org.elasticsearch.index.mapper.MappedFieldType;
-import org.elasticsearch.index.mapper.Mapper;
-import org.elasticsearch.index.mapper.MapperService;
-import org.elasticsearch.index.mapper.ObjectMapper;
-import org.elasticsearch.index.mapper.TextFieldMapper;
+import org.elasticsearch.index.mapper.*;
 import org.elasticsearch.index.query.support.NestedScope;
 import org.elasticsearch.index.similarity.SimilarityService;
-import org.elasticsearch.script.CompiledScript;
-import org.elasticsearch.script.ExecutableScript;
-import org.elasticsearch.script.Script;
-import org.elasticsearch.script.ScriptContext;
-import org.elasticsearch.script.ScriptService;
-import org.elasticsearch.script.SearchScript;
+import org.elasticsearch.script.*;
 import org.elasticsearch.search.lookup.SearchLookup;
+
+import java.io.IOException;
+import java.util.*;
+import java.util.function.Function;
+import java.util.function.LongSupplier;
+
+import static java.util.Collections.unmodifiableMap;
 
 /**
  * Context object used to create lucene queries on the shard level.
@@ -99,9 +89,9 @@ public class QueryShardContext extends QueryRewriteContext {
 
     public QueryShardContext(int shardId, IndexSettings indexSettings, BitsetFilterCache bitsetFilterCache,
                              IndexFieldDataService indexFieldDataService, MapperService mapperService, SimilarityService similarityService,
-                             ScriptService scriptService,  NamedXContentRegistry xContentRegistry, Client client,
-                             IndexReader reader, LongSupplier nowInMillis, ParsedQueryCache parsedQueryCache) {
-        super(indexSettings, mapperService, scriptService, xContentRegistry, client, reader, nowInMillis);
+                             ScriptService scriptService, NamedXContentRegistry xContentRegistry, Client client,
+                             IndexReader reader, LongSupplier nowInMillis, ParsedQueryCache parsedQueryCache, QueryBuilderRewriteCache queryBuilderRewriteCache) {
+        super(indexSettings, mapperService, scriptService, xContentRegistry, client, reader, nowInMillis, queryBuilderRewriteCache);
         this.shardId = shardId;
         this.indexSettings = indexSettings;
         this.similarityService = similarityService;
@@ -116,8 +106,8 @@ public class QueryShardContext extends QueryRewriteContext {
 
     public QueryShardContext(QueryShardContext source) {
         this(source.shardId, source.indexSettings, source.bitsetFilterCache, source.indexFieldDataService, source.mapperService,
-                source.similarityService, source.scriptService, source.getXContentRegistry(), source.client,
-                source.reader, source.nowInMillis, source.parsedQueryCache);
+            source.similarityService, source.scriptService, source.getXContentRegistry(), source.client,
+            source.reader, source.nowInMillis, source.parsedQueryCache, source.queryBuilderRewriteCache);
         this.types = source.getTypes();
     }
 
@@ -190,7 +180,7 @@ public class QueryShardContext extends QueryRewriteContext {
 
     /**
      * Public for testing only!
-     *
+     * <p>
      * Sets whether we are currently parsing a filter or a query
      */
     public void setIsFilter(boolean isFilter) {
@@ -327,9 +317,9 @@ public class QueryShardContext extends QueryRewriteContext {
         try {
             QueryBuilder rewriteQuery = QueryBuilder.rewriteQuery(queryBuilder, this);
             return new ParsedQuery(filterOrQuery.apply(rewriteQuery), copyNamedQueries());
-        } catch(QueryShardException | ParsingException e ) {
+        } catch (QueryShardException | ParsingException e) {
             throw e;
-        } catch(Exception e) {
+        } catch (Exception e) {
             throw new QueryShardException(this, "failed to create query: {}", e, queryBuilder);
         } finally {
             reset();
@@ -375,7 +365,7 @@ public class QueryShardContext extends QueryRewriteContext {
     public final Function<Map<String, Object>, ExecutableScript> getLazyExecutableScript(Script script, ScriptContext context) {
         failIfFrozen(script.isCacheable());
         CompiledScript executable = scriptService.compile(script, context);
-        return (p) ->  scriptService.executable(executable, p);
+        return (p) -> scriptService.executable(executable, p);
     }
 
     /**
@@ -389,7 +379,7 @@ public class QueryShardContext extends QueryRewriteContext {
     /**
      * This method fails if {@link #freezeContext()} is called before on this
      * context. This is used to <i>seal</i>.
-     *
+     * <p>
      * This methods and all methods that call it should be final to ensure that
      * setting the request as not cacheable and the freezing behaviour of this
      * class cannot be bypassed. This is important so we can trust when this
