@@ -83,7 +83,7 @@ public class AnalysisKuromojiPlugin extends Plugin implements AnalysisPlugin {
 
     @Override
     public Map<String, AnalysisProvider<TokenizerFactory>> getTokenizers() {
-        return singletonMap("kuromoji_tokenizer", KuromojiTokenizerFactory::new);
+        return singletonMap("kuromoji_tokenizer", (indexSettings, environment, name, settings) -> new KuromojiTokenizerFactory(indexSettings, environment, name, settings, () -> reference.get()));
     }
 
     @Override
