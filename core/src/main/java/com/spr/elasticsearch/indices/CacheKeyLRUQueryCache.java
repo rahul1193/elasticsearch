@@ -19,26 +19,11 @@
 
 package com.spr.elasticsearch.indices;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.RemovalCause;
-import com.github.benmanes.caffeine.cache.RemovalListener;
-import com.github.benmanes.caffeine.cache.Weigher;
+import com.github.benmanes.caffeine.cache.*;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.BulkScorer;
-import org.apache.lucene.search.ConstantScoreScorer;
-import org.apache.lucene.search.ConstantScoreWeight;
-import org.apache.lucene.search.DocIdSet;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryCachingPolicy;
-import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.ScorerSupplier;
-import org.apache.lucene.search.Weight;
-import org.apache.lucene.search.XLRUQueryCache;
+import org.apache.lucene.search.*;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.elasticsearch.common.logging.Loggers;
@@ -46,11 +31,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.indices.IndicesQueryCache;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
@@ -217,11 +198,19 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
 
         private final Object leaf;
         private final String cacheKey;
+        private int hashCode;
 
 
         private LeafCacheKey(Object leaf, String cacheKey) {
             this.leaf = leaf;
             this.cacheKey = cacheKey;
+            this.hashCode = calculateHashCode();
+        }
+
+        private int calculateHashCode() {
+            int h = System.identityHashCode(leaf);
+            h = 31 * h + cacheKey.hashCode();
+            return h;
         }
 
         private static LeafCacheKey of(Object leaf, String cacheKey) {
@@ -230,14 +219,19 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
 
         @Override
         public int hashCode() {
-            int h = System.identityHashCode(leaf);
-            h = 31 * h + cacheKey.hashCode();
-            return h;
+            return this.hashCode;
         }
 
         @Override
         public boolean equals(Object obj) {
-            return obj == this || (obj instanceof LeafCacheKey && leaf == ((LeafCacheKey) obj).leaf && cacheKey.equals(((LeafCacheKey) obj).cacheKey));
+            boolean isEquals = false;
+            if (this == obj) {
+                isEquals = true;
+            } else if (obj instanceof LeafCacheKey) {
+                LeafCacheKey other = (LeafCacheKey) obj;
+                isEquals = (leaf == other.leaf) && (cacheKey.equals(other.cacheKey));
+            }
+            return isEquals;
         }
     }
 
@@ -411,4 +405,6 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
             }
         }
     }
+
+
 }
