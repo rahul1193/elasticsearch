@@ -102,7 +102,7 @@ public class ClearIndicesCacheRequest extends BroadcastRequest<ClearIndicesCache
     }
 
     public boolean queryBuilderRewriteCache(){
-        return parsedQueryCache;
+        return queryBuilderRewriteCache;
     }
 
     public boolean recycler() {
