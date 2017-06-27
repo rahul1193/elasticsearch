@@ -50,7 +50,7 @@ public class QueryRewriteContextTests extends ESTestCase {
         IndexSettings indexSettings = new IndexSettings(indexMetadata.build(),
                 Settings.builder().put(ScriptSettings.LEGACY_SCRIPT_SETTING, defaultLegacyScriptLanguage).build());
         QueryRewriteContext queryRewriteContext = new QueryRewriteContext(indexSettings, null, null, xContentRegistry(),
-                null, null, () -> nowInMills);
+                null, null, () -> nowInMills, null);
 
         // verify that the default script language in the query parse context is equal to defaultLegacyScriptLanguage variable:
         QueryParseContext queryParseContext = queryRewriteContext

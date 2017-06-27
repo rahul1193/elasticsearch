@@ -150,4 +150,9 @@ public class NodesStatsRequestBuilder extends NodesOperationRequestBuilder<Nodes
         request.parsedQueryCache(parsedQueryCache);
         return this;
     }
+
+    public NodesStatsRequestBuilder queryBuilderRewriteCache(boolean queryBuilderRewriteCache) {
+        request.queryBuilderRewriteCache(queryBuilderRewriteCache);
+        return this;
+    }
 }

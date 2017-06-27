@@ -38,11 +38,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.index.IndexSettings;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.QueryParseContext;
-import org.elasticsearch.index.query.QueryShardContext;
-import org.elasticsearch.index.query.RandomQueryBuilder;
+import org.elasticsearch.index.query.*;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.indices.InvalidAliasNameException;
 import org.elasticsearch.search.AbstractSearchTestCase;
@@ -52,9 +48,7 @@ import java.util.Base64;
 import java.util.Optional;
 
 import static org.elasticsearch.index.query.QueryBuilders.termQuery;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.*;
 
 public class ShardSearchTransportRequestTests extends AbstractSearchTestCase {
     private IndexMetaData baseMetaData = IndexMetaData.builder("test").settings(Settings.builder()
@@ -202,7 +196,7 @@ public class ShardSearchTransportRequestTests extends AbstractSearchTestCase {
             IndexSettings indexSettings = new IndexSettings(indexMetadata.build(), Settings.EMPTY);
             final long nowInMillis = randomNonNegativeLong();
             QueryShardContext context = new QueryShardContext(
-                0, indexSettings, null, null, null, null, null, xContentRegistry(), null, null, () -> nowInMillis, null);
+                0, indexSettings, null, null, null, null, null, xContentRegistry(), null, null, () -> nowInMillis, null, null);
             readRequest.rewrite(context);
             QueryBuilder queryBuilder = readRequest.filteringAliases();
             assertEquals(queryBuilder, QueryBuilders.boolQuery()

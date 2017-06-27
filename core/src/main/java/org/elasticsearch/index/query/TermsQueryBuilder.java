@@ -19,12 +19,9 @@
 
 package org.elasticsearch.index.query;
 
+import com.spr.elasticsearch.index.query.QueryBuilderRewriteCache;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.TermInSetQuery;
-import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.*;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.elasticsearch.action.get.GetRequest;
@@ -46,15 +43,7 @@ import org.elasticsearch.index.mapper.MappedFieldType;
 import org.elasticsearch.indices.TermsLookup;
 
 import java.io.IOException;
-import java.util.AbstractList;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -95,7 +84,7 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
      * A filter for a field based on several terms matching on any of them.
      *
      * @param fieldName The field name
-     * @param values The terms
+     * @param values    The terms
      */
     public TermsQueryBuilder(String fieldName, String... values) {
         this(fieldName, values != null ? Arrays.asList(values) : null);
@@ -105,7 +94,7 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
      * A filter for a field based on several terms matching on any of them.
      *
      * @param fieldName The field name
-     * @param values The terms
+     * @param values    The terms
      */
     public TermsQueryBuilder(String fieldName, int... values) {
         this(fieldName, values != null ? Arrays.stream(values).mapToObj(s -> s).collect(Collectors.toList()) : (Iterable<?>) null);
@@ -115,7 +104,7 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
      * A filter for a field based on several terms matching on any of them.
      *
      * @param fieldName The field name
-     * @param values The terms
+     * @param values    The terms
      */
     public TermsQueryBuilder(String fieldName, long... values) {
         this(fieldName, values != null ? Arrays.stream(values).mapToObj(s -> s).collect(Collectors.toList()) : (Iterable<?>) null);
@@ -125,18 +114,18 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
      * A filter for a field based on several terms matching on any of them.
      *
      * @param fieldName The field name
-     * @param values The terms
+     * @param values    The terms
      */
     public TermsQueryBuilder(String fieldName, float... values) {
         this(fieldName, values != null ? IntStream.range(0, values.length)
-                           .mapToObj(i -> values[i]).collect(Collectors.toList()) : (Iterable<?>) null);
+            .mapToObj(i -> values[i]).collect(Collectors.toList()) : (Iterable<?>) null);
     }
 
     /**
      * A filter for a field based on several terms matching on any of them.
      *
      * @param fieldName The field name
-     * @param values The terms
+     * @param values    The terms
      */
     public TermsQueryBuilder(String fieldName, double... values) {
         this(fieldName, values != null ? Arrays.stream(values).mapToObj(s -> s).collect(Collectors.toList()) : (Iterable<?>) null);
@@ -146,7 +135,7 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
      * A filter for a field based on several terms matching on any of them.
      *
      * @param fieldName The field name
-     * @param values The terms
+     * @param values    The terms
      */
     public TermsQueryBuilder(String fieldName, Object... values) {
         this(fieldName, values != null ? Arrays.asList(values) : (Iterable<?>) null);
@@ -156,7 +145,7 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
      * A filter for a field based on several terms matching on any of them.
      *
      * @param fieldName The field name
-     * @param values The terms
+     * @param values    The terms
      */
     public TermsQueryBuilder(String fieldName, Iterable<?> values) {
         if (Strings.isEmpty(fieldName)) {
@@ -200,9 +189,9 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
     }
 
     private static final Set<Class<? extends Number>> INTEGER_TYPES = new HashSet<>(
-            Arrays.asList(Byte.class, Short.class, Integer.class, Long.class));
+        Arrays.asList(Byte.class, Short.class, Integer.class, Long.class));
     private static final Set<Class<?>> STRING_TYPES = new HashSet<>(
-            Arrays.asList(BytesRef.class, String.class));
+        Arrays.asList(BytesRef.class, String.class));
 
     /**
      * Same as {@link #convert(List)} but on an {@link Iterable}.
@@ -242,6 +231,7 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
                 public Object get(int index) {
                     return elements[index];
                 }
+
                 @Override
                 public int size() {
                     return elements.length;
@@ -267,17 +257,18 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
                     if (i == 0) {
                         endOffsets[0] = b.length;
                     } else {
-                        endOffsets[i] = Math.addExact(endOffsets[i-1], b.length);
+                        endOffsets[i] = Math.addExact(endOffsets[i - 1], b.length);
                     }
                     ++i;
                 }
                 final BytesReference bytes = bytesOut.bytes();
                 return new AbstractList<Object>() {
                     public Object get(int i) {
-                        final int startOffset = i == 0 ? 0 : endOffsets[i-1];
+                        final int startOffset = i == 0 ? 0 : endOffsets[i - 1];
                         final int endOffset = endOffsets[i];
                         return bytes.slice(startOffset, endOffset - startOffset).toBytesRef();
                     }
+
                     public int size() {
                         return endOffsets.length;
                     }
@@ -300,6 +291,7 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
             public int size() {
                 return list.size();
             }
+
             @Override
             public Object get(int index) {
                 Object o = list.get(index);
@@ -345,17 +337,17 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
             } else if (parseContext.isDeprecatedSetting(currentFieldName)) {
                 // skip
             } else if (token == XContentParser.Token.START_ARRAY) {
-                if  (fieldName != null) {
+                if (fieldName != null) {
                     throw new ParsingException(parser.getTokenLocation(),
-                            "[" + TermsQueryBuilder.NAME + "] query does not support multiple fields");
+                        "[" + TermsQueryBuilder.NAME + "] query does not support multiple fields");
                 }
                 fieldName = currentFieldName;
                 values = parseValues(parser);
             } else if (token == XContentParser.Token.START_OBJECT) {
-                if  (fieldName != null) {
+                if (fieldName != null) {
                     throw new ParsingException(parser.getTokenLocation(),
-                            "[" + TermsQueryBuilder.NAME + "] query does not support more than one field. "
-                            + "Already got: [" + fieldName + "] but also found [" + currentFieldName +"]");
+                        "[" + TermsQueryBuilder.NAME + "] query does not support more than one field. "
+                            + "Already got: [" + fieldName + "] but also found [" + currentFieldName + "]");
                 }
                 fieldName = currentFieldName;
                 termsLookup = TermsLookup.parseTermsLookup(parser);
@@ -366,21 +358,21 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
                     queryName = parser.text();
                 } else {
                     throw new ParsingException(parser.getTokenLocation(),
-                            "[" + TermsQueryBuilder.NAME + "] query does not support [" + currentFieldName + "]");
+                        "[" + TermsQueryBuilder.NAME + "] query does not support [" + currentFieldName + "]");
                 }
             } else {
                 throw new ParsingException(parser.getTokenLocation(),
-                        "[" + TermsQueryBuilder.NAME + "] unknown token [" + token + "] after [" + currentFieldName + "]");
+                    "[" + TermsQueryBuilder.NAME + "] unknown token [" + token + "] after [" + currentFieldName + "]");
             }
         }
 
         if (fieldName == null) {
             throw new ParsingException(parser.getTokenLocation(), "[" + TermsQueryBuilder.NAME + "] query requires a field name, " +
-                    "followed by array of terms or a document lookup specification");
+                "followed by array of terms or a document lookup specification");
         }
         return Optional.of(new TermsQueryBuilder(fieldName, values, termsLookup)
-                .boost(boost)
-                .queryName(queryName));
+            .boost(boost)
+            .queryName(queryName));
     }
 
     private static List<Object> parseValues(XContentParser parser) throws IOException {
@@ -414,7 +406,7 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
     private List<Object> fetch(TermsLookup termsLookup, Client client) {
         List<Object> terms = new ArrayList<>();
         GetRequest getRequest = new GetRequest(termsLookup.index(), termsLookup.type(), termsLookup.id())
-                .preference("_local").routing(termsLookup.routing());
+            .preference("_local").routing(termsLookup.routing());
         final GetResponse getResponse = client.get(getRequest).actionGet();
         if (getResponse.isSourceEmpty() == false) { // extract terms only if the doc source exists
             List<Object> extractedValues = XContentMapValues.extractRawValues(termsLookup.path(), getResponse.getSourceAsMap());
@@ -465,8 +457,8 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
     @Override
     protected boolean doEquals(TermsQueryBuilder other) {
         return Objects.equals(fieldName, other.fieldName) &&
-                Objects.equals(values, other.values) &&
-                Objects.equals(termsLookup, other.termsLookup);
+            Objects.equals(values, other.values) &&
+            Objects.equals(termsLookup, other.termsLookup);
     }
 
     @Override
@@ -480,8 +472,20 @@ public class TermsQueryBuilder extends AbstractQueryBuilder<TermsQueryBuilder> {
                     return this; // can't rewrite until we have index scope on the shard
                 }
             }
+            boolean cacheLookup = Strings.hasLength(termsLookup.cacheKey());
+            QueryBuilderRewriteCache queryBuilderRewriteCache = queryRewriteContext.getQueryBuilderRewriteCache();
+            if (queryBuilderRewriteCache != null && cacheLookup) {
+                QueryBuilder queryBuilder = queryBuilderRewriteCache.get(termsLookup.cacheKey());
+                if (queryBuilder != null) {
+                    return queryBuilder;
+                }
+            }
             List<Object> values = fetch(termsLookup, queryRewriteContext.getClient());
-            return new TermsQueryBuilder(this.fieldName, values);
+            TermsQueryBuilder termsQueryBuilder = new TermsQueryBuilder(this.fieldName, values);
+            if (queryBuilderRewriteCache != null && cacheLookup) {
+                queryBuilderRewriteCache.put(termsLookup.cacheKey(), termsQueryBuilder);
+            }
+            return termsQueryBuilder;
         }
         return this;
     }

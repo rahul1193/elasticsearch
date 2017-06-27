@@ -18,6 +18,7 @@
  */
 package org.elasticsearch.index.query;
 
+import com.spr.elasticsearch.index.query.QueryBuilderRewriteCache;
 import org.apache.lucene.index.IndexReader;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.bytes.BytesReference;
@@ -25,11 +26,7 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.index.IndexSettings;
 import org.elasticsearch.index.mapper.MapperService;
-import org.elasticsearch.script.ExecutableScript;
-import org.elasticsearch.script.Script;
-import org.elasticsearch.script.ScriptContext;
-import org.elasticsearch.script.ScriptService;
-import org.elasticsearch.script.ScriptSettings;
+import org.elasticsearch.script.*;
 
 import java.util.function.LongSupplier;
 
@@ -44,10 +41,11 @@ public class QueryRewriteContext {
     protected final Client client;
     protected final IndexReader reader;
     protected final LongSupplier nowInMillis;
+    protected final QueryBuilderRewriteCache queryBuilderRewriteCache;
 
     public QueryRewriteContext(IndexSettings indexSettings, MapperService mapperService, ScriptService scriptService,
-            NamedXContentRegistry xContentRegistry, Client client, IndexReader reader,
-            LongSupplier nowInMillis) {
+                               NamedXContentRegistry xContentRegistry, Client client, IndexReader reader,
+                               LongSupplier nowInMillis, QueryBuilderRewriteCache queryBuilderRewriteCache) {
         this.mapperService = mapperService;
         this.scriptService = scriptService;
         this.indexSettings = indexSettings;
@@ -55,6 +53,7 @@ public class QueryRewriteContext {
         this.client = client;
         this.reader = reader;
         this.nowInMillis = nowInMillis;
+        this.queryBuilderRewriteCache = queryBuilderRewriteCache;
     }
 
     /**
@@ -79,9 +78,11 @@ public class QueryRewriteContext {
         return mapperService;
     }
 
-    /** Return the current {@link IndexReader}, or {@code null} if no index reader is available, for
-     *  instance if we are on the coordinating node or if this rewrite context is used to index
-     *  queries (percolation). */
+    /**
+     * Return the current {@link IndexReader}, or {@code null} if no index reader is available, for
+     * instance if we are on the coordinating node or if this rewrite context is used to index
+     * queries (percolation).
+     */
     public IndexReader getIndexReader() {
         return reader;
     }
@@ -91,6 +92,10 @@ public class QueryRewriteContext {
      */
     public NamedXContentRegistry getXContentRegistry() {
         return xContentRegistry;
+    }
+
+    public QueryBuilderRewriteCache getQueryBuilderRewriteCache() {
+        return queryBuilderRewriteCache;
     }
 
     /**

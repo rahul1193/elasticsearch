@@ -20,6 +20,7 @@
 package org.elasticsearch.index;
 
 import com.spr.elasticsearch.index.query.ParsedQueryCache;
+import com.spr.elasticsearch.index.query.QueryBuilderRewriteCache;
 import org.apache.lucene.util.SetOnce;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.service.ClusterService;
@@ -50,14 +51,7 @@ import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -333,7 +327,7 @@ public final class IndexModule {
     public IndexService newIndexService(NodeEnvironment environment, NamedXContentRegistry xContentRegistry,
                                         IndexService.ShardStoreDeleter shardStoreDeleter, CircuitBreakerService circuitBreakerService, BigArrays bigArrays,
                                         ThreadPool threadPool, ScriptService scriptService,
-                                        ClusterService clusterService, Client client, IndicesQueryCache indicesQueryCache, ParsedQueryCache parsedQueryCache, MapperRegistry mapperRegistry,
+                                        ClusterService clusterService, Client client, IndicesQueryCache indicesQueryCache, ParsedQueryCache parsedQueryCache, QueryBuilderRewriteCache queryBuilderRewriteCache, MapperRegistry mapperRegistry,
                                         IndicesFieldDataCache indicesFieldDataCache) throws IOException {
         final IndexEventListener eventListener = freeze();
         IndexSearcherWrapperFactory searcherWrapperFactory = indexSearcherWrapper.get() == null
@@ -369,7 +363,7 @@ public final class IndexModule {
         }
         return new IndexService(indexSettings, environment, xContentRegistry, new SimilarityService(indexSettings, similarities), shardStoreDeleter,
             analysisRegistry, engineFactory.get(), circuitBreakerService, bigArrays, threadPool, scriptService,
-            clusterService, client, queryCache, parsedQueryCache, store, eventListener, searcherWrapperFactory, mapperRegistry, indicesFieldDataCache,
+            clusterService, client, queryCache, parsedQueryCache, queryBuilderRewriteCache, store, eventListener, searcherWrapperFactory, mapperRegistry, indicesFieldDataCache,
             searchOperationListeners, indexOperationListeners);
     }
 

@@ -31,12 +31,7 @@ import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestActions.NodesResponseRestListener;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.function.Consumer;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
@@ -72,6 +67,7 @@ public class RestNodesStatsAction extends BaseRestHandler {
         metrics.put("discovery", r -> r.discovery(true));
         metrics.put("ingest", r -> r.ingest(true));
         metrics.put("parsed_query_cache", r -> r.parsedQueryCache(true));
+        metrics.put("query_builder_rewrite_cache", r -> r.queryBuilderRewriteCache(true));
         METRICS = Collections.unmodifiableMap(metrics);
     }
 

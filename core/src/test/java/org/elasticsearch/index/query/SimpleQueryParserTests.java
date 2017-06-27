@@ -23,12 +23,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.MockSynonymAnalyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.PrefixQuery;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.SynonymQuery;
-import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.*;
 import org.apache.lucene.search.spans.SpanNearQuery;
 import org.apache.lucene.search.spans.SpanOrQuery;
 import org.apache.lucene.search.spans.SpanQuery;
@@ -178,7 +173,7 @@ public class SimpleQueryParserTests extends ESTestCase {
         IndexMetaData indexState = IndexMetaData.builder("index").settings(indexSettings).build();
         IndexSettings settings = new IndexSettings(indexState, Settings.EMPTY);
         QueryShardContext mockShardContext = new QueryShardContext(0, settings, null, null, null, null, null, xContentRegistry(),
-                null, null, System::currentTimeMillis, null) {
+                null, null, System::currentTimeMillis, null, null) {
             @Override
             public MappedFieldType fieldMapper(String name) {
                 return new MockFieldMapper.FakeFieldType();
@@ -192,7 +187,7 @@ public class SimpleQueryParserTests extends ESTestCase {
 
         // Now check what happens if foo.quote does not exist
         mockShardContext = new QueryShardContext(0, settings, null, null, null, null, null, xContentRegistry(),
-                null, null, System::currentTimeMillis, null) {
+                null, null, System::currentTimeMillis, null, null) {
             @Override
             public MappedFieldType fieldMapper(String name) {
                 if (name.equals("foo.quote")) {

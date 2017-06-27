@@ -27,11 +27,7 @@ import org.elasticsearch.index.mapper.MapperService;
 import org.elasticsearch.index.mapper.TextFieldMapper;
 import org.elasticsearch.test.ESTestCase;
 
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
-import static org.hamcrest.Matchers.sameInstance;
+import static org.hamcrest.Matchers.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -49,7 +45,7 @@ public class QueryShardContextTests extends ESTestCase {
         final long nowInMillis = randomNonNegativeLong();
         QueryShardContext context = new QueryShardContext(
             0, indexSettings, null, null, mapperService, null, null, xContentRegistry(), null, null,
-            () -> nowInMillis, null);
+            () -> nowInMillis, null, null);
 
         context.setAllowUnmappedFields(false);
         MappedFieldType fieldType = new TextFieldMapper.TextFieldType();

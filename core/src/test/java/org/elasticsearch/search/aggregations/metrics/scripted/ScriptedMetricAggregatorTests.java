@@ -157,6 +157,6 @@ public class ScriptedMetricAggregatorTests extends AggregatorTestCase {
             throw new ElasticsearchException(e);
         }
         return new QueryShardContext(0, idxSettings, null, null, null, null, scriptService, xContentRegistry(),
-                null, null, System::currentTimeMillis, null);
+                null, null, System::currentTimeMillis, null, null);
     }
 }

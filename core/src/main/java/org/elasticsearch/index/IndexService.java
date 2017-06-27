@@ -20,6 +20,7 @@
 package org.elasticsearch.index;
 
 import com.spr.elasticsearch.index.query.ParsedQueryCache;
+import com.spr.elasticsearch.index.query.QueryBuilderRewriteCache;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.logging.log4j.util.Supplier;
 import org.apache.lucene.index.IndexReader;
@@ -50,16 +51,7 @@ import org.elasticsearch.index.fielddata.IndexFieldDataCache;
 import org.elasticsearch.index.fielddata.IndexFieldDataService;
 import org.elasticsearch.index.mapper.MapperService;
 import org.elasticsearch.index.query.QueryShardContext;
-import org.elasticsearch.index.shard.IndexEventListener;
-import org.elasticsearch.index.shard.IndexSearcherWrapper;
-import org.elasticsearch.index.shard.IndexShard;
-import org.elasticsearch.index.shard.IndexShardClosedException;
-import org.elasticsearch.index.shard.IndexingOperationListener;
-import org.elasticsearch.index.shard.SearchOperationListener;
-import org.elasticsearch.index.shard.ShadowIndexShard;
-import org.elasticsearch.index.shard.ShardId;
-import org.elasticsearch.index.shard.ShardNotFoundException;
-import org.elasticsearch.index.shard.ShardPath;
+import org.elasticsearch.index.shard.*;
 import org.elasticsearch.index.similarity.SimilarityService;
 import org.elasticsearch.index.store.IndexStore;
 import org.elasticsearch.index.store.Store;
@@ -95,6 +87,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
     private final IndexSearcherWrapper searcherWrapper;
     private final IndexCache indexCache;
     private final ParsedQueryCache parsedQueryCache;
+    private final QueryBuilderRewriteCache queryBuilderRewriteCache;
     private final MapperService mapperService;
     private final NamedXContentRegistry xContentRegistry;
     private final SimilarityService similarityService;
@@ -128,6 +121,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                         Client client,
                         QueryCache queryCache,
                         ParsedQueryCache parsedQueryCache,
+                        QueryBuilderRewriteCache queryBuilderRewriteCache,
                         IndexStore indexStore,
                         IndexEventListener eventListener,
                         IndexModule.IndexSearcherWrapperFactory wrapperFactory,
@@ -161,6 +155,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
             bitsetFilterCache.createListener(threadPool));
         this.indexCache = new IndexCache(indexSettings, queryCache, bitsetFilterCache);
         this.parsedQueryCache = parsedQueryCache;
+        this.queryBuilderRewriteCache = queryBuilderRewriteCache;
         this.engineFactory = engineFactory;
         // initialize this last -- otherwise if the wrapper requires any other member to be non-null we fail with an NPE
         this.searcherWrapper = wrapperFactory.newWrapper(this);
@@ -470,7 +465,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
             shardId, indexSettings, indexCache.bitsetFilterCache(), indexFieldData, mapperService(),
                 similarityService(), scriptService, xContentRegistry,
                 client, indexReader,
-            nowInMillis, parsedQueryCache);
+            nowInMillis, parsedQueryCache, queryBuilderRewriteCache);
     }
 
     /**
