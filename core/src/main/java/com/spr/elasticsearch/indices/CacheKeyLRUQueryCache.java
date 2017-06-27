@@ -125,14 +125,16 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
 
     @Override
     public void clearQuery(Query query) {
-        Set<LeafCacheKey> leafCacheKeys = cache.asMap().keySet();
-        List<LeafCacheKey> keysToRemove = new ArrayList<>();
-        for (LeafCacheKey leafCacheKey : leafCacheKeys) {
-            if (leafCacheKey.cacheKey.equals(query)) {
-                keysToRemove.add(leafCacheKey);
+        if (query instanceof BooleanQuery) {
+            Set<LeafCacheKey> leafCacheKeys = cache.asMap().keySet();
+            List<LeafCacheKey> keysToRemove = new ArrayList<>();
+            for (LeafCacheKey leafCacheKey : leafCacheKeys) {
+                if (leafCacheKey.cacheKey.equals(((BooleanQuery) query).getCacheKey())) {
+                    keysToRemove.add(leafCacheKey);
+                }
             }
+            cache.invalidateAll(keysToRemove);
         }
-        cache.invalidateAll(keysToRemove);
     }
 
     @Override
