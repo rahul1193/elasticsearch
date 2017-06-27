@@ -215,6 +215,10 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         return Optional.ofNullable(parsedQueryCache);
     }
 
+    public Optional<QueryBuilderRewriteCache> queryBuilderRewriteCache() {
+        return Optional.ofNullable(queryBuilderRewriteCache);
+    }
+
     public IndexFieldDataService fieldData() {
         return indexFieldData;
     }

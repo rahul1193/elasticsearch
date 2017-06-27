@@ -51,19 +51,19 @@ public class RestClearIndicesCacheAction extends BaseRestHandler {
     @Override
     public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
         ClearIndicesCacheRequest clearIndicesCacheRequest = new ClearIndicesCacheRequest(
-                Strings.splitStringByCommaToArray(request.param("index")));
+            Strings.splitStringByCommaToArray(request.param("index")));
         clearIndicesCacheRequest.indicesOptions(IndicesOptions.fromRequest(request, clearIndicesCacheRequest.indicesOptions()));
         fromRequest(request, clearIndicesCacheRequest);
         return channel ->
-                client.admin().indices().clearCache(clearIndicesCacheRequest, new RestBuilderListener<ClearIndicesCacheResponse>(channel) {
-            @Override
-            public RestResponse buildResponse(ClearIndicesCacheResponse response, XContentBuilder builder) throws Exception {
-                builder.startObject();
-                buildBroadcastShardsHeader(builder, request, response);
-                builder.endObject();
-                return new BytesRestResponse(OK, builder);
-            }
-        });
+            client.admin().indices().clearCache(clearIndicesCacheRequest, new RestBuilderListener<ClearIndicesCacheResponse>(channel) {
+                @Override
+                public RestResponse buildResponse(ClearIndicesCacheResponse response, XContentBuilder builder) throws Exception {
+                    builder.startObject();
+                    buildBroadcastShardsHeader(builder, request, response);
+                    builder.endObject();
+                    return new BytesRestResponse(OK, builder);
+                }
+            });
     }
 
     @Override
@@ -86,8 +86,11 @@ public class RestClearIndicesCacheAction extends BaseRestHandler {
             if (Fields.RECYCLER.match(entry.getKey())) {
                 clearIndicesCacheRequest.recycler(request.paramAsBoolean(entry.getKey(), clearIndicesCacheRequest.recycler()));
             }
-            if(Fields.PARSED_QUERY_CACHE.match(entry.getKey())) {
+            if (Fields.PARSED_QUERY_CACHE.match(entry.getKey())) {
                 clearIndicesCacheRequest.parsedQueryCache(request.paramAsBoolean(entry.getKey(), clearIndicesCacheRequest.parsedQueryCache()));
+            }
+            if (Fields.QUERY_BUILDER_CACHE.match(entry.getKey())) {
+                clearIndicesCacheRequest.queryBuilderRewriteCache(request.paramAsBoolean(entry.getKey(), clearIndicesCacheRequest.queryBuilderRewriteCache()));
             }
             if (Fields.FIELDS.match(entry.getKey())) {
                 clearIndicesCacheRequest.fields(request.paramAsStringArray(entry.getKey(), clearIndicesCacheRequest.fields()));
@@ -102,6 +105,7 @@ public class RestClearIndicesCacheAction extends BaseRestHandler {
         public static final ParseField REQUEST = new ParseField("request", "request_cache");
         public static final ParseField FIELD_DATA = new ParseField("field_data", "fielddata");
         public static final ParseField PARSED_QUERY_CACHE = new ParseField("parsed_query", "parsed_query_cache");
+        public static final ParseField QUERY_BUILDER_CACHE = new ParseField("query_builder", "query_builder_cache");
         public static final ParseField RECYCLER = new ParseField("recycler");
         public static final ParseField FIELDS = new ParseField("fields");
     }

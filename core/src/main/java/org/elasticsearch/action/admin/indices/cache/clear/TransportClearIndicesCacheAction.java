@@ -20,6 +20,7 @@
 package org.elasticsearch.action.admin.indices.cache.clear;
 
 import com.spr.elasticsearch.index.query.ParsedQueryCache;
+import com.spr.elasticsearch.index.query.QueryBuilderRewriteCache;
 import org.elasticsearch.action.ShardOperationFailedException;
 import org.elasticsearch.action.support.ActionFilters;
 import org.elasticsearch.action.support.broadcast.node.TransportBroadcastByNodeAction;
@@ -55,7 +56,7 @@ public class TransportClearIndicesCacheAction extends TransportBroadcastByNodeAc
                                             TransportService transportService, IndicesService indicesService, ActionFilters actionFilters,
                                             IndexNameExpressionResolver indexNameExpressionResolver) {
         super(settings, ClearIndicesCacheAction.NAME, threadPool, clusterService, transportService, actionFilters, indexNameExpressionResolver,
-                ClearIndicesCacheRequest::new, ThreadPool.Names.MANAGEMENT, false);
+            ClearIndicesCacheRequest::new, ThreadPool.Names.MANAGEMENT, false);
         this.indicesService = indicesService;
     }
 
@@ -104,6 +105,11 @@ public class TransportClearIndicesCacheAction extends TransportBroadcastByNodeAc
             if (request.parsedQueryCache()) {
                 clearedAtLeastOne = true;
                 service.parsedQueryCache().ifPresent(ParsedQueryCache::clear);
+            }
+
+            if (request.queryBuilderRewriteCache()) {
+                clearedAtLeastOne = true;
+                service.queryBuilderRewriteCache().ifPresent(QueryBuilderRewriteCache::clear);
             }
 
             if (request.recycler()) {

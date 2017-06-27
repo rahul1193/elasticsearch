@@ -35,6 +35,7 @@ public class ClearIndicesCacheRequest extends BroadcastRequest<ClearIndicesCache
     private boolean recycler = false;
     private boolean requestCache = false;
     private boolean parsedQueryCache = false;
+    private boolean queryBuilderRewriteCache = false;
     private String[] fields = null;
 
 
@@ -95,6 +96,15 @@ public class ClearIndicesCacheRequest extends BroadcastRequest<ClearIndicesCache
         return parsedQueryCache;
     }
 
+    public ClearIndicesCacheRequest queryBuilderRewriteCache(boolean queryBuilderRewriteCache){
+        this.queryBuilderRewriteCache = queryBuilderRewriteCache;
+        return this;
+    }
+
+    public boolean queryBuilderRewriteCache(){
+        return parsedQueryCache;
+    }
+
     public boolean recycler() {
         return this.recycler;
     }
@@ -108,6 +118,7 @@ public class ClearIndicesCacheRequest extends BroadcastRequest<ClearIndicesCache
         fields = in.readStringArray();
         requestCache = in.readBoolean();
         parsedQueryCache = in.readBoolean();
+        queryBuilderRewriteCache = in.readBoolean();
     }
 
     @Override
@@ -119,5 +130,6 @@ public class ClearIndicesCacheRequest extends BroadcastRequest<ClearIndicesCache
         out.writeStringArrayNullable(fields);
         out.writeBoolean(requestCache);
         out.writeBoolean(parsedQueryCache);
+        out.writeBoolean(queryBuilderRewriteCache);
     }
 }
