@@ -76,7 +76,7 @@ public class QueryBuilderRewriteCacheStats implements Writeable, ToXContent {
 
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, ToXContent.Params params) throws IOException {
-        builder.startObject(QueryBuilderRewriteCacheStats.Fields.PARSED_QUERY_CACHE);
+        builder.startObject(QueryBuilderRewriteCacheStats.Fields.QUERY_BUILDER_CACHE);
         builder.field(QueryBuilderRewriteCacheStats.Fields.TOTAL_COUNT, getTotalCount());
         builder.field(QueryBuilderRewriteCacheStats.Fields.HIT_COUNT, getHitCount());
         builder.field(QueryBuilderRewriteCacheStats.Fields.MISS_COUNT, getMissCount());
@@ -86,7 +86,7 @@ public class QueryBuilderRewriteCacheStats implements Writeable, ToXContent {
     }
 
     static final class Fields {
-        static final String PARSED_QUERY_CACHE = "parsed_query_cache";
+        static final String QUERY_BUILDER_CACHE = "query_builder_cache";
         static final String TOTAL_COUNT = "total_count";
         static final String HIT_COUNT = "hit_count";
         static final String MISS_COUNT = "miss_count";
