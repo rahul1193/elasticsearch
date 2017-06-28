@@ -22,6 +22,7 @@ package org.elasticsearch.index.query;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.Version;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.xcontent.ToXContentUtils;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 
@@ -111,6 +112,7 @@ public class TermsLookupFilterBuilder extends BaseFilterBuilder {
     @Override
     public void doXContent(XContentBuilder builder, Params params) throws IOException {
         if (ToXContentUtils.getVersionFromParams(params).onOrAfter(Version.V_5_0_0) && BooleanUtils.isTrue(cache) && StringUtils.isNotBlank(cacheKey)) {
+            // doing it this way as query response gets cached and query builder gets cached as well.
             BoolFilterBuilder boolFilter = FilterBuilders.boolFilter().must(this).cache(true).cacheKey(cacheKey);
             doCopyingCacheKey(builder, params, boolFilter);
         } else {
@@ -120,14 +122,11 @@ public class TermsLookupFilterBuilder extends BaseFilterBuilder {
 
     private void doCopyingCacheKey(XContentBuilder builder, Params params, BoolFilterBuilder boolFilter) throws IOException {
         boolean cacheCopy = cache;
-        String cacheKeyCopy = cacheKey;
         cache = null; // avoid recursion
-        cacheKey = null;
         try {
             boolFilter.doXContent(builder, params);
         } finally {
             this.cache = cacheCopy;
-            this.cacheKey = cacheKeyCopy;
         }
     }
 
@@ -147,6 +146,12 @@ public class TermsLookupFilterBuilder extends BaseFilterBuilder {
             builder.field("cache", lookupCache);
         }
         builder.field("path", lookupPath);
+
+        if (Strings.hasLength(cacheKey) && ToXContentUtils.getVersionFromParams(params).onOrAfter(Version.V_5_0_0)) {
+            // cache key support for es5 terms lookup
+            builder.field("_cache_key", cacheKey);
+        }
+
         builder.endObject();
 
         if (filterName != null) {
