@@ -27,11 +27,17 @@ import org.apache.lucene.search.*;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.indices.IndicesQueryCache;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
@@ -39,6 +45,9 @@ import java.util.function.Function;
  * @author Utkarsh
  */
 public class CacheKeyLRUQueryCache extends XLRUQueryCache {
+
+    public static final Setting<Long> LRU_QUERY_CACHE_EXPIRE_AFTER_ACCESS_SECONDS =
+        Setting.longSetting("lru.query.cache.expire.after.access.seconds", TimeUnit.HOURS.toSeconds(2), 1, Setting.Property.NodeScope);
 
     private static final int HASHTABLE_RAM_BYTES_PER_ENTRY =
         2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF // key + value
@@ -53,12 +62,18 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
         assert maxBytes > 0;
         logger = Loggers.getLogger(getClass(), settings);
         this.shardStatsSupplier = shardStatsSupplier;
-        cache = Caffeine.newBuilder()
+        Caffeine<LeafCacheKey, DocIdSet> cacheBuilder = Caffeine.newBuilder()
             .removalListener(new CacheRemovalListener(settings, shardStatsSupplier))
             .executor(Runnable::run)
             .maximumWeight(maxBytes)
-            .weigher(new CacheKeyQueryCacheWeigher())
-            .build();
+            .weigher(new CacheKeyQueryCacheWeigher());
+
+        long expireAfterAccess = LRU_QUERY_CACHE_EXPIRE_AFTER_ACCESS_SECONDS.get(settings);
+        if (expireAfterAccess > 0) {
+            cacheBuilder.expireAfterAccess(expireAfterAccess, TimeUnit.SECONDS);
+        }
+
+        cache = cacheBuilder.build();
     }
 
     @Override
@@ -192,7 +207,8 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
         final String key = ((BooleanQuery) query).getCacheKey();
         cache.put(LeafCacheKey.of(leaf, key), set);
         // we just created a new leaf cache, need to register a close listener
-        context.reader().addCoreClosedListener(this::clearCoreCacheKey);
+        // FIXME : stuck threads
+        // context.reader().addCoreClosedListener(this::clearCoreCacheKey);
         onDocIdSetCache(leaf, HASHTABLE_RAM_BYTES_PER_ENTRY + set.ramBytesUsed());
     }
 
