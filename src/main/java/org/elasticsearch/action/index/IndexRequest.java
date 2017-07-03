@@ -779,6 +779,9 @@ public class IndexRequest extends ShardReplicationOperationRequest<IndexRequest>
         if (Strings.hasLength(parent)) {
             actionMetadata.put("parent", parent);
         }
+        if (Strings.hasLength(routing)) {
+            actionMetadata.put("routing", routing);
+        }
         payload.put(opType.name().toLowerCase(Locale.ROOT), actionMetadata);
         String json = XContentHelper.convertToJson(payload, false);
 
