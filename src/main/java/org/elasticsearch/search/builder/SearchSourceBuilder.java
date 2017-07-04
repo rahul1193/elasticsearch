@@ -101,6 +101,7 @@ public class SearchSourceBuilder implements ToXContent {
     private int terminateAfter = SearchContext.DEFAULT_TERMINATE_AFTER;
 
     private List<String> fieldNames;
+    private List<String> storedFieldNames;
     private List<String> fieldDataFields;
     private List<ScriptField> scriptFields;
     private List<PartialField> partialFields;
@@ -570,11 +571,28 @@ public class SearchSourceBuilder implements ToXContent {
     }
 
     /**
+     * Sets no fields to be loaded, resulting in only id and type to be returned per field.
+     */
+    public SearchSourceBuilder noStoredFields() {
+        this.storedFieldNames = ImmutableList.of();
+        return this;
+    }
+
+    /**
      * Sets the fields to load and return as part of the search request. If none are specified,
      * the source of the document will be returned.
      */
     public SearchSourceBuilder fields(List<String> fields) {
         this.fieldNames = fields;
+        return this;
+    }
+
+    /**
+     * Sets the fields to load and return as part of the search request. If none are specified,
+     * the source of the document will be returned.
+     */
+    public SearchSourceBuilder storedFieldNames(List<String> storedFieldNames) {
+        this.storedFieldNames = storedFieldNames;
         return this;
     }
 
@@ -593,6 +611,20 @@ public class SearchSourceBuilder implements ToXContent {
     }
 
     /**
+     * Adds the fields to load and return as part of the search request. If none are specified,
+     * the source of the document will be returned.
+     */
+    public SearchSourceBuilder storedFields(String... storedFields) {
+        if (storedFieldNames == null) {
+            storedFieldNames = new ArrayList<>();
+        }
+        for (String storedField : storedFields) {
+            storedFieldNames.add(storedField);
+        }
+        return this;
+    }
+
+    /**
      * Adds a field to load and return (note, it must be stored) as part of the search request.
      * If none are specified, the source of the document will be return.
      */
@@ -601,6 +633,18 @@ public class SearchSourceBuilder implements ToXContent {
             fieldNames = new ArrayList<>();
         }
         fieldNames.add(name);
+        return this;
+    }
+
+    /**
+     * Adds a field to load and return (note, it must be stored) as part of the search request.
+     * If none are specified, the source of the document will be return.
+     */
+    public SearchSourceBuilder storedField(String name) {
+        if (storedFieldNames == null) {
+            storedFieldNames = new ArrayList<>();
+        }
+        storedFieldNames.add(name);
         return this;
     }
 
@@ -822,6 +866,18 @@ public class SearchSourceBuilder implements ToXContent {
                 builder.startArray("fields");
                 for (String fieldName : fieldNames) {
                     builder.value(fieldName);
+                }
+                builder.endArray();
+            }
+        }
+
+        if (storedFieldNames != null) {
+            if (storedFieldNames.size() == 1) {
+                builder.field("stored_fields", storedFieldNames.get(0));
+            } else {
+                builder.startArray("stored_fields");
+                for (String storedFieldName : storedFieldNames) {
+                    builder.value(storedFieldName);
                 }
                 builder.endArray();
             }
