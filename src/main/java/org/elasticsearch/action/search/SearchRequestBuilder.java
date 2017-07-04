@@ -410,6 +410,15 @@ public class SearchRequestBuilder extends ActionRequestBuilder<SearchRequest, Se
     }
 
     /**
+     * Adds a field to load and return (note, it must be stored) as part of the search request.
+     * If none are specified, the source of the document will be return.
+     */
+    public SearchRequestBuilder addStoredField(String storedField) {
+        sourceBuilder().storedField(storedField);
+        return this;
+    }
+
+    /**
      * Adds a field data based field to load and return. The field does not have to be stored,
      * but its recommended to use non analyzed or numeric fields.
      *
@@ -529,6 +538,15 @@ public class SearchRequestBuilder extends ActionRequestBuilder<SearchRequest, Se
      */
     public SearchRequestBuilder addFields(String... fields) {
         sourceBuilder().fields(fields);
+        return this;
+    }
+
+    /**
+     * Adds the fields to load and return as part of the search request. If none are specified,
+     * the source of the document will be returned.
+     */
+    public SearchRequestBuilder addStoredFields(String... storedFields) {
+        sourceBuilder().storedFields(storedFields);
         return this;
     }
 
@@ -867,7 +885,7 @@ public class SearchRequestBuilder extends ActionRequestBuilder<SearchRequest, Se
      * Clears all rescorers on the builder and sets the first one.  To use multiple rescore windows use
      * {@link #addRescorer(org.elasticsearch.search.rescore.RescoreBuilder.Rescorer, int)}.
      * @param rescorer rescorer configuration
-     * @param window rescore window
+     * @param window   rescore window
      * @return this for chaining
      */
     public SearchRequestBuilder setRescorer(RescoreBuilder.Rescorer rescorer, int window) {
@@ -888,7 +906,7 @@ public class SearchRequestBuilder extends ActionRequestBuilder<SearchRequest, Se
     /**
      * Adds a new rescorer.
      * @param rescorer rescorer configuration
-     * @param window rescore window
+     * @param window   rescore window
      * @return this for chaining
      */
     public SearchRequestBuilder addRescorer(RescoreBuilder.Rescorer rescorer, int window) {
@@ -1053,7 +1071,7 @@ public class SearchRequestBuilder extends ActionRequestBuilder<SearchRequest, Se
         return this;
     }
 
-    public SearchRequestBuilder setTemplateParams(Map<String,String> templateParams) {
+    public SearchRequestBuilder setTemplateParams(Map<String, String> templateParams) {
         request.templateParams(templateParams);
         return this;
     }
