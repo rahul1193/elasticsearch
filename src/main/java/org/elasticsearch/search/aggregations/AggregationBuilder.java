@@ -26,6 +26,7 @@ import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.search.aggregations.pipeline.AbstractPipelineAggregationBuilder;
 
 import java.io.IOException;
 import java.util.List;
@@ -37,6 +38,7 @@ import java.util.Map;
 public abstract class AggregationBuilder<B extends AggregationBuilder<B>> extends AbstractAggregationBuilder {
 
     private List<AbstractAggregationBuilder> aggregations;
+    private List<AbstractPipelineAggregationBuilder> pipelineAggregationBuilders;
     private BytesReference aggregationsBinary;
 
     /**
@@ -101,6 +103,15 @@ public abstract class AggregationBuilder<B extends AggregationBuilder<B>> extend
         }
     }
 
+    @SuppressWarnings("unchecked")
+    public B subAggregation(AbstractPipelineAggregationBuilder builder) {
+        if (pipelineAggregationBuilders == null) {
+            pipelineAggregationBuilders = Lists.newArrayList();
+        }
+        pipelineAggregationBuilders.add(builder);
+        return (B) this;
+    }
+
     @Override
     public final XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject(getName());
@@ -108,7 +119,7 @@ public abstract class AggregationBuilder<B extends AggregationBuilder<B>> extend
         builder.field(type);
         internalXContent(builder, params);
 
-        if (aggregations != null || aggregationsBinary != null) {
+        if (aggregations != null || aggregationsBinary != null || pipelineAggregationBuilders != null) {
             builder.startObject("aggregations");
 
             if (aggregations != null) {
@@ -122,6 +133,12 @@ public abstract class AggregationBuilder<B extends AggregationBuilder<B>> extend
                     builder.rawField("aggregations", aggregationsBinary);
                 } else {
                     builder.field("aggregations_binary", aggregationsBinary);
+                }
+            }
+
+            if (pipelineAggregationBuilders != null) {
+                for (AbstractPipelineAggregationBuilder subPipeAgg : pipelineAggregationBuilders) {
+                    subPipeAgg.toXContent(builder, params);
                 }
             }
 

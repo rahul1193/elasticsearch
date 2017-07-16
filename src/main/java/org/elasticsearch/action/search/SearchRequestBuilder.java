@@ -33,6 +33,7 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.search.Scroll;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
+import org.elasticsearch.search.aggregations.pipeline.AbstractPipelineAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.facet.FacetBuilder;
 import org.elasticsearch.search.highlight.HighlightBuilder;
@@ -637,6 +638,11 @@ public class SearchRequestBuilder extends ActionRequestBuilder<SearchRequest, Se
      */
     public SearchRequestBuilder setAggregations(Map aggregations) {
         sourceBuilder().aggregations(aggregations);
+        return this;
+    }
+
+    public SearchRequestBuilder addAggregation(AbstractPipelineAggregationBuilder aggregation) {
+        sourceBuilder().aggregation(aggregation);
         return this;
     }
 

@@ -23,6 +23,7 @@ import com.carrotsearch.hppc.DoubleArrayList;
 import com.carrotsearch.hppc.FloatArrayList;
 import com.carrotsearch.hppc.LongArrayList;
 import com.carrotsearch.hppc.ObjectArrayList;
+import com.google.common.collect.Maps;
 import org.apache.lucene.util.*;
 import org.elasticsearch.common.Preconditions;
 
@@ -357,5 +358,33 @@ public enum CollectionUtils {
 
     }
 
+    public static <T, S> boolean isNotEmpty(Map<T, S> map) {
+        return !isEmpty(map);
+    }
 
+    public static <T, S> boolean isEmpty(Map<T, S> map) {
+        return map == null || map.isEmpty();
+    }
+
+    public static <T> boolean isNotEmpty(Collection<T> collection) {
+        return !isEmpty(collection);
+    }
+
+    public static <T> boolean isEmpty(Collection<T> collection) {
+        return collection == null || collection.isEmpty();
+    }
+
+    public static <T, S> Map<T, S> nullSafeMap(Map<T, S> map) {
+        if (map == null) {
+            return Maps.newHashMap();
+        }
+        return map;
+    }
+
+    public static <T, S> Map<T, S> emptyIfNull(Map<T, S> map) {
+        if (map == null) {
+            return Collections.emptyMap();
+        }
+        return map;
+    }
 }

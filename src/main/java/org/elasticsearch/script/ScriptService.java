@@ -25,6 +25,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
 import com.google.common.collect.ImmutableMap;
+import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.ElasticsearchIllegalArgumentException;
 import org.elasticsearch.ElasticsearchIllegalStateException;
 import org.elasticsearch.action.ActionListener;
@@ -183,6 +184,10 @@ public class ScriptService extends AbstractComponent {
             } else {
                 out.writeVInt(INLINE_VAL); //Default to inline
             }
+        }
+
+        public String lowerCaseName() {
+            return StringUtils.lowerCase(this.name());
         }
     }
 
