@@ -1,5 +1,6 @@
 package org.elasticsearch.search.aggregations.pipeline;
 
+import com.google.common.collect.Maps;
 import org.elasticsearch.Version;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.ToXContentUtils;
@@ -47,6 +48,15 @@ public abstract class AbstractPipelineAggregationBuilder<PAB extends AbstractPip
     @SuppressWarnings("unchecked")
     public PAB setMetaData(Map<String, Object> metaData) {
         this.metaData = metaData;
+        return (PAB) this;
+    }
+
+    @SuppressWarnings("unchecked")
+    public PAB addMetadata(String key, Object value) {
+        if (this.metaData == null) {
+            this.metaData = Maps.newHashMap();
+        }
+        this.metaData.put(key, value);
         return (PAB) this;
     }
 
