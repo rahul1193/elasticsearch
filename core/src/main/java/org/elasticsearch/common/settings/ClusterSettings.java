@@ -18,6 +18,9 @@
  */
 package org.elasticsearch.common.settings;
 
+import com.spr.elasticsearch.index.query.ParsedQueryCache;
+import com.spr.elasticsearch.index.query.QueryBuilderRewriteCache;
+import com.spr.elasticsearch.indices.CacheKeyLRUQueryCache;
 import org.elasticsearch.action.admin.indices.close.TransportCloseIndexAction;
 import org.elasticsearch.action.search.RemoteClusterService;
 import org.elasticsearch.action.search.TransportSearchAction;
@@ -35,15 +38,7 @@ import org.elasticsearch.cluster.action.index.MappingUpdatedAction;
 import org.elasticsearch.cluster.metadata.MetaData;
 import org.elasticsearch.cluster.routing.allocation.DiskThresholdSettings;
 import org.elasticsearch.cluster.routing.allocation.allocator.BalancedShardsAllocator;
-import org.elasticsearch.cluster.routing.allocation.decider.AwarenessAllocationDecider;
-import org.elasticsearch.cluster.routing.allocation.decider.ClusterRebalanceAllocationDecider;
-import org.elasticsearch.cluster.routing.allocation.decider.ConcurrentRebalanceAllocationDecider;
-import org.elasticsearch.cluster.routing.allocation.decider.EnableAllocationDecider;
-import org.elasticsearch.cluster.routing.allocation.decider.FilterAllocationDecider;
-import org.elasticsearch.cluster.routing.allocation.decider.SameShardAllocationDecider;
-import org.elasticsearch.cluster.routing.allocation.decider.ShardsLimitAllocationDecider;
-import org.elasticsearch.cluster.routing.allocation.decider.SnapshotInProgressAllocationDecider;
-import org.elasticsearch.cluster.routing.allocation.decider.ThrottlingAllocationDecider;
+import org.elasticsearch.cluster.routing.allocation.decider.*;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.logging.ESLoggerFactory;
 import org.elasticsearch.common.logging.Loggers;
@@ -424,6 +419,12 @@ public final class ClusterSettings extends AbstractScopedSettings {
                     SearchModule.INDICES_MAX_CLAUSE_COUNT_SETTING,
                     ThreadPool.ESTIMATED_TIME_INTERVAL_SETTING,
                     FastVectorHighlighter.SETTING_TV_HIGHLIGHT_MULTI_VALUE,
-                    Node.BREAKER_TYPE_KEY
+                    Node.BREAKER_TYPE_KEY,
+                    CacheKeyLRUQueryCache.LRU_QUERY_CACHE_EXPIRE_AFTER_ACCESS_SECONDS,
+                    ParsedQueryCache.PARSED_QUERY_CACHE_ENABLED,
+                    ParsedQueryCache.PARSED_QUERY_CACHE_SIZE,
+                    QueryBuilderRewriteCache.QUERY_BUILDER_REWRITE_CACHE_ENABLED,
+                    QueryBuilderRewriteCache.QUERY_BUILDER_REWRITE_CACHE_SIZE,
+                    QueryBuilderRewriteCache.QUERY_BUILDER_REWRITE_EXPIRE_AFTER_ACCESS
             )));
 }
