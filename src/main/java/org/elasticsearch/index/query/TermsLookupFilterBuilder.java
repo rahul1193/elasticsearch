@@ -121,16 +121,19 @@ public class TermsLookupFilterBuilder extends BaseFilterBuilder {
     }
 
     private TermsLookupFilterBuilder cloneWithoutCache() {
-        return new TermsLookupFilterBuilder(name)
+        TermsLookupFilterBuilder clone = new TermsLookupFilterBuilder(name)
                 .lookupIndex(lookupIndex)
                 .lookupType(lookupType)
                 .lookupId(lookupId)
                 .lookupRouting(lookupRouting)
                 .lookupPath(lookupPath)
-                .lookupCache(lookupCache)
                 .cache(false) // explicitly setting it as false.
                 .cacheKey(cacheKey)
                 .filterName(filterName);
+        if (lookupCache != null) {
+            clone.lookupCache(lookupCache);
+        }
+        return clone;
     }
 
     private void doLookupXContent(XContentBuilder builder, Params params) throws IOException {
