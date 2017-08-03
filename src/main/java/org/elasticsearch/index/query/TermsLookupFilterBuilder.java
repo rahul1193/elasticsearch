@@ -113,21 +113,24 @@ public class TermsLookupFilterBuilder extends BaseFilterBuilder {
     public void doXContent(XContentBuilder builder, Params params) throws IOException {
         if (ToXContentUtils.getVersionFromParams(params).onOrAfter(Version.V_5_0_0) && BooleanUtils.isTrue(cache) && StringUtils.isNotBlank(cacheKey)) {
             // doing it this way as query response gets cached and query builder gets cached as well.
-            BoolFilterBuilder boolFilter = FilterBuilders.boolFilter().must(this).cache(true).cacheKey(cacheKey);
-            doCopyingCacheKey(builder, params, boolFilter);
+            BoolFilterBuilder boolFilter = FilterBuilders.boolFilter().must(cloneWithoutCache()).cache(true).cacheKey(cacheKey);
+            boolFilter.doXContent(builder, params);
         } else {
             doLookupXContent(builder, params);
         }
     }
 
-    private void doCopyingCacheKey(XContentBuilder builder, Params params, BoolFilterBuilder boolFilter) throws IOException {
-        boolean cacheCopy = cache;
-        cache = null; // avoid recursion
-        try {
-            boolFilter.doXContent(builder, params);
-        } finally {
-            this.cache = cacheCopy;
-        }
+    private TermsLookupFilterBuilder cloneWithoutCache() {
+        return new TermsLookupFilterBuilder(name)
+                .lookupIndex(lookupIndex)
+                .lookupType(lookupType)
+                .lookupId(lookupId)
+                .lookupRouting(lookupRouting)
+                .lookupPath(lookupPath)
+                .lookupCache(lookupCache)
+                .cache(false) // explicitly setting it as false.
+                .cacheKey(cacheKey)
+                .filterName(filterName);
     }
 
     private void doLookupXContent(XContentBuilder builder, Params params) throws IOException {
