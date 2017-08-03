@@ -37,6 +37,7 @@ import org.elasticsearch.index.query.FilterBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
+import org.elasticsearch.search.aggregations.pipeline.AbstractPipelineAggregationBuilder;
 import org.elasticsearch.search.facet.FacetBuilder;
 import org.elasticsearch.search.fetch.source.FetchSourceContext;
 import org.elasticsearch.search.highlight.HighlightBuilder;
@@ -111,6 +112,8 @@ public class SearchSourceBuilder implements ToXContent {
 
     private List<AbstractAggregationBuilder> aggregations;
     private BytesReference aggregationsBinary;
+
+    private List<AbstractPipelineAggregationBuilder> pipelineAggregations;
 
 
     private HighlightBuilder highlightBuilder;
@@ -454,6 +457,14 @@ public class SearchSourceBuilder implements ToXContent {
      */
     public SearchSourceBuilder aggregations(XContentBuilder facets) {
         return aggregations(facets.bytes());
+    }
+
+    public SearchSourceBuilder aggregation(AbstractPipelineAggregationBuilder pipelineAggregationBuilder) {
+        if (pipelineAggregations == null) {
+            pipelineAggregations = Lists.newArrayList();
+        }
+        pipelineAggregations.add(pipelineAggregationBuilder);
+        return this;
     }
 
     /**
@@ -919,11 +930,20 @@ public class SearchSourceBuilder implements ToXContent {
             }
         }
 
-        if (aggregations != null) {
+        if (aggregations != null || pipelineAggregations != null) {
             builder.field("aggregations");
             builder.startObject();
-            for (AbstractAggregationBuilder aggregation : aggregations) {
-                aggregation.toXContent(builder, params);
+
+            if (aggregations != null) {
+                for (AbstractAggregationBuilder aggregation : aggregations) {
+                    aggregation.toXContent(builder, params);
+                }
+            }
+
+            if (pipelineAggregations != null) {
+                for (AbstractPipelineAggregationBuilder pipelineAggregation : pipelineAggregations) {
+                    pipelineAggregation.toXContent(builder, params);
+                }
             }
             builder.endObject();
         }
