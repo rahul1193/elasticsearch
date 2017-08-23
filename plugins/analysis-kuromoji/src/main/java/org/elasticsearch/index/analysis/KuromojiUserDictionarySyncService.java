@@ -6,6 +6,8 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3Object;
+import org.apache.logging.log4j.message.ParameterizedMessage;
+import org.apache.logging.log4j.util.Supplier;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
 import org.elasticsearch.SpecialPermission;
 import org.elasticsearch.cluster.service.ClusterService;
@@ -14,6 +16,7 @@ import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.common.util.concurrent.AbstractRunnable;
 import org.elasticsearch.threadpool.ThreadPool;
 
 import java.io.BufferedInputStream;
@@ -25,6 +28,7 @@ import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -61,7 +65,7 @@ public class KuromojiUserDictionarySyncService extends AbstractComponent {
         if (AMAZON_S3_INIT_ON_START_SETTING.get(settings)) {
             initDictionaryAndLastSyncTime();
         }
-        threadPool.scheduleWithFixedDelay(new KurumojiSyncRunnable(), TimeValue.timeValueMinutes(1), ThreadPool.Names.GENERIC);
+        threadPool.schedule(TimeValue.timeValueSeconds(1), ThreadPool.Names.MANAGEMENT, new KurumojiSyncRunnable(threadPool));
     }
 
     private void initDictionaryAndLastSyncTime() {
@@ -72,7 +76,7 @@ public class KuromojiUserDictionarySyncService extends AbstractComponent {
         updateDictionaryAndLastSyncTime(amazonS3Client);
     }
 
-    void registerDictionaryConsumer(Consumer<UserDictionary> consumer) {
+    public void registerDictionaryConsumer(Consumer<UserDictionary> consumer) {
         dictionaryConsumers.add(consumer);
         if (userDictionary.get() != null) {
             consumer.accept(userDictionary.get());
@@ -131,10 +135,41 @@ public class KuromojiUserDictionarySyncService extends AbstractComponent {
         return userDictionaryConfig.getBucket();
     }
 
-    private class KurumojiSyncRunnable implements Runnable {
+    class KurumojiSyncRunnable extends AbstractRunnable implements ThreadPool.Cancellable {
+
+        private final ThreadPool threadPool;
+        private AtomicBoolean cancelled = new AtomicBoolean(false);
+
+        KurumojiSyncRunnable(ThreadPool threadPool) {
+            this.threadPool = threadPool;
+        }
 
         @Override
-        public void run() {
+        public void onFailure(Exception e) {
+            logger.warn((Supplier<?>) () -> new ParameterizedMessage("failed to run scheduled task [{}] on thread pool [{}]", this.toString(), threadPool.executor(ThreadPool.Names.SAME)), e);
+        }
+
+        @Override
+        public void cancel() {
+            cancelled.set(true);
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return cancelled.get();
+        }
+
+        @Override
+        public void onAfter() {
+            if (lastSyncTime.get() == 0) {
+                threadPool.schedule(TimeValue.timeValueSeconds(1), ThreadPool.Names.SAME, this);
+            } else {
+                threadPool.schedule(TimeValue.timeValueMinutes(1), ThreadPool.Names.SAME, this);
+            }
+        }
+
+        @Override
+        public void doRun() {
             if (settings == null) {
                 return;
             }

@@ -32,7 +32,6 @@ import org.elasticsearch.index.IndexSettings;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 /**
@@ -45,15 +44,12 @@ public class KuromojiTokenizerFactory extends AbstractTokenizerFactory {
     private final Mode mode;
 
     private final SprJapaneseAnalyzer analyzer;
-    private final Supplier<KuromojiUserDictionarySyncService> serviceProvider;
-    private final AtomicBoolean registered = new AtomicBoolean(false);
 
     public KuromojiTokenizerFactory(IndexSettings indexSettings, Environment env, String name, Settings settings, Supplier<KuromojiUserDictionarySyncService> serviceProvider) {
         super(indexSettings, name, settings);
         mode = getMode(settings);
         userDictionary = getUserDictionary(env, settings);
-        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, CharArraySet.EMPTY_SET, SprJapaneseAnalyzer.getDefaultStopTags(), env.settings());
-        this.serviceProvider = serviceProvider;
+        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, CharArraySet.EMPTY_SET, SprJapaneseAnalyzer.getDefaultStopTags(), serviceProvider);
     }
 
     public static UserDictionary getUserDictionary(Environment env, Settings settings) {
@@ -90,9 +86,6 @@ public class KuromojiTokenizerFactory extends AbstractTokenizerFactory {
 
     @Override
     public Tokenizer create() {
-        if (registered.compareAndSet(false, true)) {
-            serviceProvider.get().registerDictionaryConsumer(analyzer::setUserDictionary);
-        }
         return analyzer.getTokenizer();
     }
 }
