@@ -27,6 +27,7 @@ import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequestBuilder;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse;
+import org.elasticsearch.action.admin.indices.cache.clear.ClearIndicesCacheRequest;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.get.GetIndexRequest;
@@ -1741,6 +1742,11 @@ public class RestClientTest extends AbstractRestClientTest {
         assertNotNull(lookupResponse.getHits());
         assertTrue(lookupResponse.getHits().getTotalHits() > 1);
         assertTrue(lookupResponse.getHits().getTotalHits() < 101);
+    }
+
+    @Test
+    public void testClearCache() {
+        client.admin().indices().clearCache(new ClearIndicesCacheRequest().queryBuilderCache(true).filterCache(true));
     }
 
     @Test

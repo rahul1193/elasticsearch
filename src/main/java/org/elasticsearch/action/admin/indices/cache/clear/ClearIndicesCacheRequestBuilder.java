@@ -21,7 +21,6 @@ package org.elasticsearch.action.admin.indices.cache.clear;
 
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.broadcast.BroadcastOperationRequestBuilder;
-import org.elasticsearch.client.Client;
 import org.elasticsearch.client.IndicesAdminClient;
 
 /**
@@ -45,6 +44,16 @@ public class ClearIndicesCacheRequestBuilder extends BroadcastOperationRequestBu
 
     public ClearIndicesCacheRequestBuilder setFieldDataCache(boolean fieldDataCache) {
         request.fieldDataCache(fieldDataCache);
+        return this;
+    }
+
+    public ClearIndicesCacheRequestBuilder setTermLookupQueryBuilderCache(boolean queryBuilderCache) {
+        request.queryBuilderCache(queryBuilderCache);
+        return this;
+    }
+
+    public ClearIndicesCacheRequestBuilder parsedQueryCache(boolean parsedQueryCache) {
+        request.parsedQuery(parsedQueryCache);
         return this;
     }
 

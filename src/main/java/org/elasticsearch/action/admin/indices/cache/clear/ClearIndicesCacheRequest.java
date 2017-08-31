@@ -19,7 +19,7 @@
 
 package org.elasticsearch.action.admin.indices.cache.clear;
 
-import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
 import org.elasticsearch.Version;
 import org.elasticsearch.action.support.broadcast.BroadcastOperationRequest;
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -28,6 +28,8 @@ import org.elasticsearch.common.util.UriBuilder;
 import org.elasticsearch.rest.RestRequest;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Map;
 
 /**
  *
@@ -39,9 +41,11 @@ public class ClearIndicesCacheRequest extends BroadcastOperationRequest<ClearInd
     private boolean idCache = false;
     private boolean recycler = false;
     private boolean queryCache = false;
+    private boolean queryBuilder = false;
+    private boolean parsedQuery = false;
     private String[] fields = null;
     private String[] filterKeys = null;
-    
+
 
     ClearIndicesCacheRequest() {
     }
@@ -91,6 +95,16 @@ public class ClearIndicesCacheRequest extends BroadcastOperationRequest<ClearInd
         return this;
     }
 
+    public ClearIndicesCacheRequest queryBuilderCache(boolean queryBuilderCache) {
+        this.queryBuilder = queryBuilderCache;
+        return this;
+    }
+
+    public ClearIndicesCacheRequest parsedQuery(boolean parsedQuery) {
+        this.parsedQuery = parsedQuery;
+        return this;
+    }
+
     public String[] filterKeys() {
         return this.filterKeys;
     }
@@ -98,12 +112,12 @@ public class ClearIndicesCacheRequest extends BroadcastOperationRequest<ClearInd
     public boolean idCache() {
         return this.idCache;
     }
-    
+
     public ClearIndicesCacheRequest recycler(boolean recycler) {
         this.recycler = recycler;
         return this;
     }
-    
+
     public boolean recycler() {
         return this.recycler;
     }
@@ -144,6 +158,21 @@ public class ClearIndicesCacheRequest extends BroadcastOperationRequest<ClearInd
         return UriBuilder.newBuilder()
                 .csvOrDefault("_all", this.indices())
                 .slash("_cache", "clear").build();
+    }
+
+    @Override
+    public Map<String, String> getParams() {
+        ImmutableMap.Builder<String, String> builder = new ImmutableMap.Builder<>();
+        builder.put("query", String.valueOf(filterCache))
+                .put("request", String.valueOf(queryCache))
+                .put("field_data", String.valueOf(fieldDataCache))
+                .put("parsed_query", String.valueOf(parsedQuery))
+                .put("query_builder", String.valueOf(queryBuilder))
+                .put("recycler", String.valueOf(recycler));
+        if (fields != null && fields.length > 0) {
+            builder.put("fields", Arrays.toString(fields));
+        }
+        return builder.build();
     }
 
     @Override
