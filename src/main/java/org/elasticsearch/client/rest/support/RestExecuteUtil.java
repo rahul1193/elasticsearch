@@ -23,6 +23,7 @@ import org.elasticsearch.Version;
 import org.elasticsearch.action.*;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.util.concurrent.UncategorizedExecutionException;
+import org.elasticsearch.common.xcontent.FromArrayXContent;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentObject;
 import org.elasticsearch.common.xcontent.XContentParser;
@@ -30,7 +31,7 @@ import org.elasticsearch.common.xcontent.support.XContentObjectImpl;
 import org.elasticsearch.rest.RestRequest;
 
 import java.io.IOException;
-import java.util.Map;
+import java.util.*;
 
 /**
  */
@@ -104,9 +105,19 @@ public class RestExecuteUtil {
             assert entity != null;
             String content = HttpUtils.readUtf8(entity);
             XContentParser parser = XContentHelper.createParser(new BytesArray(content));
+            // doing this to validate error.
             XContentObject source = new XContentObjectImpl(parser.mapOrderedAndClose(), version);
             validate(source);
-            response.readFrom(source);
+            if (response instanceof FromArrayXContent) {
+                List<XContentObject> objects = new LinkedList<>();
+                for (Object o : parser.array()) {
+                    assert o instanceof LinkedHashMap;
+                    objects.add(new XContentObjectImpl((Map<String, Object>) o, version));
+                }
+                ((FromArrayXContent) response).readFrom(Collections.unmodifiableList(objects));
+            } else {
+                response.readFrom(source);
+            }
         }
         return response;
     }
