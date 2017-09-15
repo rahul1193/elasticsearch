@@ -33,14 +33,27 @@ import java.util.function.Function;
 public class RestStatusToXContentListener<Response extends StatusToXContentObject> extends RestToXContentListener<Response> {
     private final Function<Response, String> extractLocation;
 
+    private Long requestReceivedTime = null;
+
     /**
      * Build an instance that doesn't support responses with the status {@code 201 CREATED}.
      */
     public RestStatusToXContentListener(RestChannel channel) {
         this(channel, r -> {
-            assert false: "Returned a 201 CREATED but not set up to support a Location header";
+            assert false : "Returned a 201 CREATED but not set up to support a Location header";
             return null;
         });
+    }
+
+    /**
+     * Build an instance that doesn't support responses with the status {@code 201 CREATED}.
+     */
+    public RestStatusToXContentListener(RestChannel channel, Long requestReceivedTime) {
+        this(channel, r -> {
+            assert false : "Returned a 201 CREATED but not set up to support a Location header";
+            return null;
+        });
+        this.requestReceivedTime = requestReceivedTime;
     }
 
     /**
@@ -61,6 +74,10 @@ public class RestStatusToXContentListener<Response extends StatusToXContentObjec
             if (location != null) {
                 restResponse.addHeader("Location", location);
             }
+        }
+        if (requestReceivedTime != null) {
+            restResponse.addHeader("Request-Received-Time", String.valueOf(requestReceivedTime));
+            restResponse.addHeader("Total-Time-Taken", String.valueOf(System.currentTimeMillis() - requestReceivedTime));
         }
         return restResponse;
     }

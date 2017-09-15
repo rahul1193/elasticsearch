@@ -71,11 +71,12 @@ public class RestSearchAction extends BaseRestHandler {
 
     @Override
     public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
+        long requestReceivedTime = System.currentTimeMillis();
         SearchRequest searchRequest = new SearchRequest();
         request.withContentOrSourceParamParserOrNull(parser ->
             parseSearchRequest(searchRequest, request, parser));
 
-        return channel -> client.search(searchRequest, new RestStatusToXContentListener<>(channel));
+        return channel -> client.search(searchRequest, new RestStatusToXContentListener<>(channel, requestReceivedTime));
     }
 
     /**
