@@ -30,7 +30,7 @@ import java.util.ArrayList;
 /**
  * A filter that matches documents matching boolean combinations of other filters.
  */
-public class AndFilterBuilder extends BaseFilterBuilder {
+public class AndFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<AndFilterBuilder> {
 
     private ArrayList<FilterBuilder> filters = Lists.newArrayList();
 

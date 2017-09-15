@@ -26,10 +26,8 @@ import java.io.IOException;
 /**
  * A filter that restricts search results to values that have a matching regular expression in a given
  * field.
- *
- *
  */
-public class RegexpFilterBuilder extends BaseFilterBuilder {
+public class RegexpFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<RegexpFilterBuilder> {
 
     private final String name;
     private final String regexp;

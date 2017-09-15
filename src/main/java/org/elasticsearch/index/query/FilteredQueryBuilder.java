@@ -29,7 +29,7 @@ import java.io.IOException;
 /**
  * A query that applies a filter to the results of another query.
  */
-public class FilteredQueryBuilder extends BaseQueryBuilder implements BoostableQueryBuilder<FilteredQueryBuilder> {
+public class FilteredQueryBuilder extends BaseQueryBuilder implements BoostableQueryBuilder<FilteredQueryBuilder>, NamedFilterBuilder<FilteredQueryBuilder> {
 
     private final QueryBuilder queryBuilder;
 
@@ -64,6 +64,12 @@ public class FilteredQueryBuilder extends BaseQueryBuilder implements BoostableQ
      */
     public FilteredQueryBuilder queryName(String queryName) {
         this.queryName = queryName;
+        return this;
+    }
+
+    @Override
+    public FilteredQueryBuilder filterName(String name) {
+        this.queryName  = name;
         return this;
     }
 

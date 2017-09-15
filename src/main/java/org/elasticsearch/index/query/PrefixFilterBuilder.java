@@ -26,10 +26,8 @@ import java.io.IOException;
 /**
  * A filter that restricts search results to values that have a matching prefix in a given
  * field.
- *
- *
  */
-public class PrefixFilterBuilder extends BaseFilterBuilder {
+public class PrefixFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<PrefixFilterBuilder> {
 
     private final String name;
 

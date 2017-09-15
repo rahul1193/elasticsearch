@@ -29,7 +29,7 @@ import java.util.Locale;
 /**
  *
  */
-public class GeoDistanceFilterBuilder extends BaseFilterBuilder {
+public class GeoDistanceFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<GeoDistanceFilterBuilder> {
 
     private final String name;
 

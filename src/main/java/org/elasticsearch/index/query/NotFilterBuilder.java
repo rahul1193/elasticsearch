@@ -28,7 +28,7 @@ import java.io.IOException;
 /**
  * A filter that matches documents matching boolean combinations of other filters.
  */
-public class NotFilterBuilder extends BaseFilterBuilder {
+public class NotFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<NotFilterBuilder> {
 
     private FilterBuilder filter;
 

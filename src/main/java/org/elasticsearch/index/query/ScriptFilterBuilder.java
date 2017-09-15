@@ -33,7 +33,7 @@ import static com.google.common.collect.Maps.newHashMap;
 /**
  *
  */
-public class ScriptFilterBuilder extends BaseFilterBuilder {
+public class ScriptFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<ScriptFilterBuilder> {
 
     private final String script;
 

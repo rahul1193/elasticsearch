@@ -29,7 +29,7 @@ import java.io.IOException;
 /**
  *
  */
-public class GeoBoundingBoxFilterBuilder extends BaseFilterBuilder {
+public class GeoBoundingBoxFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<GeoBoundingBoxFilterBuilder> {
 
     public static final String TOP_LEFT = GeoBoundingBoxFilterParser.TOP_LEFT;
     public static final String BOTTOM_RIGHT = GeoBoundingBoxFilterParser.BOTTOM_RIGHT;

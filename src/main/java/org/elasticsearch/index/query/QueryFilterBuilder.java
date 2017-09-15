@@ -28,7 +28,7 @@ import java.io.IOException;
 /**
  * A filter that simply wraps a query.
  */
-public class QueryFilterBuilder extends BaseFilterBuilder {
+public class QueryFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<QueryFilterBuilder> {
 
     private final QueryBuilder queryBuilder;
 

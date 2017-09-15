@@ -27,7 +27,6 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.XContentType;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +34,7 @@ import java.util.List;
 /**
  * A filter that matches documents matching boolean combinations of other filters.
  */
-public class BoolFilterBuilder extends BaseFilterBuilder {
+public class BoolFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<BoolFilterBuilder> {
 
     private ArrayList<FilterBuilder> mustClauses = new ArrayList<>();
 

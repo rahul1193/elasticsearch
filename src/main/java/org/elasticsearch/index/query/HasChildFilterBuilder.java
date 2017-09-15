@@ -25,7 +25,7 @@ import java.io.IOException;
 /**
  *
  */
-public class HasChildFilterBuilder extends BaseFilterBuilder {
+public class HasChildFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<HasChildFilterBuilder> {
 
     private final FilterBuilder filterBuilder;
     private final QueryBuilder queryBuilder;

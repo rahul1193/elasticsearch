@@ -30,7 +30,7 @@ import java.util.List;
 /**
  *
  */
-public class GeoPolygonFilterBuilder extends BaseFilterBuilder {
+public class GeoPolygonFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<GeoPolygonFilterBuilder> {
 
     public static final String POINTS = GeoPolygonFilterParser.POINTS;
     

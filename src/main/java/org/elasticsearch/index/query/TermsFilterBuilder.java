@@ -26,7 +26,7 @@ import java.io.IOException;
 /**
  * A filer for a field based on several terms matching on any of them.
  */
-public class TermsFilterBuilder extends BaseFilterBuilder {
+public class TermsFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<TermsFilterBuilder> {
 
     private final String name;
 

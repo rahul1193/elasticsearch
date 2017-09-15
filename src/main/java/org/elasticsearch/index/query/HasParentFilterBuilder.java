@@ -25,7 +25,7 @@ import java.io.IOException;
 /**
  * Builder for the 'has_parent' filter.
  */
-public class HasParentFilterBuilder extends BaseFilterBuilder {
+public class HasParentFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<HasParentFilterBuilder> {
 
     private final QueryBuilder queryBuilder;
     private final FilterBuilder filterBuilder;

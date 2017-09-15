@@ -25,10 +25,8 @@ import java.io.IOException;
 
 /**
  * A filter that restricts search results to values that are within the given range.
- *
- *
  */
-public class RangeFilterBuilder extends BaseFilterBuilder {
+public class RangeFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<RangeFilterBuilder> {
 
     private final String name;
 
@@ -358,12 +356,12 @@ public class RangeFilterBuilder extends BaseFilterBuilder {
      * Sets the execution mode that controls how the range filter is executed. Valid values are: "index" and "fielddata".
      * <ol>
      * <li> The <code>index</code> execution uses the field's inverted in order to determine of documents fall with in
-     *      the range filter's from and to range.
+     * the range filter's from and to range.
      * <li> The <code>fielddata</code> execution uses field data in order to determine of documents fall with in the
-     *      range filter's from and to range. Since field data is an in memory data structure, you need to have
-     *      sufficient memory on your nodes in order to use this execution mode.
+     * range filter's from and to range. Since field data is an in memory data structure, you need to have
+     * sufficient memory on your nodes in order to use this execution mode.
      * </ol>
-     *
+     * <p>
      * In general for small ranges the <code>index</code> execution is faster and for longer ranges the
      * <code>fielddata</code> execution is faster.
      */

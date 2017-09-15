@@ -28,7 +28,7 @@ import java.io.IOException;
 /**
  * Constructs a filter that only match on documents that the field has a value in them.
  */
-public class MissingFilterBuilder extends BaseFilterBuilder {
+public class MissingFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<FilterBuilder> {
 
     private String name;
 

@@ -29,7 +29,7 @@ import java.util.List;
 /**
  * A filter that will return only documents matching specific ids (and a type).
  */
-public class IdsFilterBuilder extends BaseFilterBuilder {
+public class IdsFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<IdsFilterBuilder> {
 
     private final List<String> types;
 

@@ -25,10 +25,8 @@ import java.io.IOException;
 
 /**
  * A filter for a field based on a term.
- *
- *
  */
-public class TermFilterBuilder extends BaseFilterBuilder {
+public class TermFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<TermFilterBuilder> {
 
     private final String name;
 

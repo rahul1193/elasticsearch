@@ -25,7 +25,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 
 import java.io.IOException;
 
-public class NestedFilterBuilder extends BaseFilterBuilder {
+public class NestedFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<NestedFilterBuilder> {
 
     private final QueryBuilder queryBuilder;
     private final FilterBuilder filterBuilder;

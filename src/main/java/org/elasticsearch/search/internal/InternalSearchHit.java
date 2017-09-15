@@ -437,6 +437,15 @@ public class InternalSearchHit implements SearchHit {
                 response.id = new StringAndBytesText(in.get(this));
             }
 
+        },
+        matched_queries {
+            @Override
+            public void apply(XContentObject in, InternalSearchHit response) throws IOException {
+                List<String> matched_queries = in.getAsStrings(this.name());
+                if (matched_queries != null) {
+                    response.matchedQueries(matched_queries.toArray(new String[matched_queries.size()]));
+                }
+            }
         }
     }
 

@@ -29,7 +29,7 @@ import java.io.IOException;
  * A filter that will execute the wrapped filter only for the specified indices, and "match_all" when
  * it does not match those indices (by default).
  */
-public class IndicesFilterBuilder extends BaseFilterBuilder {
+public class IndicesFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<IndicesFilterBuilder> {
 
     private final FilterBuilder filterBuilder;
 

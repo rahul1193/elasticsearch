@@ -29,7 +29,7 @@ import java.io.IOException;
 /**
  * {@link FilterBuilder} that builds a GeoShape Filter
  */
-public class GeoShapeFilterBuilder extends BaseFilterBuilder {
+public class GeoShapeFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<GeoShapeFilterBuilder> {
 
     private final String name;
 
@@ -49,7 +49,7 @@ public class GeoShapeFilterBuilder extends BaseFilterBuilder {
     private String indexedShapePath;
 
     private ShapeRelation relation = null;
-    
+
     /**
      * Creates a new GeoShapeFilterBuilder whose Filter will be against the
      * given field name using the given Shape
@@ -65,9 +65,9 @@ public class GeoShapeFilterBuilder extends BaseFilterBuilder {
      * Creates a new GeoShapeFilterBuilder whose Filter will be against the
      * given field name using the given Shape
      *
-     * @param name  Name of the field that will be filtered
+     * @param name     Name of the field that will be filtered
      * @param relation {@link ShapeRelation} of query and indexed shape
-     * @param shape Shape used in the filter
+     * @param shape    Shape used in the filter
      */
     public GeoShapeFilterBuilder(String name, ShapeBuilder shape, ShapeRelation relation) {
         this(name, shape, null, null, relation);
@@ -196,7 +196,7 @@ public class GeoShapeFilterBuilder extends BaseFilterBuilder {
             builder.endObject();
         }
 
-        if(relation != null) {
+        if (relation != null) {
             builder.field("relation", relation.getRelationName());
         }
 

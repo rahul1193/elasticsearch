@@ -31,7 +31,7 @@ import java.io.IOException;
 /**
  * A filer for a field based on several terms matching on any of them.
  */
-public class TermsLookupFilterBuilder extends BaseFilterBuilder {
+public class TermsLookupFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<TermsLookupFilterBuilder> {
 
     private final String name;
     private String lookupIndex;

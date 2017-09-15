@@ -28,7 +28,7 @@ import java.util.Locale;
 /**
  *
  */
-public class GeoDistanceRangeFilterBuilder extends BaseFilterBuilder {
+public class GeoDistanceRangeFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<GeoDistanceRangeFilterBuilder> {
 
     private final String name;
 

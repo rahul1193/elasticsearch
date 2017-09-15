@@ -28,7 +28,7 @@ import java.io.IOException;
  *
  *
  */
-public class ExistsFilterBuilder extends BaseFilterBuilder {
+public class ExistsFilterBuilder extends BaseFilterBuilder implements NamedFilterBuilder<ExistsFilterBuilder> {
 
     private String name;
 
