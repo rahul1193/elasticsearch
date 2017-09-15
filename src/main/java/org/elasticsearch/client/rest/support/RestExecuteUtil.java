@@ -18,15 +18,13 @@
  */
 package org.elasticsearch.client.rest.support;
 
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.elasticsearch.Version;
 import org.elasticsearch.action.*;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.util.concurrent.UncategorizedExecutionException;
-import org.elasticsearch.common.xcontent.FromArrayXContent;
-import org.elasticsearch.common.xcontent.XContentHelper;
-import org.elasticsearch.common.xcontent.XContentObject;
-import org.elasticsearch.common.xcontent.XContentParser;
+import org.elasticsearch.common.xcontent.*;
 import org.elasticsearch.common.xcontent.support.XContentObjectImpl;
 import org.elasticsearch.rest.RestRequest;
 
@@ -117,6 +115,13 @@ public class RestExecuteUtil {
                 ((FromArrayXContent) response).readFrom(Collections.unmodifiableList(objects));
             } else {
                 response.readFrom(source);
+            }
+            if (response instanceof WithRestHeaders) {
+                Map<String, String> restHeaders = new HashMap<>();
+                for (Header header : restResponse.getHeaders()) {
+                    restHeaders.put(header.getName(), header.getValue());
+                }
+                ((WithRestHeaders) response).readHeaders(restHeaders);
             }
         }
         return response;

@@ -20,6 +20,7 @@
 package org.elasticsearch.action.search;
 
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.unit.TimeValue;
@@ -32,6 +33,7 @@ import org.elasticsearch.search.internal.InternalSearchResponse;
 import org.elasticsearch.search.suggest.Suggest;
 
 import java.io.IOException;
+import java.util.Map;
 
 import static org.elasticsearch.action.search.ShardSearchFailure.readShardSearchFailure;
 import static org.elasticsearch.search.internal.InternalSearchResponse.newInternalSearchResponse;
@@ -39,7 +41,7 @@ import static org.elasticsearch.search.internal.InternalSearchResponse.newIntern
 /**
  * A response of a search request.
  */
-public class SearchResponse extends ActionResponse implements StatusToXContent {
+public class SearchResponse extends ActionResponse implements StatusToXContent, WithRestHeaders {
 
     private InternalSearchResponse internalResponse;
 
@@ -52,6 +54,10 @@ public class SearchResponse extends ActionResponse implements StatusToXContent {
     private ShardSearchFailure[] shardFailures = ShardSearchFailure.EMPTY_ARRAY;
 
     private long tookInMillis;
+
+    private Long requestReceivedTime;
+
+    private Long totalTimeTaken;
 
     public SearchResponse() {
     }
@@ -237,6 +243,14 @@ public class SearchResponse extends ActionResponse implements StatusToXContent {
         return response;
     }
 
+    public Long getRequestReceivedTime() {
+        return requestReceivedTime;
+    }
+
+    public Long getTotalTimeTaken() {
+        return totalTimeTaken;
+    }
+
     @Override
     public void readFrom(StreamInput in) throws IOException {
         super.readFrom(in);
@@ -341,6 +355,21 @@ public class SearchResponse extends ActionResponse implements StatusToXContent {
     @Override
     public void readFrom(XContentObject in) throws IOException {
         XContentHelper.populate(in, JsonField.values(), this);
+    }
 
+    @Override
+    public void readHeaders(Map<String, String> headers) {
+        if (headers == null || headers.isEmpty()) {
+            return;
+        }
+        String requestReceivedTime = headers.get("Request-Received-Time");
+        if (Strings.hasLength(requestReceivedTime)) {
+            this.requestReceivedTime = Long.valueOf(requestReceivedTime);
+        }
+
+        String totalTime = headers.get("Total-Time-Taken");
+        if (Strings.hasLength(totalTime)) {
+            this.totalTimeTaken = Long.valueOf(totalTime);
+        }
     }
 }
