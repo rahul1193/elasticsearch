@@ -21,9 +21,17 @@ package org.elasticsearch.client.rest.support;
 
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.concurrent.FutureCallback;
+import org.apache.http.config.SocketConfig;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
+import org.apache.http.nio.protocol.HttpAsyncRequestProducer;
+import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
 import org.elasticsearch.client.rest.FailureListener;
 import org.elasticsearch.client.rest.HttpClientConfigCallback;
 import org.elasticsearch.client.rest.RequestConfigCallback;
@@ -31,9 +39,11 @@ import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
 
 import javax.net.ssl.SSLContext;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Helps creating a new {@link InternalRestClient}. Allows to set the most common http client configuration options when internally
@@ -69,6 +79,7 @@ public class InternalRestClientBuilder {
     private Collection<String> proxyPreferredAuthSchemes;
     private Collection<String> targetPreferredAuthSchemes;
     private SSLContext sslcontext;
+    private boolean async;
 
     public InternalRestClientBuilder setProxy(HttpHost proxy) {
         this.proxy = proxy;
@@ -116,11 +127,16 @@ public class InternalRestClientBuilder {
         return this;
     }
 
+    public InternalRestClientBuilder async(boolean async) {
+        this.async = async;
+        return this;
+    }
+
 
     /**
      * Creates a new builder instance and sets the hosts that the client will send requests to.
      *
-     * @throws NullPointerException if {@code hosts} or any host is {@code null}.
+     * @throws NullPointerException     if {@code hosts} or any host is {@code null}.
      * @throws IllegalArgumentException if {@code hosts} is empty.
      */
     InternalRestClientBuilder(HttpHost... hosts) {
@@ -215,14 +231,14 @@ public class InternalRestClientBuilder {
      * Elasticsearch is behind a proxy that provides a base path; it is not intended for other purposes and it should not be supplied in
      * other scenarios.
      *
-     * @throws NullPointerException if {@code pathPrefix} is {@code null}.
+     * @throws NullPointerException     if {@code pathPrefix} is {@code null}.
      * @throws IllegalArgumentException if {@code pathPrefix} is empty, only '/', or ends with more than one '/'.
      */
     public InternalRestClientBuilder setPathPrefix(String pathPrefix) {
         Objects.requireNonNull(pathPrefix, "pathPrefix must not be null");
         String cleanPathPrefix = pathPrefix;
 
-        if (cleanPathPrefix.startsWith("/") == false) {
+        if (!cleanPathPrefix.startsWith("/")) {
             cleanPathPrefix = "/" + cleanPathPrefix;
         }
 
@@ -250,20 +266,25 @@ public class InternalRestClientBuilder {
         if (failureListener == null) {
             failureListener = new FailureListener();
         }
-        CloseableHttpAsyncClient httpClient = createHttpClient();
-        InternalRestClient restClient = new InternalRestClient(httpClient, maxRetryTimeout, defaultHeaders, hosts, pathPrefix, failureListener, maxResponseSize);
-        httpClient.start();
-        return restClient;
+
+        final HttpClient client;
+        if (async) {
+            client = createAsyncHttpClient();
+        } else {
+            client = createNormalHttpClient();
+        }
+
+        return new InternalRestClient(client, maxRetryTimeout, defaultHeaders, hosts, pathPrefix, failureListener, maxResponseSize);
     }
 
-    private CloseableHttpAsyncClient createHttpClient() {
+    private HttpClient createAsyncHttpClient() {
         RequestConfig.Builder requestConfigBuilder = RequestConfig.custom()
                 .setProxy(proxy)
                 .setProxyPreferredAuthSchemes(proxyPreferredAuthSchemes)
                 .setTargetPreferredAuthSchemes(targetPreferredAuthSchemes)
-                .setConnectTimeout((int)connectTimeout.millis())
-                .setSocketTimeout((int)socketTimeout.millis())
-                .setConnectionRequestTimeout((int)connectionRequestTimeout.millis())
+                .setConnectTimeout((int) connectTimeout.millis())
+                .setSocketTimeout((int) socketTimeout.millis())
+                .setConnectionRequestTimeout((int) connectionRequestTimeout.millis())
                 .setContentCompressionEnabled(contentCompressionEnabled);
         if (requestConfigCallback != null) {
             requestConfigBuilder = requestConfigCallback.customizeRequestConfig(requestConfigBuilder);
@@ -277,12 +298,64 @@ public class InternalRestClientBuilder {
         if (httpClientConfigCallback != null) {
             httpClientBuilder = httpClientConfigCallback.customizeHttpClient(httpClientBuilder);
         }
-        return httpClientBuilder.build();
+
+        final CloseableHttpAsyncClient asyncHttpClient = httpClientBuilder.build();
+        asyncHttpClient.start();
+        return new HttpClient() {
+            @Override
+            public void close() throws IOException {
+                asyncHttpClient.close();
+            }
+
+            @Override
+            public void execute(HttpAsyncRequestProducer requestProducer, HttpAsyncResponseConsumer<HttpResponse> responseConsumer, FutureCallback<HttpResponse> callback) {
+                asyncHttpClient.execute(requestProducer, responseConsumer, callback);
+            }
+        };
+    }
+
+    private HttpClient createNormalHttpClient() {
+
+        RequestConfig.Builder requestConfigBuilder = RequestConfig.custom()
+                .setProxy(proxy)
+                .setProxyPreferredAuthSchemes(proxyPreferredAuthSchemes)
+                .setTargetPreferredAuthSchemes(targetPreferredAuthSchemes)
+                .setConnectTimeout((int) connectTimeout.millis())
+                .setSocketTimeout((int) socketTimeout.millis())
+                .setConnectionRequestTimeout((int) connectionRequestTimeout.millis())
+                .setContentCompressionEnabled(contentCompressionEnabled);
+        if (requestConfigCallback != null) {
+            requestConfigBuilder = requestConfigCallback.customizeRequestConfig(requestConfigBuilder);
+        }
+
+        final SocketConfig socketConfig = SocketConfig.custom().setSoKeepAlive(true).setSoReuseAddress(true)
+                .setSoTimeout((int) socketTimeout.millis()).setTcpNoDelay(true).build();
+
+        final CloseableHttpClient client = HttpClientBuilder.create().setMaxConnPerRoute(maxConnectionsPerRoute)
+                .setConnectionTimeToLive(connectionRequestTimeout.getMillis(), TimeUnit.MILLISECONDS)
+                .setMaxConnTotal(maxConnectionsTotal).setDefaultSocketConfig(socketConfig)
+                .setDefaultRequestConfig(requestConfigBuilder.build()).setSSLContext(sslcontext).build();
+
+        return new HttpClient() {
+            @Override
+            public void execute(HttpAsyncRequestProducer requestProducer, HttpAsyncResponseConsumer<HttpResponse> responseConsumer, FutureCallback<HttpResponse> callback) {
+                try {
+                    CloseableHttpResponse response = client.execute(requestProducer.getTarget(), requestProducer.generateRequest());
+                    callback.completed(response);
+                } catch (Exception e) {
+                    callback.failed(e);
+                }
+            }
+
+            @Override
+            public void close() throws IOException {
+                client.close();
+            }
+        };
     }
 
     public InternalRestClientBuilder setMaxResponseSize(ByteSizeValue maxResponseSize) {
         this.maxResponseSize = maxResponseSize;
         return this;
     }
-
 }

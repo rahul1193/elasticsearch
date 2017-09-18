@@ -26,7 +26,6 @@ import org.apache.http.client.methods.*;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.entity.BufferedHttpEntity;
-import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.nio.client.methods.HttpAsyncMethods;
 import org.apache.http.nio.protocol.HttpAsyncRequestProducer;
 import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
@@ -73,7 +72,7 @@ public class InternalRestClient implements Closeable {
 
     private static final Log logger = LogFactory.getLog(InternalRestClient.class);
 
-    private final CloseableHttpAsyncClient client;
+    private final HttpClient client;
     //we don't rely on default headers supported by HttpAsyncClient as those cannot be replaced
     private final Header[] defaultHeaders;
     private final long maxRetryTimeoutMillis;
@@ -84,7 +83,7 @@ public class InternalRestClient implements Closeable {
     private final ConcurrentMap<HttpHost, DeadHostState> blacklist = new ConcurrentHashMap<>();
     private final FailureListener failureListener;
 
-    InternalRestClient(CloseableHttpAsyncClient client, long maxRetryTimeoutMillis, Header[] defaultHeaders,
+    InternalRestClient(HttpClient client, long maxRetryTimeoutMillis, Header[] defaultHeaders,
                        HttpHost[] hosts, String pathPrefix, FailureListener failureListener, ByteSizeValue maxResponseSize) {
         this.client = client;
         this.maxRetryTimeoutMillis = maxRetryTimeoutMillis;
@@ -251,10 +250,9 @@ public class InternalRestClient implements Closeable {
     private void performRequestAsync(final long startTime, final Iterator<HttpHost> hosts, final HttpRequestBase request,
                                      final HttpAsyncResponseConsumerFactory responseConsumerFactory,
                                      final FailureTrackingResponseListener listener) {
+
         final HttpHost host = hosts.next();
-        //we stream the request body if the entity allows for it
-        HttpAsyncRequestProducer requestProducer = HttpAsyncMethods.create(host, request);
-        client.execute(requestProducer, responseConsumerFactory.createHttpAsyncResponseConsumer(), new FutureCallback<HttpResponse>() {
+        FutureCallback<HttpResponse> httpResponseCallback = new FutureCallback<HttpResponse>() {
             @Override
             public void completed(HttpResponse httpResponse) {
                 try {
@@ -265,7 +263,7 @@ public class InternalRestClient implements Closeable {
                         onResponse(host);
                         listener.onSuccess(response);
                     } else {
-                        Exception responseException = new ResponseException(response);;
+                        Exception responseException = new ResponseException(response);
                         try {
                             BufferedHttpEntity entity;
                             entity = new BufferedHttpEntity(response.getEntity());
@@ -277,7 +275,7 @@ public class InternalRestClient implements Closeable {
                                     XContentObject error = map.getAsXContentObject("error");
                                     List<XContentObject> rootCauses = error.getAsXContentObjects("root_cause");
                                     String type = null;
-                                    if(rootCauses != null && !rootCauses.isEmpty()){
+                                    if (rootCauses != null && !rootCauses.isEmpty()) {
                                         type = rootCauses.get(0).get("type");
                                     }
                                     handler = ElasticsearchExceptionHandler.safeValueOf(type);
@@ -285,9 +283,8 @@ public class InternalRestClient implements Closeable {
                                     if (elasticsearchException != null) {
                                         responseException = elasticsearchException;
                                     }
-                                }
-                                else {
-                                    String errorClassName = map.get("error").replaceAll("\\[.*","");
+                                } else {
+                                    String errorClassName = map.get("error").replaceAll("\\[.*", "");
                                     handler = ElasticsearchExceptionHandler.safeValueOf(errorClassName);
                                     ElasticsearchException elasticsearchException = handler.newException(map);
                                     if (elasticsearchException != null) {
@@ -301,7 +298,7 @@ public class InternalRestClient implements Closeable {
                             // ignore
                         }
 
-                    if (isRetryStatus(statusCode)) {
+                        if (isRetryStatus(statusCode)) {
                             //mark host dead and retry against next one
                             onFailure(host);
                             retryIfPossible(responseException, hosts, request);
@@ -311,7 +308,7 @@ public class InternalRestClient implements Closeable {
                             listener.onDefinitiveFailure(responseException);
                         }
                     }
-                } catch(Exception e) {
+                } catch (Exception e) {
                     listener.onDefinitiveFailure(e);
                 }
             }
@@ -322,7 +319,7 @@ public class InternalRestClient implements Closeable {
                     RequestLogger.logFailedRequest(logger, request, host, failure);
                     onFailure(host);
                     retryIfPossible(failure, hosts, request);
-                } catch(Exception e) {
+                } catch (Exception e) {
                     listener.onDefinitiveFailure(e);
                 }
             }
@@ -350,7 +347,11 @@ public class InternalRestClient implements Closeable {
             public void cancelled() {
                 listener.onDefinitiveFailure(new ExecutionException("request was cancelled", null));
             }
-        });
+        };
+
+        //we stream the request body if the entity allows for it
+        HttpAsyncRequestProducer requestProducer = HttpAsyncMethods.create(host, request);
+        client.execute(requestProducer, responseConsumerFactory.createHttpAsyncResponseConsumer(), httpResponseCallback);
     }
 
     private void setHeaders(HttpRequest httpRequest, Header[] requestHeaders) {
@@ -363,7 +364,7 @@ public class InternalRestClient implements Closeable {
             requestNames.add(requestHeader.getName());
         }
         for (Header defaultHeader : defaultHeaders) {
-            if (requestNames.contains(defaultHeader.getName()) == false) {
+            if (!requestNames.contains(defaultHeader.getName())) {
                 httpRequest.addHeader(defaultHeader);
             }
         }
@@ -445,8 +446,7 @@ public class InternalRestClient implements Closeable {
     }
 
     private static boolean isSuccessfulResponse(String method, int statusCode) {
-        return statusCode < 300 ||
-                (statusCode == 404);
+        return statusCode < 300 || (statusCode == 404);
     }
 
     private static boolean isRetryStatus(int statusCode) {
@@ -581,7 +581,7 @@ public class InternalRestClient implements Closeable {
         public void onSuccess(RestResponse response) {
             Objects.requireNonNull(response, "response must not be null");
             boolean wasResponseNull = this.response.compareAndSet(null, response);
-            if (wasResponseNull == false) {
+            if (!wasResponseNull) {
                 throw new IllegalStateException("response is already set");
             }
 
@@ -592,7 +592,7 @@ public class InternalRestClient implements Closeable {
         public void onFailure(Exception exception) {
             Objects.requireNonNull(exception, "exception must not be null");
             boolean wasExceptionNull = this.exception.compareAndSet(null, exception);
-            if (wasExceptionNull == false) {
+            if (!wasExceptionNull) {
                 throw new IllegalStateException("exception is already set");
             }
             latch.countDown();
@@ -605,7 +605,7 @@ public class InternalRestClient implements Closeable {
             try {
                 //providing timeout is just a safety measure to prevent everlasting waits
                 //the different client timeouts should already do their jobs
-                if (latch.await(timeout, TimeUnit.MILLISECONDS) == false) {
+                if (!latch.await(timeout, TimeUnit.MILLISECONDS)) {
                     throw new IOException("listener timeout after waiting for [" + timeout + "] ms");
                 }
             } catch (InterruptedException e) {

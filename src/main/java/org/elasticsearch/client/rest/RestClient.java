@@ -27,7 +27,9 @@ import org.elasticsearch.action.*;
 import org.elasticsearch.action.support.PlainActionFuture;
 import org.elasticsearch.client.AdminClient;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.client.rest.support.*;
+import org.elasticsearch.client.rest.support.InternalRestClient;
+import org.elasticsearch.client.rest.support.InternalRestClientBuilder;
+import org.elasticsearch.client.rest.support.RestExecuteUtil;
 import org.elasticsearch.client.support.AbstractClient;
 import org.elasticsearch.common.inject.ModulesBuilder;
 import org.elasticsearch.common.settings.Settings;
@@ -92,7 +94,7 @@ public class RestClient extends AbstractClient implements Client {
     @Override
     public <Request extends ActionRequest, Response extends ActionResponse,
             RequestBuilder extends ActionRequestBuilder<Request, Response, RequestBuilder, Client>>
-            ActionFuture<Response> execute(Action<Request, Response, RequestBuilder, Client> action, Request request) {
+    ActionFuture<Response> execute(Action<Request, Response, RequestBuilder, Client> action, Request request) {
         PlainActionFuture<Response> actionFuture = PlainActionFuture.newFuture();
         execute(action, request, actionFuture);
         return actionFuture;
@@ -117,8 +119,8 @@ public class RestClient extends AbstractClient implements Client {
     public Settings settings() {
         return null;
     }
-    
-    
+
+
     public static class Builder {
         private InternalRestClientBuilder internalRestClientBuilder;
 
@@ -227,6 +229,11 @@ public class RestClient extends AbstractClient implements Client {
 
         public Builder setTargetPreferredAuthSchemes(String... targetPreferredAuthSchemes) {
             internalRestClientBuilder.setTargetPreferredAuthSchemes(targetPreferredAuthSchemes);
+            return this;
+        }
+
+        public Builder async(boolean async) {
+            internalRestClientBuilder.async(async);
             return this;
         }
     }
