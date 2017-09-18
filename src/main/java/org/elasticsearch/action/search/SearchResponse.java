@@ -55,9 +55,13 @@ public class SearchResponse extends ActionResponse implements StatusToXContent, 
 
     private long tookInMillis;
 
-    private Long requestReceivedTime;
+    private Long requestReceivedTime; // epoch millis
 
-    private Long totalTimeTaken;
+    private Long totalTimeTaken; // total time spent in ES side (handleSearch method)
+
+    private Long responseRecvdTimestamp; // epoch millis
+
+    private Long responseParseTime; // total time spent in client side while parsing response
 
     public SearchResponse() {
     }
@@ -251,6 +255,14 @@ public class SearchResponse extends ActionResponse implements StatusToXContent, 
         return totalTimeTaken;
     }
 
+    public Long getResponseRecvdTimestamp() {
+        return responseRecvdTimestamp;
+    }
+
+    public Long getResponseParseTime() {
+        return responseParseTime;
+    }
+
     @Override
     public void readFrom(StreamInput in) throws IOException {
         super.readFrom(in);
@@ -370,6 +382,16 @@ public class SearchResponse extends ActionResponse implements StatusToXContent, 
         String totalTime = headers.get("Total-Time-Taken");
         if (Strings.hasLength(totalTime)) {
             this.totalTimeTaken = Long.valueOf(totalTime);
+        }
+
+        String responseParseTime = headers.get("esResponseParseTime");
+        if (Strings.hasLength(responseParseTime)) {
+            this.responseParseTime = Long.valueOf(responseParseTime);
+        }
+
+        String responseRecvdTimestamp = headers.get("responseRecvdTimestamp");
+        if (Strings.hasLength(responseRecvdTimestamp)) {
+            this.responseRecvdTimestamp = Long.valueOf(responseRecvdTimestamp);
         }
     }
 }

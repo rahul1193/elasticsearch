@@ -99,6 +99,7 @@ public class RestExecuteUtil {
         if (actionRestRequest.getMethod() == RestRequest.Method.HEAD) {
             response.exists(restResponse.getHttpResponse().getStatusLine().getStatusCode() == STATUS_OK);
         } else {
+            final long startTime = System.currentTimeMillis();
             HttpEntity entity = restResponse.getEntity();
             assert entity != null;
             String content = HttpUtils.readUtf8(entity);
@@ -121,6 +122,10 @@ public class RestExecuteUtil {
                 for (Header header : restResponse.getHeaders()) {
                     restHeaders.put(header.getName(), header.getValue());
                 }
+
+                final long elapsedMillis = System.currentTimeMillis() - startTime;
+                restHeaders.put("responseRecvdTimestamp", String.valueOf(startTime));
+                restHeaders.put("esResponseParseTime", String.valueOf(elapsedMillis));
                 ((WithRestHeaders) response).readHeaders(restHeaders);
             }
         }
