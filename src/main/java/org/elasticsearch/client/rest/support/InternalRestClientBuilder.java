@@ -27,13 +27,11 @@ import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.config.SocketConfig;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
+import org.apache.http.entity.BasicHttpEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
-import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.nio.protocol.HttpAsyncRequestProducer;
 import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
 import org.apache.http.util.EntityUtils;
@@ -44,6 +42,7 @@ import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
 
 import javax.net.ssl.SSLContext;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
@@ -361,12 +360,15 @@ public class InternalRestClientBuilder {
                                 @Override
                                 public HttpResponse handleResponse(HttpResponse response) throws IOException {
                                     HttpEntity actualEntity = response.getEntity();
-                                    String content = EntityUtils.toString(actualEntity);
-                                    ContentType contentType = ContentType.get(actualEntity);
+                                    byte[] bytes = EntityUtils.toByteArray(actualEntity);
 
-                                    BasicHttpResponse newResponse = new BasicHttpResponse(response.getStatusLine());
-                                    newResponse.setEntity(new StringEntity(content, contentType));
-                                    return newResponse;
+                                    BasicHttpEntity entity = new BasicHttpEntity();
+                                    entity.setContentEncoding(actualEntity.getContentEncoding());
+                                    entity.setContentType(actualEntity.getContentType());
+                                    entity.setContent(new ByteArrayInputStream(bytes));
+                                    entity.setContentLength(bytes.length);
+                                    response.setEntity(entity);
+                                    return response;
                                 }
                             });
                     callback.completed(response);
