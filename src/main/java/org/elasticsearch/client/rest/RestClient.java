@@ -236,5 +236,10 @@ public class RestClient extends AbstractClient implements Client {
             internalRestClientBuilder.async(async);
             return this;
         }
+
+        public Builder connectionLiveTimeInPool(TimeValue timeValue) {
+            internalRestClientBuilder.connectionLiveTimeInPool(timeValue);
+            return this;
+        }
     }
 }

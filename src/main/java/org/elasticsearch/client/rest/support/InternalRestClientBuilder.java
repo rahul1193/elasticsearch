@@ -79,6 +79,7 @@ public class InternalRestClientBuilder {
     private Collection<String> proxyPreferredAuthSchemes;
     private Collection<String> targetPreferredAuthSchemes;
     private SSLContext sslcontext;
+    private TimeValue connectionLiveTimeInPool;
     private boolean async;
 
     public InternalRestClientBuilder setProxy(HttpHost proxy) {
@@ -129,6 +130,11 @@ public class InternalRestClientBuilder {
 
     public InternalRestClientBuilder async(boolean async) {
         this.async = async;
+        return this;
+    }
+
+    public InternalRestClientBuilder connectionLiveTimeInPool(TimeValue timeValue) {
+        this.connectionLiveTimeInPool = timeValue;
         return this;
     }
 
@@ -331,19 +337,33 @@ public class InternalRestClientBuilder {
         final SocketConfig socketConfig = SocketConfig.custom().setSoKeepAlive(true).setSoReuseAddress(true)
                 .setSoTimeout((int) socketTimeout.millis()).setTcpNoDelay(true).build();
 
-        final CloseableHttpClient client = HttpClientBuilder.create().setMaxConnPerRoute(maxConnectionsPerRoute)
-                .setConnectionTimeToLive(connectionRequestTimeout.getMillis(), TimeUnit.MILLISECONDS)
-                .setMaxConnTotal(maxConnectionsTotal).setDefaultSocketConfig(socketConfig).evictExpiredConnections()
-                .setDefaultRequestConfig(requestConfigBuilder.build()).setSSLContext(sslcontext).build();
+        HttpClientBuilder httpClientBuilder = HttpClientBuilder.create().setMaxConnPerRoute(maxConnectionsPerRoute)
+                .setMaxConnTotal(maxConnectionsTotal).setDefaultSocketConfig(socketConfig)
+                .setDefaultRequestConfig(requestConfigBuilder.build()).setSSLContext(sslcontext);
+
+        if (connectionLiveTimeInPool != null) {
+            httpClientBuilder.setConnectionTimeToLive(connectionLiveTimeInPool.getMillis(), TimeUnit.MILLISECONDS);
+        }
+
+        final CloseableHttpClient client = httpClientBuilder.build();
 
         return new HttpClient() {
             @Override
             public void execute(HttpAsyncRequestProducer requestProducer, HttpAsyncResponseConsumer<HttpResponse> responseConsumer, FutureCallback<HttpResponse> callback) {
+                CloseableHttpResponse response = null;
                 try {
-                    CloseableHttpResponse response = client.execute(requestProducer.getTarget(), requestProducer.generateRequest());
+                    response = client.execute(requestProducer.getTarget(), requestProducer.generateRequest());
                     callback.completed(response);
                 } catch (Exception e) {
                     callback.failed(e);
+                } finally {
+                    if (response != null) {
+                        try {
+                            response.close();
+                        } catch (IOException e) {
+                            //ignore
+                        }
+                    }
                 }
             }
 
