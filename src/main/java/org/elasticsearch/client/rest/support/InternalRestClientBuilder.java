@@ -20,18 +20,23 @@
 package org.elasticsearch.client.rest.support;
 
 import org.apache.http.Header;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.concurrent.FutureCallback;
 import org.apache.http.config.SocketConfig;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
+import org.apache.http.message.BasicHttpResponse;
 import org.apache.http.nio.protocol.HttpAsyncRequestProducer;
 import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
+import org.apache.http.util.EntityUtils;
 import org.elasticsearch.client.rest.FailureListener;
 import org.elasticsearch.client.rest.HttpClientConfigCallback;
 import org.elasticsearch.client.rest.RequestConfigCallback;
@@ -349,21 +354,25 @@ public class InternalRestClientBuilder {
 
         return new HttpClient() {
             @Override
-            public void execute(HttpAsyncRequestProducer requestProducer, HttpAsyncResponseConsumer<HttpResponse> responseConsumer, FutureCallback<HttpResponse> callback) {
-                CloseableHttpResponse response = null;
+            public void execute(HttpAsyncRequestProducer requestProducer, HttpAsyncResponseConsumer<HttpResponse> responseConsumer, final FutureCallback<HttpResponse> callback) {
                 try {
-                    response = client.execute(requestProducer.getTarget(), requestProducer.generateRequest());
+                    HttpResponse response = client.execute(requestProducer.getTarget(), requestProducer.generateRequest(),
+                            new ResponseHandler<HttpResponse>() {
+                                @Override
+                                public HttpResponse handleResponse(HttpResponse response) throws IOException {
+                                    HttpEntity actualEntity = response.getEntity();
+                                    String content = EntityUtils.toString(actualEntity);
+                                    ContentType contentType = ContentType.get(actualEntity);
+
+                                    BasicHttpResponse newResponse = new BasicHttpResponse(response.getStatusLine());
+                                    newResponse.setEntity(new StringEntity(content, contentType));
+                                    return newResponse;
+                                }
+                            });
                     callback.completed(response);
+
                 } catch (Exception e) {
                     callback.failed(e);
-                } finally {
-                    if (response != null) {
-                        try {
-                            response.close();
-                        } catch (IOException e) {
-                            //ignore
-                        }
-                    }
                 }
             }
 
