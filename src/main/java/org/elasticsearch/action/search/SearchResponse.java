@@ -63,6 +63,8 @@ public class SearchResponse extends ActionResponse implements StatusToXContent, 
 
     private Long responseParseTime; // total time spent in client side while parsing response
 
+    private Long responseContentLength;
+
     public SearchResponse() {
     }
 
@@ -263,6 +265,10 @@ public class SearchResponse extends ActionResponse implements StatusToXContent, 
         return responseParseTime;
     }
 
+    public Long getResponseContentLength() {
+        return responseContentLength;
+    }
+
     @Override
     public void readFrom(StreamInput in) throws IOException {
         super.readFrom(in);
@@ -392,6 +398,11 @@ public class SearchResponse extends ActionResponse implements StatusToXContent, 
         String responseRecvdTimestamp = headers.get("responseRecvdTimestamp");
         if (Strings.hasLength(responseRecvdTimestamp)) {
             this.responseRecvdTimestamp = Long.valueOf(responseRecvdTimestamp);
+        }
+
+        String contentLength = headers.get("Content-Length");
+        if (Strings.hasLength(contentLength)) {
+            this.responseContentLength = Long.valueOf(contentLength);
         }
     }
 }

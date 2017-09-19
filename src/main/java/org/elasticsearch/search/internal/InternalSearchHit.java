@@ -86,6 +86,7 @@ public class InternalSearchHit implements SearchHit {
 
     private Map<String, Object> sourceAsMap;
     private byte[] sourceAsBytes;
+    private String sourceAsString;
 
     InternalSearchHit() {
 
@@ -224,14 +225,22 @@ public class InternalSearchHit implements SearchHit {
 
     @Override
     public String sourceAsString() {
-        if (source == null) {
-            return null;
+        if (sourceAsString == null) {
+            if (sourceAsMap != null) {
+                try {
+                    sourceAsString = XContentFactory.jsonBuilder().map(sourceAsMap).string();
+                } catch (IOException e) {
+                    throw new ElasticsearchParseException("failed to convert sourceMap to a json string");
+                }
+            } else if (source != null) {
+                try {
+                    sourceAsString = XContentHelper.convertToJson(sourceRef(), false);
+                } catch (IOException e) {
+                    throw new ElasticsearchParseException("failed to convert source to a json string");
+                }
+            }
         }
-        try {
-            return XContentHelper.convertToJson(sourceRef(), false);
-        } catch (IOException e) {
-            throw new ElasticsearchParseException("failed to convert source to a json string");
-        }
+        return sourceAsString;
     }
 
     @Override
@@ -239,17 +248,11 @@ public class InternalSearchHit implements SearchHit {
         return sourceAsString();
     }
 
-    @SuppressWarnings({"unchecked"})
     @Override
     public Map<String, Object> sourceAsMap() throws ElasticsearchParseException {
-        if (source == null) {
-            return null;
+        if (sourceAsMap == null && source != null) {
+            sourceAsMap = SourceLookup.sourceAsMap(source);
         }
-        if (sourceAsMap != null) {
-            return sourceAsMap;
-        }
-
-        sourceAsMap = SourceLookup.sourceAsMap(source);
         return sourceAsMap;
     }
 
@@ -313,11 +316,9 @@ public class InternalSearchHit implements SearchHit {
         // Don't write into sortValues! Otherwise the fields in FieldDoc is modified, which may be used in other places. (SearchContext#lastEmitedDoc)
         Object[] sortValuesCopy = new Object[sortValues.length];
         System.arraycopy(sortValues, 0, sortValuesCopy, 0, sortValues.length);
-        if (sortValues != null) {
-            for (int i = 0; i < sortValues.length; i++) {
-                if (sortValues[i] instanceof BytesRef) {
-                    sortValuesCopy[i] = new StringAndBytesText(new BytesArray((BytesRef) sortValues[i]));
-                }
+        for (int i = 0; i < sortValues.length; i++) {
+            if (sortValues[i] instanceof BytesRef) {
+                sortValuesCopy[i] = new StringAndBytesText(new BytesArray((BytesRef) sortValues[i]));
             }
         }
         this.sortValues = sortValuesCopy;
@@ -397,8 +398,7 @@ public class InternalSearchHit implements SearchHit {
         _source {
             @Override
             public void apply(XContentObject in, InternalSearchHit response) throws IOException {
-                String json = in.getAsJson(this);
-                response.source = new BytesArray(json);
+                response.sourceAsMap = in.getAsMap(this);
             }
 
         },

@@ -52,6 +52,7 @@ public class GetResult implements Streamable, Iterable<GetField>, ToXContent, Fr
     private Map<String, Object> sourceAsMap;
     private BytesReference source;
     private byte[] sourceAsBytes;
+    private String sourceAsString;
 
     GetResult() {
     }
@@ -148,12 +149,16 @@ public class GetResult implements Streamable, Iterable<GetField>, ToXContent, Fr
      * The source of the document (as a string).
      */
     public String sourceAsString() {
+        if (sourceAsString != null) {
+            return sourceAsString;
+        }
+
         if (source == null) {
             return null;
         }
-        BytesReference source = sourceRef();
         try {
-            return XContentHelper.convertToJson(source, false);
+            sourceAsString = XContentHelper.convertToJson(sourceRef(), false);
+            return sourceAsString;
         } catch (IOException e) {
             throw new ElasticsearchParseException("failed to convert source to a json string");
         }
@@ -205,8 +210,9 @@ public class GetResult implements Streamable, Iterable<GetField>, ToXContent, Fr
         static final XContentBuilderString FIELDS = new XContentBuilderString("fields");
 
         static final Map<String, XContentBuilderString> ALL = new HashMap<>();
+
         static {
-            add(_INDEX,_TYPE, _ID, _VERSION, FOUND, FIELDS);
+            add(_INDEX, _TYPE, _ID, _VERSION, FOUND, FIELDS);
         }
 
         private static void add(XContentBuilderString... fields) {
@@ -316,9 +322,10 @@ public class GetResult implements Streamable, Iterable<GetField>, ToXContent, Fr
         _source {
             @Override
             public void apply(XContentObject in, GetResult response) throws IOException {
-                response.source = new StringAndBytesText(XContentHelper.convertToJson(in.getAsMap(this), false)).bytes();
+                response.sourceAsMap = in.getAsMap(this);
+                response.sourceAsString = XContentHelper.convertToJson(response.sourceAsMap, false);
+                response.source = new StringAndBytesText(response.sourceAsString).bytes();
             }
-
         },
         script {
             @Override
