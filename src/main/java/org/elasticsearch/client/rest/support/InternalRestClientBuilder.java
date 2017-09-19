@@ -333,7 +333,7 @@ public class InternalRestClientBuilder {
 
         final CloseableHttpClient client = HttpClientBuilder.create().setMaxConnPerRoute(maxConnectionsPerRoute)
                 .setConnectionTimeToLive(connectionRequestTimeout.getMillis(), TimeUnit.MILLISECONDS)
-                .setMaxConnTotal(maxConnectionsTotal).setDefaultSocketConfig(socketConfig)
+                .setMaxConnTotal(maxConnectionsTotal).setDefaultSocketConfig(socketConfig).evictExpiredConnections()
                 .setDefaultRequestConfig(requestConfigBuilder.build()).setSSLContext(sslcontext).build();
 
         return new HttpClient() {
