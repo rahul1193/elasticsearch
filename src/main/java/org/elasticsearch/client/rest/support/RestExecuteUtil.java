@@ -126,6 +126,7 @@ public class RestExecuteUtil {
                 final long elapsedMillis = System.currentTimeMillis() - startTime;
                 restHeaders.put("responseRecvdTimestamp", String.valueOf(startTime));
                 restHeaders.put("esResponseParseTime", String.valueOf(elapsedMillis));
+                restHeaders.put("Content-Length", String.valueOf(content.length()));
                 ((WithRestHeaders) response).readHeaders(restHeaders);
             }
         }

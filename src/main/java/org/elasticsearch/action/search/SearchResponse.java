@@ -63,7 +63,7 @@ public class SearchResponse extends ActionResponse implements StatusToXContent, 
 
     private Long responseParseTime; // total time spent in client side while parsing response
 
-    private Long responseContentLength;
+    private Integer responseContentLength;
 
     public SearchResponse() {
     }
@@ -265,7 +265,7 @@ public class SearchResponse extends ActionResponse implements StatusToXContent, 
         return responseParseTime;
     }
 
-    public Long getResponseContentLength() {
+    public Integer getResponseContentLength() {
         return responseContentLength;
     }
 
@@ -402,7 +402,7 @@ public class SearchResponse extends ActionResponse implements StatusToXContent, 
 
         String contentLength = headers.get("Content-Length");
         if (Strings.hasLength(contentLength)) {
-            this.responseContentLength = Long.valueOf(contentLength);
+            this.responseContentLength = Integer.valueOf(contentLength);
         }
     }
 }
