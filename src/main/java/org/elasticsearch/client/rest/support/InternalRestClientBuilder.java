@@ -359,6 +359,7 @@ public class InternalRestClientBuilder {
                             new ResponseHandler<HttpResponse>() {
                                 @Override
                                 public HttpResponse handleResponse(HttpResponse response) throws IOException {
+                                    final long startMillis = System.currentTimeMillis();
                                     HttpEntity actualEntity = response.getEntity();
                                     byte[] bytes = EntityUtils.toByteArray(actualEntity);
 
@@ -368,6 +369,9 @@ public class InternalRestClientBuilder {
                                     entity.setContent(new ByteArrayInputStream(bytes));
                                     entity.setContentLength(bytes.length);
                                     response.setEntity(entity);
+
+                                    final long elapsed = System.currentTimeMillis() - startMillis;
+                                    response.addHeader("Response-Read-Time", String.valueOf(elapsed));
                                     return response;
                                 }
                             });

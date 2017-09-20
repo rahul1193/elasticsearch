@@ -20,6 +20,7 @@ package org.elasticsearch.client.rest.support;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.util.EntityUtils;
 import org.elasticsearch.Version;
 import org.elasticsearch.action.*;
 import org.elasticsearch.common.bytes.BytesArray;
@@ -74,9 +75,8 @@ public class RestExecuteUtil {
         ResponseListener responseListener = new ResponseListener() {
             @Override
             public void onSuccess(RestResponse restResponse) {
-                Response response = null;
                 try {
-                    response = parseResponse(action, actionRestRequest, version, restResponse);
+                    Response response = parseResponse(action, actionRestRequest, version, restResponse);
                     listener.onResponse(response);
                 } catch (Exception e) {
                     onFailure(e);
@@ -102,21 +102,25 @@ public class RestExecuteUtil {
             final long startTime = System.currentTimeMillis();
             HttpEntity entity = restResponse.getEntity();
             assert entity != null;
-            String content = HttpUtils.readUtf8(entity);
-            XContentParser parser = XContentHelper.createParser(new BytesArray(content));
+
+            byte[] bytes = EntityUtils.toByteArray(entity);
+            XContentParser parser = XContentHelper.createParser(new BytesArray(bytes));
             // doing this to validate error.
             XContentObject source = new XContentObjectImpl(parser.mapOrderedAndClose(), version);
             validate(source);
+
             if (response instanceof FromArrayXContent) {
                 List<XContentObject> objects = new LinkedList<>();
                 for (Object o : parser.array()) {
                     assert o instanceof LinkedHashMap;
+                    //noinspection unchecked
                     objects.add(new XContentObjectImpl((Map<String, Object>) o, version));
                 }
                 ((FromArrayXContent) response).readFrom(Collections.unmodifiableList(objects));
             } else {
                 response.readFrom(source);
             }
+
             if (response instanceof WithRestHeaders) {
                 Map<String, String> restHeaders = new HashMap<>();
                 for (Header header : restResponse.getHeaders()) {
@@ -126,7 +130,7 @@ public class RestExecuteUtil {
                 final long elapsedMillis = System.currentTimeMillis() - startTime;
                 restHeaders.put("responseRecvdTimestamp", String.valueOf(startTime));
                 restHeaders.put("esResponseParseTime", String.valueOf(elapsedMillis));
-                restHeaders.put("Content-Length", String.valueOf(content.length()));
+                restHeaders.put("Content-Length", String.valueOf(bytes.length));
                 ((WithRestHeaders) response).readHeaders(restHeaders);
             }
         }

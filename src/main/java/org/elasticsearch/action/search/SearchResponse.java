@@ -61,6 +61,8 @@ public class SearchResponse extends ActionResponse implements StatusToXContent, 
 
     private Long responseRecvdTimestamp; // epoch millis
 
+    private Long responseReadTime; // time spent in reading response from socket
+
     private Long responseParseTime; // total time spent in client side while parsing response
 
     private Integer responseContentLength;
@@ -269,6 +271,10 @@ public class SearchResponse extends ActionResponse implements StatusToXContent, 
         return responseContentLength;
     }
 
+    public Long getResponseReadTime() {
+        return responseReadTime;
+    }
+
     @Override
     public void readFrom(StreamInput in) throws IOException {
         super.readFrom(in);
@@ -403,6 +409,11 @@ public class SearchResponse extends ActionResponse implements StatusToXContent, 
         String contentLength = headers.get("Content-Length");
         if (Strings.hasLength(contentLength)) {
             this.responseContentLength = Integer.valueOf(contentLength);
+        }
+
+        String responseReadTime = headers.get("Response-Read-Time");
+        if (Strings.hasLength(contentLength)) {
+            this.responseReadTime = Long.valueOf(responseReadTime);
         }
     }
 }
