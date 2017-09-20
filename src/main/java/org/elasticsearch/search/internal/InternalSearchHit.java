@@ -215,7 +215,7 @@ public class InternalSearchHit implements SearchHit {
 
     @Override
     public boolean isSourceEmpty() {
-        return source == null;
+        return source == null && sourceAsString == null && sourceAsMap == null;
     }
 
     @Override
