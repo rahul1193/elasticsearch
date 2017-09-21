@@ -21,8 +21,11 @@ package org.elasticsearch.client.rest.support;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.nio.entity.NStringEntity;
+import org.apache.http.util.Args;
+import org.apache.http.util.ByteArrayBuffer;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -46,4 +49,32 @@ public class HttpUtils {
         return builder.toString();
     }
 
+    public static byte[] toByteArray(final HttpEntity entity) throws IOException {
+        Args.notNull(entity, "Entity");
+        final InputStream instream = entity.getContent();
+        if (instream == null) {
+            return null;
+        }
+
+        try {
+            Args.check(entity.getContentLength() <= Integer.MAX_VALUE,
+                    "HTTP entity too large to be buffered in memory");
+
+            int i = (int) entity.getContentLength();
+            if (i < 0) {
+                i = 40 * 1024; //40KB
+            }
+
+            final ByteArrayBuffer buffer = new ByteArrayBuffer(i);
+            final byte[] tmp = new byte[4096];
+            int l;
+            while ((l = instream.read(tmp)) != -1) {
+                buffer.append(tmp, 0, l);
+            }
+            return buffer.toByteArray();
+
+        } finally {
+            instream.close();
+        }
+    }
 }

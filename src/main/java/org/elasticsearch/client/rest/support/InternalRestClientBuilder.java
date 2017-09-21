@@ -34,7 +34,6 @@ import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.nio.protocol.HttpAsyncRequestProducer;
 import org.apache.http.nio.protocol.HttpAsyncResponseConsumer;
-import org.apache.http.util.EntityUtils;
 import org.elasticsearch.client.rest.FailureListener;
 import org.elasticsearch.client.rest.HttpClientConfigCallback;
 import org.elasticsearch.client.rest.RequestConfigCallback;
@@ -361,14 +360,16 @@ public class InternalRestClientBuilder {
                                 public HttpResponse handleResponse(HttpResponse response) throws IOException {
                                     final long startMillis = System.currentTimeMillis();
                                     HttpEntity actualEntity = response.getEntity();
-                                    byte[] bytes = EntityUtils.toByteArray(actualEntity);
+                                    byte[] bytes = HttpUtils.toByteArray(actualEntity);
 
-                                    BasicHttpEntity entity = new BasicHttpEntity();
-                                    entity.setContentEncoding(actualEntity.getContentEncoding());
-                                    entity.setContentType(actualEntity.getContentType());
-                                    entity.setContent(new ByteArrayInputStream(bytes));
-                                    entity.setContentLength(bytes.length);
-                                    response.setEntity(entity);
+                                    if (bytes != null) {
+                                        BasicHttpEntity entity = new BasicHttpEntity();
+                                        entity.setContentEncoding(actualEntity.getContentEncoding());
+                                        entity.setContentType(actualEntity.getContentType());
+                                        entity.setContent(new ByteArrayInputStream(bytes));
+                                        entity.setContentLength(bytes.length);
+                                        response.setEntity(entity);
+                                    }
 
                                     final long elapsed = System.currentTimeMillis() - startMillis;
                                     response.addHeader("Response-Read-Time", String.valueOf(elapsed));
