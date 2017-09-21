@@ -69,6 +69,7 @@ public class InternalRestClientBuilder {
     private TimeValue connectionRequestTimeout = new TimeValue(DEFAULT_CONNECTION_REQUEST_TIMEOUT_MILLIS);
     private TimeValue connectTimeout = new TimeValue(DEFAULT_CONNECT_TIMEOUT_MILLIS);
     private TimeValue socketTimeout = new TimeValue(DEFAULT_SOCKET_TIMEOUT_MILLIS);
+    private TimeValue connectionLiveTimeInPool = new TimeValue(120000); //2 mins
     private int maxConnectionsTotal = DEFAULT_MAX_CONN_TOTAL;
     private int maxConnectionsPerRoute = DEFAULT_MAX_CONN_PER_ROUTE;
 
@@ -82,7 +83,6 @@ public class InternalRestClientBuilder {
     private Collection<String> proxyPreferredAuthSchemes;
     private Collection<String> targetPreferredAuthSchemes;
     private SSLContext sslcontext;
-    private TimeValue connectionLiveTimeInPool;
     private boolean async;
 
     public InternalRestClientBuilder setProxy(HttpHost proxy) {
@@ -340,15 +340,10 @@ public class InternalRestClientBuilder {
         final SocketConfig socketConfig = SocketConfig.custom().setSoKeepAlive(true).setSoReuseAddress(true)
                 .setSoTimeout((int) socketTimeout.millis()).setTcpNoDelay(true).build();
 
-        HttpClientBuilder httpClientBuilder = HttpClientBuilder.create().setMaxConnPerRoute(maxConnectionsPerRoute)
+        final CloseableHttpClient client = HttpClientBuilder.create().setMaxConnPerRoute(maxConnectionsPerRoute)
                 .setMaxConnTotal(maxConnectionsTotal).setDefaultSocketConfig(socketConfig)
-                .setDefaultRequestConfig(requestConfigBuilder.build()).setSSLContext(sslcontext);
-
-        if (connectionLiveTimeInPool != null) {
-            httpClientBuilder.setConnectionTimeToLive(connectionLiveTimeInPool.getMillis(), TimeUnit.MILLISECONDS);
-        }
-
-        final CloseableHttpClient client = httpClientBuilder.build();
+                .setDefaultRequestConfig(requestConfigBuilder.build()).setSSLContext(sslcontext)
+                .setConnectionTimeToLive(connectionLiveTimeInPool.getMillis(), TimeUnit.MILLISECONDS).build();
 
         return new HttpClient() {
             @Override
@@ -358,21 +353,21 @@ public class InternalRestClientBuilder {
                             new ResponseHandler<HttpResponse>() {
                                 @Override
                                 public HttpResponse handleResponse(HttpResponse response) throws IOException {
-                                    final long startMillis = System.currentTimeMillis();
                                     HttpEntity actualEntity = response.getEntity();
-                                    byte[] bytes = HttpUtils.toByteArray(actualEntity);
-
-                                    if (bytes != null) {
-                                        BasicHttpEntity entity = new BasicHttpEntity();
-                                        entity.setContentEncoding(actualEntity.getContentEncoding());
-                                        entity.setContentType(actualEntity.getContentType());
-                                        entity.setContent(new ByteArrayInputStream(bytes));
-                                        entity.setContentLength(bytes.length);
-                                        response.setEntity(entity);
+                                    if (actualEntity != null) {
+                                        final long startMillis = System.currentTimeMillis();
+                                        byte[] bytes = HttpUtils.toByteArray(actualEntity);
+                                        if (bytes != null) {
+                                            BasicHttpEntity entity = new BasicHttpEntity();
+                                            entity.setContentEncoding(actualEntity.getContentEncoding());
+                                            entity.setContentType(actualEntity.getContentType());
+                                            entity.setContent(new ByteArrayInputStream(bytes));
+                                            entity.setContentLength(bytes.length);
+                                            response.setEntity(entity);
+                                        }
+                                        final long elapsed = System.currentTimeMillis() - startMillis;
+                                        response.addHeader("Response-Read-Time", String.valueOf(elapsed));
                                     }
-
-                                    final long elapsed = System.currentTimeMillis() - startMillis;
-                                    response.addHeader("Response-Read-Time", String.valueOf(elapsed));
                                     return response;
                                 }
                             });
