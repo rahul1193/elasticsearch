@@ -19,6 +19,7 @@
 
 package org.elasticsearch.search.internal;
 
+import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.util.BytesRef;
@@ -171,7 +172,10 @@ public class InternalSearchHit implements SearchHit {
      */
     public BytesReference sourceRef() {
         try {
-            this.source = CompressorFactory.uncompressIfNeeded(this.source);
+            if (source == null) {
+                source();
+            }
+            this.source = CompressorFactory.uncompressIfNeeded(source);
             return this.source;
         } catch (IOException e) {
             throw new ElasticsearchParseException("failed to decompress source", e);
@@ -204,7 +208,25 @@ public class InternalSearchHit implements SearchHit {
     @Override
     public byte[] source() {
         if (source == null) {
-            return null;
+            if (sourceAsBytes != null) {
+                this.source = new BytesArray(sourceAsBytes);
+                return sourceAsBytes;
+            } else if (sourceAsString != null) {
+                sourceAsBytes = sourceAsString.getBytes(Charsets.UTF_8);
+                source = new BytesArray(sourceAsBytes);
+                return source.array();
+            } else if (sourceAsMap != null) {
+                try {
+                    sourceAsString = XContentFactory.jsonBuilder().map(sourceAsMap).string();
+                } catch (IOException e) {
+                    throw new ElasticsearchParseException("failed to convert sourceMap to a json string");
+                }
+                sourceAsBytes = sourceAsString.getBytes(Charsets.UTF_8);
+                source = new BytesArray(sourceAsString.getBytes(Charsets.UTF_8));
+                return source.array();
+            } else {
+                return null;
+            }
         }
         if (sourceAsBytes != null) {
             return sourceAsBytes;
