@@ -60,7 +60,6 @@ abstract class AbstractInternalPercentiles extends InternalNumericMetricsAggrega
         this.name = in.get(CommonJsonField._name);
         values = in.getAsMap("values");
         List<Double> keysList = new ArrayList<>(values.size());
-        int i=0;
         for (Map.Entry<String, Double> entry : values.entrySet()) {
             if (entry.getKey() != null && entry.getKey().endsWith("_as_string")) {
                 continue;
