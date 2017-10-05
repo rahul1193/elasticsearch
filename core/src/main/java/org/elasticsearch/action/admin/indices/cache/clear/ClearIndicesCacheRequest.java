@@ -37,6 +37,7 @@ public class ClearIndicesCacheRequest extends BroadcastRequest<ClearIndicesCache
     private boolean parsedQueryCache = false;
     private boolean queryBuilderRewriteCache = false;
     private String[] fields = null;
+    private String requestSource;
 
 
     public ClearIndicesCacheRequest() {
@@ -87,26 +88,34 @@ public class ClearIndicesCacheRequest extends BroadcastRequest<ClearIndicesCache
         return this;
     }
 
-    public ClearIndicesCacheRequest parsedQueryCache(boolean parsedQueryCache){
+    public ClearIndicesCacheRequest parsedQueryCache(boolean parsedQueryCache) {
         this.parsedQueryCache = parsedQueryCache;
         return this;
     }
 
-    public boolean parsedQueryCache(){
+    public boolean parsedQueryCache() {
         return parsedQueryCache;
     }
 
-    public ClearIndicesCacheRequest queryBuilderRewriteCache(boolean queryBuilderRewriteCache){
+    public ClearIndicesCacheRequest queryBuilderRewriteCache(boolean queryBuilderRewriteCache) {
         this.queryBuilderRewriteCache = queryBuilderRewriteCache;
         return this;
     }
 
-    public boolean queryBuilderRewriteCache(){
+    public boolean queryBuilderRewriteCache() {
         return queryBuilderRewriteCache;
     }
 
     public boolean recycler() {
         return this.recycler;
+    }
+
+    public void requestSource(String requestSource) {
+        this.requestSource = requestSource;
+    }
+
+    public String requestSource() {
+        return requestSource;
     }
 
     @Override
@@ -119,6 +128,7 @@ public class ClearIndicesCacheRequest extends BroadcastRequest<ClearIndicesCache
         requestCache = in.readBoolean();
         parsedQueryCache = in.readBoolean();
         queryBuilderRewriteCache = in.readBoolean();
+        requestSource = in.readOptionalString();
     }
 
     @Override
@@ -131,5 +141,6 @@ public class ClearIndicesCacheRequest extends BroadcastRequest<ClearIndicesCache
         out.writeBoolean(requestCache);
         out.writeBoolean(parsedQueryCache);
         out.writeBoolean(queryBuilderRewriteCache);
+        out.writeOptionalString(requestSource);
     }
 }

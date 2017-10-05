@@ -31,6 +31,7 @@ import org.elasticsearch.rest.*;
 import org.elasticsearch.rest.action.RestBuilderListener;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.util.Map;
 
 import static org.elasticsearch.rest.RestRequest.Method.GET;
@@ -95,6 +96,11 @@ public class RestClearIndicesCacheAction extends BaseRestHandler {
             if (Fields.FIELDS.match(entry.getKey())) {
                 clearIndicesCacheRequest.fields(request.paramAsStringArray(entry.getKey(), clearIndicesCacheRequest.fields()));
             }
+        }
+
+        SocketAddress remoteAddress = request.getRemoteAddress();
+        if (remoteAddress != null) {
+            clearIndicesCacheRequest.requestSource(remoteAddress.toString());
         }
 
         return clearIndicesCacheRequest;

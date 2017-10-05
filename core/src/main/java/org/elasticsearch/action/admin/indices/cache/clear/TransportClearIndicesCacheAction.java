@@ -85,7 +85,7 @@ public class TransportClearIndicesCacheAction extends TransportBroadcastByNodeAc
             boolean clearedAtLeastOne = false;
             if (request.queryCache()) {
                 clearedAtLeastOne = true;
-                service.cache().query().clear("api");
+                service.cache().query().clear("api : " + request.requestSource());
             }
             if (request.fieldDataCache()) {
                 clearedAtLeastOne = true;
@@ -124,7 +124,7 @@ public class TransportClearIndicesCacheAction extends TransportBroadcastByNodeAc
                         service.fieldData().clearField(field);
                     }
                 } else {
-                    service.cache().clear("api");
+                    service.cache().clear("in not atleast one api :" + request.requestSource());
                     service.fieldData().clear();
                     service.parsedQueryCache().ifPresent(ParsedQueryCache::clear);
                     indicesService.clearRequestCache(shard);
