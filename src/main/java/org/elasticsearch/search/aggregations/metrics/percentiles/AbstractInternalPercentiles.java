@@ -20,19 +20,21 @@
 package org.elasticsearch.search.aggregations.metrics.percentiles;
 
 import com.google.common.collect.UnmodifiableIterator;
+import com.google.common.primitives.Doubles;
 import org.elasticsearch.ElasticsearchIllegalArgumentException;
 import org.elasticsearch.Version;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentObject;
-import org.elasticsearch.search.aggregations.InternalAggregation;
 import org.elasticsearch.search.aggregations.CommonJsonField;
+import org.elasticsearch.search.aggregations.InternalAggregation;
 import org.elasticsearch.search.aggregations.metrics.InternalNumericMetricsAggregation;
 import org.elasticsearch.search.aggregations.metrics.percentiles.tdigest.TDigestState;
 import org.elasticsearch.search.aggregations.support.format.ValueFormatterStreams;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -57,14 +59,15 @@ abstract class AbstractInternalPercentiles extends InternalNumericMetricsAggrega
     public void readFrom(XContentObject in) throws IOException {
         this.name = in.get(CommonJsonField._name);
         values = in.getAsMap("values");
-        keys = new double[values.size()];
+        List<Double> keysList = new ArrayList<>(values.size());
         int i=0;
         for (Map.Entry<String, Double> entry : values.entrySet()) {
             if (entry.getKey() != null && entry.getKey().endsWith("_as_string")) {
                 continue;
             }
-            keys[i++] = Double.parseDouble(entry.getKey());
+            keysList.add(Double.parseDouble(entry.getKey()));
         }
+        keys = Doubles.toArray(keysList);
     }
 
     @Override
