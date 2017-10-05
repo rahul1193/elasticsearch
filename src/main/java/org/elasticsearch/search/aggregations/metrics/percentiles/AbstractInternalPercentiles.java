@@ -60,6 +60,9 @@ abstract class AbstractInternalPercentiles extends InternalNumericMetricsAggrega
         keys = new double[values.size()];
         int i=0;
         for (Map.Entry<String, Double> entry : values.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().endsWith("_as_string")) {
+                continue;
+            }
             keys[i++] = Double.parseDouble(entry.getKey());
         }
     }
