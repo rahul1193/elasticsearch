@@ -39,7 +39,7 @@ public class KuromojiAnalyzerProvider extends AbstractIndexAnalyzerProvider<SprJ
         super(indexSettings, name, settings);
         final JapaneseTokenizer.Mode mode = KuromojiTokenizerFactory.getMode(settings);
         final UserDictionary userDictionary = KuromojiTokenizerFactory.getUserDictionary(env, settings);
-        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, CharArraySet.EMPTY_SET, SprJapaneseAnalyzer.getDefaultStopTags(), dictionarySyncService);
+        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, CharArraySet.EMPTY_SET, dictionarySyncService);
     }
 
     @Override

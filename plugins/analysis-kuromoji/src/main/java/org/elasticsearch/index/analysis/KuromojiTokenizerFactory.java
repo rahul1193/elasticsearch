@@ -49,7 +49,7 @@ public class KuromojiTokenizerFactory extends AbstractTokenizerFactory {
         super(indexSettings, name, settings);
         mode = getMode(settings);
         userDictionary = getUserDictionary(env, settings);
-        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, CharArraySet.EMPTY_SET, SprJapaneseAnalyzer.getDefaultStopTags(), serviceProvider);
+        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, CharArraySet.EMPTY_SET, serviceProvider);
     }
 
     public static UserDictionary getUserDictionary(Environment env, Settings settings) {
