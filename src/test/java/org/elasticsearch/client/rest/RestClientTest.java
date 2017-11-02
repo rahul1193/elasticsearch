@@ -947,7 +947,9 @@ public class RestClientTest extends AbstractRestClientTest {
 
         SearchRequestBuilder search = client.prepareSearch(index);
         String name = "agg";
-        search.addAggregation(AggregationBuilders.global(name).subAggregation(AggregationBuilders.terms("colors").field("color")));
+        search.addAggregation(AggregationBuilders.global(name).subAggregation(
+                AggregationBuilders.terms("colors").field("color").size(0)
+        ));
         search.setSize(0); // no hits please
 
         SearchResponse response = client.search(search.request()).get();

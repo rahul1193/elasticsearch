@@ -60,6 +60,7 @@ public class TermsBuilder extends ValuesSourceAggregationBuilder<TermsBuilder> {
      * Sets the size - indicating how many term buckets should be returned (defaults to 10)
      */
     public TermsBuilder size(int size) {
+        size = size == 0 ? Integer.MAX_VALUE : size;
         bucketCountThresholds.setRequiredSize(size);
         return this;
     }
