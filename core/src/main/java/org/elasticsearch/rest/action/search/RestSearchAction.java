@@ -122,6 +122,7 @@ public class RestSearchAction extends BaseRestHandler {
         searchRequest.routing(request.param("routing"));
         searchRequest.preference(request.param("preference"));
         searchRequest.indicesOptions(IndicesOptions.fromRequest(request, searchRequest.indicesOptions()));
+        searchRequest.slowQueryThresholdMs(request.paramAsLong("slow_query_threshold_ms", -1L));
     }
 
     /**

@@ -79,6 +79,8 @@ public final class SearchRequest extends ActionRequest implements IndicesRequest
 
     private IndicesOptions indicesOptions = DEFAULT_INDICES_OPTIONS;
 
+    private Long slowQueryThresholdMs;
+
     public SearchRequest() {
     }
 
@@ -296,6 +298,15 @@ public final class SearchRequest extends ActionRequest implements IndicesRequest
         return batchedReduceSize;
     }
 
+    public SearchRequest slowQueryThresholdMs(Long slowQueryThresholdMs) {
+        this.slowQueryThresholdMs = slowQueryThresholdMs;
+        return this;
+    }
+
+    public Long slowQueryThresholdMs() {
+        return slowQueryThresholdMs;
+    }
+
     /**
      * @return true if the request only has suggest
      */
@@ -345,6 +356,7 @@ public final class SearchRequest extends ActionRequest implements IndicesRequest
         if (in.getVersion().onOrAfter(Version.V_5_4_0_UNRELEASED)) {
             batchedReduceSize = in.readVInt();
         }
+        slowQueryThresholdMs = in.readOptionalLong();
     }
 
     @Override
@@ -365,6 +377,7 @@ public final class SearchRequest extends ActionRequest implements IndicesRequest
         if (out.getVersion().onOrAfter(Version.V_5_4_0_UNRELEASED)) {
             out.writeVInt(batchedReduceSize);
         }
+        out.writeOptionalLong(slowQueryThresholdMs);
     }
 
     @Override

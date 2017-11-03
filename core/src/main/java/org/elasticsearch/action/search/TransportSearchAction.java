@@ -45,12 +45,7 @@ import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.Transport;
 import org.elasticsearch.transport.TransportService;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
@@ -329,5 +324,10 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
                 + "have a smaller number of larger shards. Update [" + SHARD_COUNT_LIMIT_SETTING.getKey()
                 + "] to a greater value if you really want to query that many shards at the same time.");
         }
+    }
+
+    @Override
+    protected Long getSlowActionTimeThresholdMs(SearchRequest request) {
+        return request.slowQueryThresholdMs();
     }
 }

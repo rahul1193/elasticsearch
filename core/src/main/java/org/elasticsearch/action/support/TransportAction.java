@@ -20,19 +20,17 @@
 package org.elasticsearch.action.support;
 
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.action.ActionFuture;
-import org.elasticsearch.action.ActionListener;
-import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.ActionRequestValidationException;
-import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.*;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.rest.SlowActionHotThreadsTracer;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.tasks.TaskListener;
 import org.elasticsearch.tasks.TaskManager;
 import org.elasticsearch.threadpool.ThreadPool;
 
+import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.elasticsearch.action.support.PlainActionFuture.newFuture;
@@ -81,21 +79,39 @@ public abstract class TransportAction<Request extends ActionRequest, Response ex
         if (task == null) {
             execute(null, request, listener);
         } else {
+            final TimerTask slowActionTimerTask;
+            final Long delayMs = getSlowActionTimeThresholdMs(request);
+            if (delayMs != null && delayMs > 0) {
+                slowActionTimerTask = SlowActionHotThreadsTracer.scheduleOneTimeTask(request, delayMs);
+            } else {
+                slowActionTimerTask = null;
+            }
+
             execute(task, request, new ActionListener<Response>() {
                 @Override
                 public void onResponse(Response response) {
                     taskManager.unregister(task);
                     listener.onResponse(response);
+                    if(slowActionTimerTask != null) {
+                        slowActionTimerTask.cancel();
+                    }
                 }
 
                 @Override
                 public void onFailure(Exception e) {
                     taskManager.unregister(task);
                     listener.onFailure(e);
+                    if(slowActionTimerTask != null) {
+                        slowActionTimerTask.cancel();
+                    }
                 }
             });
         }
         return task;
+    }
+
+    protected Long getSlowActionTimeThresholdMs(Request request) {
+        return null;
     }
 
     /**
