@@ -1124,6 +1124,12 @@ public class SearchRequestBuilder extends ActionRequestBuilder<SearchRequest, Se
         return this;
     }
 
+
+    public SearchRequestBuilder slowQueryThresholdMs(Long slowQueryThresholdMs) {
+        this.request.slowQueryThresholdMs(slowQueryThresholdMs);
+        return this;
+    }
+
     @Override
     protected void doExecute(ActionListener<SearchResponse> listener) {
         if (sourceBuilder != null) {

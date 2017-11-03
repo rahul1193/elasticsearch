@@ -19,7 +19,6 @@
 
 package org.elasticsearch.action.search;
 
-import com.google.common.base.Joiner;
 import org.apache.http.HttpEntity;
 import org.apache.http.nio.entity.NStringEntity;
 import org.elasticsearch.ElasticsearchGenerationException;
@@ -103,6 +102,8 @@ public class SearchRequest extends ActionRequest<SearchRequest> implements Indic
 
     private IndicesOptions indicesOptions = DEFAULT_INDICES_OPTIONS;
     private int batchedReduceSize = 512;
+
+    private Long slowQueryThresholdMs;
 
     public SearchRequest() {
     }
@@ -720,6 +721,15 @@ public class SearchRequest extends ActionRequest<SearchRequest> implements Indic
         this.batchedReduceSize = batchedReduceSize;
     }
 
+    public SearchRequest slowQueryThresholdMs(Long slowQueryThresholdMs) {
+        this.slowQueryThresholdMs = slowQueryThresholdMs;
+        return this;
+    }
+
+    public Long slowQueryThresholdMs() {
+        return slowQueryThresholdMs;
+    }
+
     private class SearchRequestV5 implements ActionRestRequest {
 
 
@@ -760,6 +770,9 @@ public class SearchRequest extends ActionRequest<SearchRequest> implements Indic
                     params = new HashMap<>();
                 }
                 params.put("batched_reduce_size", String.valueOf(SearchRequest.this.batchedReduceSize));
+            }
+            if(SearchRequest.this.slowQueryThresholdMs != null) {
+                params.put("slow_query_threshold_ms", String.valueOf(SearchRequest.this.slowQueryThresholdMs));
             }
             return params;
         }
