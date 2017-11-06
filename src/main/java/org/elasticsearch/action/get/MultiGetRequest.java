@@ -254,7 +254,8 @@ public class MultiGetRequest extends ActionRequest<MultiGetRequest> implements I
             MapBuilder<String, Object> builder = new MapBuilder<String, Object>()
                     .putIfNotNull("_index", index)
                     .putIfNotNull("_type", type)
-                    .putIfNotNull("_id", id);
+                    .putIfNotNull("_id", id)
+                    .putIfNotNull("_routing", routing);
             if (this.fields != null && this.fields.length > 0) {
                 builder.put("_source", this.fields);
             } else if (fetchSourceContext != null) {
