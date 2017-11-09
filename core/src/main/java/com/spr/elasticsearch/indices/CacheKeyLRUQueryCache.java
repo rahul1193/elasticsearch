@@ -216,7 +216,7 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
     private void addToSegmentVsCacheKeys(Object leaf, LeafCacheKey cacheKey) {
         Set<LeafCacheKey> cacheKeys = segmentVsCacheKeys.get(leaf);
         if (cacheKeys == null) {
-            cacheKeys = Collections.synchronizedSet(new HashSet<>());
+            cacheKeys = ConcurrentHashMap.newKeySet();
             Set<LeafCacheKey> existing = segmentVsCacheKeys.putIfAbsent(leaf, cacheKeys);
             if (existing != null) {
                 cacheKeys = existing;
