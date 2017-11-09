@@ -32,11 +32,9 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.indices.IndicesQueryCache;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -55,6 +53,7 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
 
     private final Logger logger;
     private final Cache<LeafCacheKey, DocIdSet> cache;
+    private final ConcurrentMap<Object, Set<LeafCacheKey>> segmentVsCacheKeys;
     private final Function<Object, IndicesQueryCache.Stats> shardStatsSupplier;
 
     public CacheKeyLRUQueryCache(Settings settings, long maxBytes, Function<Object, IndicesQueryCache.Stats> shardStatsSupplier) {
@@ -62,8 +61,9 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
         assert maxBytes > 0;
         logger = Loggers.getLogger(getClass(), settings);
         this.shardStatsSupplier = shardStatsSupplier;
+        this.segmentVsCacheKeys = new ConcurrentHashMap<>();
         Caffeine<LeafCacheKey, DocIdSet> cacheBuilder = Caffeine.newBuilder()
-            .removalListener(new CacheRemovalListener(settings, shardStatsSupplier))
+            .removalListener(new CacheRemovalListener(settings, shardStatsSupplier, segmentVsCacheKeys))
             .executor(Runnable::run)
             .maximumWeight(maxBytes)
             .weigher(new CacheKeyQueryCacheWeigher());
@@ -128,14 +128,10 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
 
     @Override
     public void clearCoreCacheKey(Object coreKey) {
-        Set<LeafCacheKey> leafCacheKeys = cache.asMap().keySet();
-        List<LeafCacheKey> keysToRemove = new ArrayList<>();
-        for (LeafCacheKey leafCacheKey : leafCacheKeys) {
-            if (leafCacheKey.leaf.equals(coreKey)) {
-                keysToRemove.add(leafCacheKey);
-            }
+        Set<LeafCacheKey> cacheKeys = segmentVsCacheKeys.remove(coreKey);
+        if (cacheKeys != null && !cacheKeys.isEmpty()) {
+            cache.invalidateAll(cacheKeys);
         }
-        cache.invalidateAll(keysToRemove);
     }
 
     @Override
@@ -146,6 +142,10 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
             for (LeafCacheKey leafCacheKey : leafCacheKeys) {
                 if (leafCacheKey.cacheKey.equals(((BooleanQuery) query).getCacheKey())) {
                     keysToRemove.add(leafCacheKey);
+                    Set<LeafCacheKey> cacheKeys = segmentVsCacheKeys.get(leafCacheKey.leaf);
+                    if (cacheKeys != null) {
+                        cacheKeys.remove(leafCacheKey);
+                    }
                 }
             }
             cache.invalidateAll(keysToRemove);
@@ -154,6 +154,7 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
 
     @Override
     public void clear() {
+        segmentVsCacheKeys.clear();
         cache.invalidateAll();
     }
 
@@ -205,11 +206,23 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
         assert ((BooleanQuery) query).getCacheKey() != null;
         final Object leaf = context.reader().getCoreCacheKey();
         final String key = ((BooleanQuery) query).getCacheKey();
-        cache.put(LeafCacheKey.of(leaf, key), set);
-        // we just created a new leaf cache, need to register a close listener
-        // FIXME : stuck threads
-        // context.reader().addCoreClosedListener(this::clearCoreCacheKey);
+        LeafCacheKey cacheKey = LeafCacheKey.of(leaf, key);
+        cache.put(cacheKey, set);
+        addToSegmentVsCacheKeys(leaf, cacheKey);
+        context.reader().addCoreClosedListener(this::clearCoreCacheKey);
         onDocIdSetCache(leaf, HASHTABLE_RAM_BYTES_PER_ENTRY + set.ramBytesUsed());
+    }
+
+    private void addToSegmentVsCacheKeys(Object leaf, LeafCacheKey cacheKey) {
+        Set<LeafCacheKey> cacheKeys = segmentVsCacheKeys.get(leaf);
+        if (cacheKeys == null) {
+            cacheKeys = Collections.synchronizedSet(new HashSet<>());
+            Set<LeafCacheKey> existing = segmentVsCacheKeys.putIfAbsent(leaf, cacheKeys);
+            if (existing != null) {
+                cacheKeys = existing;
+            }
+        }
+        cacheKeys.add(cacheKey);
     }
 
     private static class LeafCacheKey {
@@ -399,16 +412,25 @@ public class CacheKeyLRUQueryCache extends XLRUQueryCache {
 
         private final Function<Object, IndicesQueryCache.Stats> statsSupplier;
         private final Logger logger;
+        private final ConcurrentMap<Object, Set<LeafCacheKey>> segmentVsCacheKeys;
 
-        CacheRemovalListener(Settings settings, Function<Object, IndicesQueryCache.Stats> statsSupplier) {
+        CacheRemovalListener(Settings settings, Function<Object, IndicesQueryCache.Stats> statsSupplier, ConcurrentMap<Object, Set<LeafCacheKey>> segmentVsCacheKeys) {
             logger = Loggers.getLogger(getClass(), settings);
             this.statsSupplier = statsSupplier;
+            this.segmentVsCacheKeys = segmentVsCacheKeys;
         }
 
         @Override
         public void onRemoval(LeafCacheKey key, DocIdSet removed, RemovalCause cause) {
             if (key == null) {
                 return;
+            }
+
+            if (!RemovalCause.EXPLICIT.equals(cause)) {
+                Set<LeafCacheKey> cacheKeys = segmentVsCacheKeys.get(key.cacheKey);
+                if (cacheKeys != null && !cacheKeys.isEmpty()) {
+                    cacheKeys.remove(key);
+                }
             }
             IndicesQueryCache.Stats stats = this.statsSupplier.apply(key.leaf);
             if (stats == null) {
