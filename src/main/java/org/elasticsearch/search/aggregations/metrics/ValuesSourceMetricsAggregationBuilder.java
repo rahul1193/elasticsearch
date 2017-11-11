@@ -135,7 +135,7 @@ public abstract class ValuesSourceMetricsAggregationBuilder<B extends ValuesSour
         } else {
 
             if (missing != null) {
-                throw new IllegalArgumentException("missing is supported only for elasticsearch version 5+");
+//                throw new IllegalArgumentException("missing is supported only for elasticsearch version 5+");
             }
 
             if (script != null) {
