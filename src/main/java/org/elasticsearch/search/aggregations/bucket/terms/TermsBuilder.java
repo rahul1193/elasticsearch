@@ -222,7 +222,8 @@ public class TermsBuilder extends ValuesSourceAggregationBuilder<TermsBuilder> {
             if (ToXContentUtils.getVersionFromParams(params).onOrAfter(Version.V_5_0_0)) {
                 builder.array("include", includeValues);
             } else {
-                throw new UnsupportedOperationException("includeValues is not supported for versions before 5, use include regex instead");
+                // ignore
+//                throw new UnsupportedOperationException("includeValues is not supported for versions before 5, use include regex instead");
             }
         } else {
             if (includePattern != null) {
@@ -241,7 +242,8 @@ public class TermsBuilder extends ValuesSourceAggregationBuilder<TermsBuilder> {
             if (ToXContentUtils.getVersionFromParams(params).onOrAfter(Version.V_5_0_0)) {
                 builder.array("exclude", excludeValues);
             } else {
-                throw new UnsupportedOperationException("excludeValues is not supported for versions before 5, use exclude regex instead");
+                //ignore
+//                throw new UnsupportedOperationException("excludeValues is not supported for versions before 5, use exclude regex instead");
             }
         } else {
             if (excludePattern != null) {
