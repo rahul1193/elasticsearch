@@ -23,6 +23,8 @@ public class SprJapanesePartOfSpeechStopFilter extends TokenFilter {
     private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
     private int skippedPositions;
 
+    private int lastPositionIncrement = 0;
+
     public SprJapanesePartOfSpeechStopFilter(TokenStream input) {
         this(input, Collections.emptySet());
     }
@@ -36,14 +38,18 @@ public class SprJapanesePartOfSpeechStopFilter extends TokenFilter {
     @Override
     public final boolean incrementToken() throws IOException {
         skippedPositions = 0;
+        lastPositionIncrement = 0;
         while (input.incrementToken()) {
             if (isWhiteSpace()) {
+                lastPositionIncrement = posIncrAtt.getPositionIncrement();
                 // donot increment position for white space
                 continue;
             }
             if (accept()) {
                 if (skippedPositions != 0) {
                     posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
+                } else if (lastPositionIncrement != 0 && posIncrAtt.getPositionIncrement() == 0) {
+                    posIncrAtt.setPositionIncrement(lastPositionIncrement);
                 }
                 return true;
             }
@@ -57,6 +63,7 @@ public class SprJapanesePartOfSpeechStopFilter extends TokenFilter {
     public void reset() throws IOException {
         super.reset();
         skippedPositions = 0;
+        lastPositionIncrement = 0;
     }
 
     @Override
