@@ -1,6 +1,7 @@
 package org.elasticsearch.action.admin.indices.parsedquery;
 
 import org.elasticsearch.action.support.nodes.BaseNodeResponse;
+import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
@@ -20,6 +21,10 @@ public class ParsedQueryCacheResponsePerNode extends BaseNodeResponse implements
     private final Map<String, String> cacheKeyVsQuery = new HashMap<>();
 
     public ParsedQueryCacheResponsePerNode() {
+    }
+
+    public ParsedQueryCacheResponsePerNode(DiscoveryNode node) {
+        super(node);
     }
 
     public ParsedQueryCacheResponsePerNode put(String cacheKey, String query) {

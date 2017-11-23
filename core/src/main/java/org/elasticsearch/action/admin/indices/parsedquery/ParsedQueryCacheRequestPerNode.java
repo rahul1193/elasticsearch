@@ -1,7 +1,11 @@
 package org.elasticsearch.action.admin.indices.parsedquery;
 
 import org.elasticsearch.action.support.nodes.BaseNodeRequest;
+import org.elasticsearch.common.io.stream.StreamInput;
+import org.elasticsearch.common.io.stream.StreamOutput;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -10,7 +14,7 @@ import java.util.List;
  */
 public class ParsedQueryCacheRequestPerNode extends BaseNodeRequest {
 
-    private List<String> cacheKeys;
+    private final List<String> cacheKeys = new ArrayList<>();
 
     public ParsedQueryCacheRequestPerNode() {
     }
@@ -23,12 +27,22 @@ public class ParsedQueryCacheRequestPerNode extends BaseNodeRequest {
         return cacheKeys;
     }
 
-    public void setCacheKeys(List<String> cacheKeys) {
-        this.cacheKeys = cacheKeys;
+    public ParsedQueryCacheRequestPerNode cacheKeys(List<String> cacheKeys) {
+        if (cacheKeys != null && cacheKeys.size() != 0) {
+            this.cacheKeys.addAll(cacheKeys);
+        }
+        return this;
     }
 
-    public ParsedQueryCacheRequestPerNode cacheKeys(List<String> cacheKeys) {
-        this.cacheKeys = cacheKeys;
-        return this;
+    @Override
+    public void readFrom(StreamInput in) throws IOException {
+        super.readFrom(in);
+        this.cacheKeys.addAll(in.readList(StreamInput::readString));
+    }
+
+    @Override
+    public void writeTo(StreamOutput out) throws IOException {
+        super.writeTo(out);
+        out.writeStringList(cacheKeys);
     }
 }

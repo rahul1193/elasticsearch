@@ -47,7 +47,7 @@ public class TransportGetParsedQueryCacheAction extends TransportNodesAction<Get
     @Override
     protected ParsedQueryCacheResponsePerNode nodeOperation(ParsedQueryCacheRequestPerNode request) {
         List<String> cacheKeys = request.getCacheKeys();
-        ParsedQueryCacheResponsePerNode response = new ParsedQueryCacheResponsePerNode();
+        ParsedQueryCacheResponsePerNode response = new ParsedQueryCacheResponsePerNode(transportService.getLocalNode());
         if (cacheKeys != null && cacheKeys.size() != 0) {
             ParsedQueryCache parsedQueryCache = indicesService.getParsedQueryCache();
             if (parsedQueryCache != null) {
