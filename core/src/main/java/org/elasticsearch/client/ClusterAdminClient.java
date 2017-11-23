@@ -87,29 +87,13 @@ import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse;
 import org.elasticsearch.action.admin.cluster.stats.ClusterStatsRequest;
 import org.elasticsearch.action.admin.cluster.stats.ClusterStatsRequestBuilder;
 import org.elasticsearch.action.admin.cluster.stats.ClusterStatsResponse;
-import org.elasticsearch.action.admin.cluster.storedscripts.DeleteStoredScriptRequest;
-import org.elasticsearch.action.admin.cluster.storedscripts.DeleteStoredScriptRequestBuilder;
-import org.elasticsearch.action.admin.cluster.storedscripts.DeleteStoredScriptResponse;
-import org.elasticsearch.action.admin.cluster.storedscripts.GetStoredScriptRequest;
-import org.elasticsearch.action.admin.cluster.storedscripts.GetStoredScriptRequestBuilder;
-import org.elasticsearch.action.admin.cluster.storedscripts.GetStoredScriptResponse;
-import org.elasticsearch.action.admin.cluster.storedscripts.PutStoredScriptRequest;
-import org.elasticsearch.action.admin.cluster.storedscripts.PutStoredScriptRequestBuilder;
-import org.elasticsearch.action.admin.cluster.storedscripts.PutStoredScriptResponse;
+import org.elasticsearch.action.admin.cluster.storedscripts.*;
 import org.elasticsearch.action.admin.cluster.tasks.PendingClusterTasksRequest;
 import org.elasticsearch.action.admin.cluster.tasks.PendingClusterTasksRequestBuilder;
 import org.elasticsearch.action.admin.cluster.tasks.PendingClusterTasksResponse;
-import org.elasticsearch.action.ingest.DeletePipelineRequest;
-import org.elasticsearch.action.ingest.DeletePipelineRequestBuilder;
-import org.elasticsearch.action.ingest.GetPipelineRequest;
-import org.elasticsearch.action.ingest.GetPipelineRequestBuilder;
-import org.elasticsearch.action.ingest.GetPipelineResponse;
-import org.elasticsearch.action.ingest.PutPipelineRequest;
-import org.elasticsearch.action.ingest.PutPipelineRequestBuilder;
-import org.elasticsearch.action.ingest.SimulatePipelineRequest;
-import org.elasticsearch.action.ingest.SimulatePipelineRequestBuilder;
-import org.elasticsearch.action.ingest.SimulatePipelineResponse;
-import org.elasticsearch.action.ingest.WritePipelineResponse;
+import org.elasticsearch.action.admin.indices.parsedquery.GetParsedQueryCacheRequest;
+import org.elasticsearch.action.admin.indices.parsedquery.GetParsedQueryCacheResponse;
+import org.elasticsearch.action.ingest.*;
 import org.elasticsearch.common.Nullable;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.xcontent.XContentType;
@@ -317,7 +301,7 @@ public interface ClusterAdminClient extends ElasticsearchClient {
     /**
      * Get a task.
      *
-     * @param request the request
+     * @param request  the request
      * @param listener A listener to be notified with the result
      * @see org.elasticsearch.client.Requests#getTaskRequest()
      */
@@ -546,6 +530,7 @@ public interface ClusterAdminClient extends ElasticsearchClient {
 
     /**
      * Stores an ingest pipeline
+     *
      * @deprecated use {@link #preparePutPipeline(String, BytesReference, XContentType)}
      */
     @Deprecated
@@ -676,6 +661,11 @@ public interface ClusterAdminClient extends ElasticsearchClient {
      * Get a script from the cluster state
      */
     void getStoredScript(GetStoredScriptRequest request, ActionListener<GetStoredScriptResponse> listener);
+
+    /**
+     * get parsed queries for given cache keys
+     */
+    void getParsedQuery(GetParsedQueryCacheRequest request, ActionListener<GetParsedQueryCacheResponse> listener);
 
     /**
      * Get a script from the cluster state
