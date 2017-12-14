@@ -19,6 +19,7 @@
 
 package org.elasticsearch.index.cache.bitset;
 
+import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.logging.log4j.util.Supplier;
 import org.apache.lucene.index.IndexReaderContext;
@@ -61,11 +62,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
+import java.util.concurrent.*;
 
 /**
  * This is a cache for {@link BitDocIdSet} based filters and is unbounded by size or time.
@@ -102,7 +99,7 @@ public final class BitsetFilterCache extends AbstractIndexComponent implements L
 
 
     public BitSetProducer getBitSetProducer(Query query) {
-        return new QueryWrapperBitSetProducer(query);
+        return new QueryWrapperBitSetProducer(query, logger);
     }
 
     @Override
@@ -127,7 +124,7 @@ public final class BitsetFilterCache extends AbstractIndexComponent implements L
         if (indexSettings.getIndex().equals(shardId.getIndex()) == false) {
             // insanity
             throw new IllegalStateException("Trying to load bit set for index " + shardId.getIndex()
-                    + " with cache of index " + indexSettings.getIndex());
+                + " with cache of index " + indexSettings.getIndex());
         }
         Cache<Query, Value> filterToFbs = loadedFilters.computeIfAbsent(coreCacheReader, key -> {
             context.reader().addCoreClosedListener(BitsetFilterCache.this);
@@ -184,16 +181,27 @@ public final class BitsetFilterCache extends AbstractIndexComponent implements L
     final static class QueryWrapperBitSetProducer implements BitSetProducer {
 
         final Query query;
+        private final Logger logger;
 
-        QueryWrapperBitSetProducer(Query query) {
+        QueryWrapperBitSetProducer(Query query, Logger logger) {
             this.query = Objects.requireNonNull(query);
+            this.logger = logger;
         }
 
         @Override
         public BitSet getBitSet(LeafReaderContext context) throws IOException {
             try {
                 ShardId shardId = ShardUtils.extractShardId(context.reader());
-                return INDEX_BITSET_FILTER_CACHE.get(shardId.getIndex()).getAndLoadIfNotPresent(query, context);
+                if (shardId == null) {
+                    logger.error("shardId is empty for context : " + context);
+                    return null;
+                }
+                BitsetFilterCache bitsetFilterCache = INDEX_BITSET_FILTER_CACHE.get(shardId.getIndex());
+                if (bitsetFilterCache == null) {
+                    logger.error("bitset filter cache is null for index : " + shardId.getIndexName());
+                    return null;
+                }
+                return bitsetFilterCache.getAndLoadIfNotPresent(query, context);
             } catch (ExecutionException e) {
                 throw ExceptionsHelper.convertToElastic(e);
             }
@@ -284,18 +292,21 @@ public final class BitsetFilterCache extends AbstractIndexComponent implements L
     }
 
     /**
-     *  A listener interface that is executed for each onCache / onRemoval event
+     * A listener interface that is executed for each onCache / onRemoval event
      */
     public interface Listener {
         /**
          * Called for each cached bitset on the cache event.
-         * @param shardId the shard id the bitset was cached for. This can be <code>null</code>
+         *
+         * @param shardId     the shard id the bitset was cached for. This can be <code>null</code>
          * @param accountable the bitsets ram representation
          */
         void onCache(ShardId shardId, Accountable accountable);
+
         /**
          * Called for each cached bitset on the removal event.
-         * @param shardId the shard id the bitset was cached for. This can be <code>null</code>
+         *
+         * @param shardId     the shard id the bitset was cached for. This can be <code>null</code>
          * @param accountable the bitsets ram representation
          */
         void onRemoval(ShardId shardId, Accountable accountable);
