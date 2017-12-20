@@ -20,11 +20,7 @@
 package org.elasticsearch.search.aggregations.bucket.nested;
 
 import org.elasticsearch.index.mapper.ObjectMapper;
-import org.elasticsearch.search.aggregations.Aggregator;
-import org.elasticsearch.search.aggregations.AggregatorFactories;
-import org.elasticsearch.search.aggregations.AggregatorFactory;
-import org.elasticsearch.search.aggregations.InternalAggregation;
-import org.elasticsearch.search.aggregations.NonCollectingAggregator;
+import org.elasticsearch.search.aggregations.*;
 import org.elasticsearch.search.aggregations.pipeline.PipelineAggregator;
 import org.elasticsearch.search.internal.SearchContext;
 
@@ -48,13 +44,13 @@ public class NestedAggregatorFactory extends AggregatorFactory<NestedAggregatorF
     @Override
     public Aggregator createInternal(Aggregator parent, boolean collectsFromSingleBucket, List<PipelineAggregator> pipelineAggregators,
             Map<String, Object> metaData) throws IOException {
-        if (collectsFromSingleBucket == false) {
-            return asMultiBucketAggregator(this, context, parent);
-        }
+//        if (collectsFromSingleBucket == false) {
+//            return asMultiBucketAggregator(this, context, parent);
+//        }
         if (childObjectMapper == null) {
             return new Unmapped(name, context, parent, pipelineAggregators, metaData);
         }
-        return new NestedAggregator(name, factories, parentObjectMapper, childObjectMapper, context, parent, pipelineAggregators, metaData);
+        return new NestedAggregator(name, factories, parentObjectMapper, childObjectMapper, context, parent, pipelineAggregators, metaData, collectsFromSingleBucket);
     }
 
     private static final class Unmapped extends NonCollectingAggregator {
