@@ -19,6 +19,8 @@
 
 package org.elasticsearch.action.search;
 
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.action.ShardOperationFailedException;
@@ -35,6 +37,8 @@ import java.util.List;
 public class SearchPhaseExecutionException extends ElasticsearchException {
     private final String phaseName;
     private final ShardSearchFailure[] shardFailures;
+
+    private static final Logger logger = LogManager.getLogger(SearchPhaseExecutionException.class);
 
     public SearchPhaseExecutionException(String phaseName, String msg, ShardSearchFailure[] shardFailures) {
         this(phaseName, msg, null, shardFailures);
@@ -139,7 +143,7 @@ public class SearchPhaseExecutionException extends ElasticsearchException {
         builder.field("failed_shards");
         builder.startArray();
         ShardOperationFailedException[] failures = params.paramAsBoolean("group_shard_failures", true) ?
-                ExceptionsHelper.groupBy(shardFailures) : shardFailures;
+            ExceptionsHelper.groupBy(shardFailures) : shardFailures;
         for (ShardOperationFailedException failure : failures) {
             builder.startObject();
             failure.toXContent(builder, params);
@@ -167,6 +171,11 @@ public class SearchPhaseExecutionException extends ElasticsearchException {
         ShardOperationFailedException[] failures = ExceptionsHelper.groupBy(shardFailures);
         List<ElasticsearchException> rootCauses = new ArrayList<>(failures.length);
         for (ShardOperationFailedException failure : failures) {
+            if (failure.getCause() == null) {
+                logger.error("failure cause is null with reason : " + failure.reason() + ", index : " + failure.index()
+                    + ", shardId : " + failure.shardId() + ", rest status : " + failure.status().getStatus());
+                continue;
+            }
             ElasticsearchException[] guessRootCauses = ElasticsearchException.guessRootCauses(failure.getCause());
             rootCauses.addAll(Arrays.asList(guessRootCauses));
         }

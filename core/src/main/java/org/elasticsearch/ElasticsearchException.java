@@ -37,19 +37,10 @@ import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.transport.TcpTransport;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
-import static java.util.Collections.emptyMap;
-import static java.util.Collections.singletonMap;
-import static java.util.Collections.unmodifiableMap;
+import static java.util.Collections.*;
 import static org.elasticsearch.cluster.metadata.IndexMetaData.INDEX_UUID_NA_VALUE;
 import static org.elasticsearch.common.xcontent.XContentParserUtils.ensureExpectedToken;
 import static org.elasticsearch.common.xcontent.XContentParserUtils.ensureFieldName;
@@ -611,6 +602,9 @@ public class ElasticsearchException extends RuntimeException implements ToXConte
      * is returned.
      */
     public static ElasticsearchException[] guessRootCauses(Throwable t) {
+        if (t == null) {
+            return new ElasticsearchException[0];
+        }
         Throwable ex = ExceptionsHelper.unwrapCause(t);
         if (ex instanceof ElasticsearchException) {
             return ((ElasticsearchException) ex).guessRootCauses();
