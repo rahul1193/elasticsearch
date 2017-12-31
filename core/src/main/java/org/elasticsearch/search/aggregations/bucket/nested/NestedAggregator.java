@@ -89,13 +89,21 @@ public class NestedAggregator extends SingleBucketAggregator {
                 }
             };
         } else {
-            doPostCollection();
             return bufferingNestedLeafBucketCollector = new BufferingNestedLeafBucketCollector(sub, parentDocs, childDocs);
         }
     }
 
     @Override
+    protected void preGetSubLeafCollectors() throws IOException {
+        processBufferedDocs();
+    }
+
+    @Override
     protected void doPostCollection() throws IOException {
+        processBufferedDocs();
+    }
+
+    private void processBufferedDocs() throws IOException {
         if (bufferingNestedLeafBucketCollector != null) {
             bufferingNestedLeafBucketCollector.postCollect();
         }

@@ -18,8 +18,8 @@
  */
 package org.elasticsearch.search.aggregations;
 
-import org.elasticsearch.common.breaker.CircuitBreaker;
 import org.apache.lucene.index.LeafReaderContext;
+import org.elasticsearch.common.breaker.CircuitBreaker;
 import org.elasticsearch.common.breaker.CircuitBreakingException;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.search.aggregations.bucket.BestBucketsDeferringCollector;
@@ -145,8 +145,16 @@ public abstract class AggregatorBase extends Aggregator {
 
     @Override
     public final LeafBucketCollector getLeafCollector(LeafReaderContext ctx) throws IOException {
+        preGetSubLeafCollectors();
         final LeafBucketCollector sub = collectableSubAggregators.getLeafCollector(ctx);
         return getLeafCollector(ctx, sub);
+    }
+
+    /**
+     * Can be overridden by aggregator implementations that like the perform an operation before the leaf collectors
+     * of children aggregators are instantiated for the next segment.
+     */
+    protected void preGetSubLeafCollectors() throws IOException {
     }
 
     /**
