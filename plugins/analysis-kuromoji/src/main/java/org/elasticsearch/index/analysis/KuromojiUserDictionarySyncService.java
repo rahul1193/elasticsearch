@@ -184,12 +184,6 @@ public class KuromojiUserDictionarySyncService extends AbstractComponent {
                 long s3UpdateTime = getSourceLastUpdateTime(amazonS3Client);
                 if (s3UpdateTime > lastSyncTime.get()) {
                     UserDictionary userDictionary = updateDictionaryAndLastSyncTime(amazonS3Client);
-                    if (userDictionary == null) {
-                        if (logger.isDebugEnabled()) {
-                            logger.debug("failed to download user dictionary");
-                        }
-                        return;
-                    }
                     for (Consumer<UserDictionary> consumer : dictionaryConsumers) {
                         try {
                             consumer.accept(userDictionary);
