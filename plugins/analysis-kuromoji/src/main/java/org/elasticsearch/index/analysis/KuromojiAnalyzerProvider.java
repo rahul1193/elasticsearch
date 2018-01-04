@@ -38,14 +38,13 @@ public class KuromojiAnalyzerProvider extends AbstractIndexAnalyzerProvider<SprJ
     public KuromojiAnalyzerProvider(IndexSettings indexSettings, Environment env, String name, Settings settings, Supplier<KuromojiUserDictionarySyncService> dictionarySyncService) {
         super(indexSettings, name, settings);
         final JapaneseTokenizer.Mode mode = KuromojiTokenizerFactory.getMode(settings);
+        final boolean discardPunctuation = settings.getAsBoolean("discard_punctuation", false);
         final UserDictionary userDictionary = KuromojiTokenizerFactory.getUserDictionary(env, settings);
-        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, CharArraySet.EMPTY_SET, dictionarySyncService);
+        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, discardPunctuation, CharArraySet.EMPTY_SET, dictionarySyncService);
     }
 
     @Override
     public SprJapaneseAnalyzer get() {
         return this.analyzer;
     }
-
-
 }

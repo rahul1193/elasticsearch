@@ -42,7 +42,7 @@ public class KuromojiUserDictionarySyncService extends AbstractComponent {
     public static final Setting<Boolean> AMAZON_S3_INIT_ON_START_SETTING = Setting.boolSetting("kuromoji.dict.s3.init.on.start", true, Setting.Property.Dynamic, Setting.Property.NodeScope);
 
 
-    private AtomicLong lastSyncTime = new AtomicLong(0);
+    private AtomicLong lastSyncTime = new AtomicLong(-1);
     private final Set<Consumer<UserDictionary>> dictionaryConsumers = Collections.synchronizedSet(new HashSet<>());
     private final AtomicReference<UserDictionary> userDictionary = new AtomicReference<>();
     private final UserDictionaryConfig userDictionaryConfig;
@@ -78,7 +78,7 @@ public class KuromojiUserDictionarySyncService extends AbstractComponent {
 
     public void registerDictionaryConsumer(Consumer<UserDictionary> consumer) {
         dictionaryConsumers.add(consumer);
-        if (userDictionary.get() != null) {
+        if (lastSyncTime.get() != -1) {
             consumer.accept(userDictionary.get());
         }
     }
@@ -161,7 +161,7 @@ public class KuromojiUserDictionarySyncService extends AbstractComponent {
 
         @Override
         public void onAfter() {
-            if (lastSyncTime.get() == 0) {
+            if (lastSyncTime.get() == -1) {
                 threadPool.schedule(TimeValue.timeValueSeconds(1), ThreadPool.Names.SAME, this);
             } else {
                 threadPool.schedule(TimeValue.timeValueMinutes(1), ThreadPool.Names.SAME, this);

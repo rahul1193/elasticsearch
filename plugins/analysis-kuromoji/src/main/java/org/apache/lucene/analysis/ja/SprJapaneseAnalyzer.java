@@ -15,16 +15,18 @@ import java.util.function.Supplier;
  */
 public class SprJapaneseAnalyzer extends StopwordAnalyzerBase {
     private final JapaneseTokenizer.Mode mode;
+    private final boolean discardPunctuation;
     private volatile UserDictionary userDict;
 
     private final AtomicBoolean registered = new AtomicBoolean();
     private final AtomicBoolean userDictionaryInitialized = new AtomicBoolean();
     private final Supplier<KuromojiUserDictionarySyncService> userDictionarySyncService;
 
-    public SprJapaneseAnalyzer(UserDictionary userDict, JapaneseTokenizer.Mode mode, CharArraySet stopwords, Supplier<KuromojiUserDictionarySyncService> userDictionarySyncService) {
+    public SprJapaneseAnalyzer(UserDictionary userDict, JapaneseTokenizer.Mode mode, boolean discardPunctuation, CharArraySet stopwords, Supplier<KuromojiUserDictionarySyncService> userDictionarySyncService) {
         super(stopwords);
         this.userDict = userDict;
         this.mode = mode;
+        this.discardPunctuation = discardPunctuation;
         this.userDictionarySyncService = userDictionarySyncService;
     }
 
@@ -70,7 +72,7 @@ public class SprJapaneseAnalyzer extends StopwordAnalyzerBase {
             }
         }
 
-        return new JapaneseTokenizer(userDict, false, mode);
+        return new JapaneseTokenizer(userDict, discardPunctuation, mode);
     }
 
     private void setUserDictionary(UserDictionary userDict) {

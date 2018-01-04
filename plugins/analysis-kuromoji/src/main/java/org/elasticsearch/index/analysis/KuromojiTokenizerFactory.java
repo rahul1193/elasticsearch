@@ -42,14 +42,16 @@ public class KuromojiTokenizerFactory extends AbstractTokenizerFactory {
 
     private final UserDictionary userDictionary;
     private final Mode mode;
+    private final boolean discardPunctuation;
 
     private final SprJapaneseAnalyzer analyzer;
 
     public KuromojiTokenizerFactory(IndexSettings indexSettings, Environment env, String name, Settings settings, Supplier<KuromojiUserDictionarySyncService> serviceProvider) {
         super(indexSettings, name, settings);
         mode = getMode(settings);
+        discardPunctuation = settings.getAsBoolean("discard_punctuation", false);
         userDictionary = getUserDictionary(env, settings);
-        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, CharArraySet.EMPTY_SET, serviceProvider);
+        analyzer = new SprJapaneseAnalyzer(userDictionary, mode, discardPunctuation, CharArraySet.EMPTY_SET, serviceProvider);
     }
 
     public static UserDictionary getUserDictionary(Environment env, Settings settings) {
