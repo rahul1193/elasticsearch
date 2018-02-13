@@ -22,6 +22,7 @@ package org.elasticsearch.search.internal;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.CloseableThreadLocal;
 import org.apache.lucene.util.Counter;
 import org.elasticsearch.action.search.SearchTask;
 import org.elasticsearch.action.search.SearchType;
@@ -86,7 +87,7 @@ public abstract class SearchContext extends AbstractRefCounted implements Releas
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private InnerHitsContext innerHitsContext;
 
-    private static final ThreadLocal<SearchContext> current = new ThreadLocal<>();
+    private static final CloseableThreadLocal<SearchContext> current = new CloseableThreadLocal<>();
 
     public static void setCurrent(SearchContext value) {
         current.set(value);
