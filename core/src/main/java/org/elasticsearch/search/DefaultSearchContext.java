@@ -75,11 +75,7 @@ import org.elasticsearch.search.suggest.SuggestionSearchContext;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 final class DefaultSearchContext extends SearchContext {
 
@@ -119,6 +115,7 @@ final class DefaultSearchContext extends SearchContext {
     // filter for sliced scroll
     private SliceBuilder sliceBuilder;
     private SearchTask task;
+    private boolean withDocId;
 
 
     /**
@@ -173,6 +170,7 @@ final class DefaultSearchContext extends SearchContext {
         queryShardContext = indexService.newQueryShardContext(request.shardId().id(), searcher.getIndexReader(), request::nowInMillis);
         queryShardContext.setTypes(request.types());
         queryBoost = request.indexBoost();
+        this.withDocId = request.isWithDocId();
     }
 
     @Override
@@ -186,7 +184,7 @@ final class DefaultSearchContext extends SearchContext {
      */
     @Override
     public void preProcess(boolean rewrite) {
-        if (hasOnlySuggest() ) {
+        if (hasOnlySuggest()) {
             return;
         }
         long from = from() == -1 ? 0 : from();
@@ -197,24 +195,24 @@ final class DefaultSearchContext extends SearchContext {
         if (resultWindow > maxResultWindow) {
             if (scrollContext == null) {
                 throw new QueryPhaseExecutionException(this,
-                        "Result window is too large, from + size must be less than or equal to: [" + maxResultWindow + "] but was ["
-                                + resultWindow + "]. See the scroll api for a more efficient way to request large data sets. "
-                                + "This limit can be set by changing the [" + IndexSettings.MAX_RESULT_WINDOW_SETTING.getKey()
-                                + "] index level setting.");
+                    "Result window is too large, from + size must be less than or equal to: [" + maxResultWindow + "] but was ["
+                        + resultWindow + "]. See the scroll api for a more efficient way to request large data sets. "
+                        + "This limit can be set by changing the [" + IndexSettings.MAX_RESULT_WINDOW_SETTING.getKey()
+                        + "] index level setting.");
             }
             throw new QueryPhaseExecutionException(this,
-                    "Batch size is too large, size must be less than or equal to: [" + maxResultWindow + "] but was [" + resultWindow
-                            + "]. Scroll batch sizes cost as much memory as result windows so they are controlled by the ["
-                            + IndexSettings.MAX_RESULT_WINDOW_SETTING.getKey() + "] index level setting.");
+                "Batch size is too large, size must be less than or equal to: [" + maxResultWindow + "] but was [" + resultWindow
+                    + "]. Scroll batch sizes cost as much memory as result windows so they are controlled by the ["
+                    + IndexSettings.MAX_RESULT_WINDOW_SETTING.getKey() + "] index level setting.");
         }
         if (rescore != null) {
             int maxWindow = indexService.getIndexSettings().getMaxRescoreWindow();
-            for (RescoreSearchContext rescoreContext: rescore) {
+            for (RescoreSearchContext rescoreContext : rescore) {
                 if (rescoreContext.window() > maxWindow) {
                     throw new QueryPhaseExecutionException(this, "Rescore window [" + rescoreContext.window() + "] is too large. It must "
-                            + "be less than [" + maxWindow + "]. This prevents allocating massive heaps for storing the results to be "
-                            + "rescored. This limit can be set by changing the [" + IndexSettings.MAX_RESCORE_WINDOW_SETTING.getKey()
-                            + "] index level setting.");
+                        + "be less than [" + maxWindow + "]. This prevents allocating massive heaps for storing the results to be "
+                        + "rescored. This limit can be set by changing the [" + IndexSettings.MAX_RESCORE_WINDOW_SETTING.getKey()
+                        + "] index level setting.");
 
                 }
             }
@@ -263,9 +261,9 @@ final class DefaultSearchContext extends SearchContext {
         }
 
         if (mapperService().hasNested()
-                && typeFilter == null // when a _type filter is set, it will automatically exclude nested docs
-                && new NestedHelper(mapperService()).mightMatchNestedDocs(query)
-                && (aliasFilter == null || new NestedHelper(mapperService()).mightMatchNestedDocs(aliasFilter))) {
+            && typeFilter == null // when a _type filter is set, it will automatically exclude nested docs
+            && new NestedHelper(mapperService()).mightMatchNestedDocs(query)
+            && (aliasFilter == null || new NestedHelper(mapperService()).mightMatchNestedDocs(aliasFilter))) {
             filters.add(Queries.newNonNestedFilter());
         }
 
@@ -275,7 +273,7 @@ final class DefaultSearchContext extends SearchContext {
 
         if (sliceBuilder != null) {
             filters.add(sliceBuilder.toFilter(queryShardContext, shardTarget().getShardId().getId(),
-                    queryShardContext.getIndexSettings().getNumberOfShards()));
+                queryShardContext.getIndexSettings().getNumberOfShards()));
         }
 
         if (filters.isEmpty()) {
@@ -808,5 +806,10 @@ final class DefaultSearchContext extends SearchContext {
     @Override
     public boolean isCancelled() {
         return task.isCancelled();
+    }
+
+    @Override
+    public boolean isWithDocId() {
+        return withDocId;
     }
 }

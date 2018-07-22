@@ -26,6 +26,7 @@ import org.apache.lucene.codecs.lucene62.Lucene62Codec;
 import org.elasticsearch.common.Nullable;
 import org.elasticsearch.common.collect.MapBuilder;
 import org.elasticsearch.index.mapper.MapperService;
+import org.elasticsearch.index.shard.ShardId;
 
 import java.util.Map;
 
@@ -41,19 +42,25 @@ public class CodecService {
 
     public static final String DEFAULT_CODEC = "default";
     public static final String BEST_COMPRESSION_CODEC = "best_compression";
-    /** the raw unfiltered lucene default. useful for testing */
+    /**
+     * the raw unfiltered lucene default. useful for testing
+     */
     public static final String LUCENE_DEFAULT_CODEC = "lucene_default";
 
     public CodecService(@Nullable MapperService mapperService, Logger logger) {
+        this(mapperService, null, logger);
+    }
+
+    public CodecService(@Nullable MapperService mapperService, ShardId shardId, Logger logger) {
         final MapBuilder<String, Codec> codecs = MapBuilder.<String, Codec>newMapBuilder();
         if (mapperService == null) {
             codecs.put(DEFAULT_CODEC, new Lucene62Codec());
             codecs.put(BEST_COMPRESSION_CODEC, new Lucene62Codec(Mode.BEST_COMPRESSION));
         } else {
             codecs.put(DEFAULT_CODEC,
-                    new PerFieldMappingPostingFormatCodec(Mode.BEST_SPEED, mapperService, logger));
+                new PerFieldMappingPostingFormatCodec(Mode.BEST_SPEED, mapperService, shardId, logger));
             codecs.put(BEST_COMPRESSION_CODEC,
-                    new PerFieldMappingPostingFormatCodec(Mode.BEST_COMPRESSION, mapperService, logger));
+                new PerFieldMappingPostingFormatCodec(Mode.BEST_COMPRESSION, mapperService, shardId, logger));
         }
         codecs.put(LUCENE_DEFAULT_CODEC, Codec.getDefault());
         for (String codec : Codec.availableCodecs()) {

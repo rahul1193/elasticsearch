@@ -33,14 +33,8 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.io.stream.Streamable;
 import org.elasticsearch.common.io.stream.Writeable;
 import org.elasticsearch.common.text.Text;
-import org.elasticsearch.common.xcontent.ConstructingObjectParser;
-import org.elasticsearch.common.xcontent.ObjectParser;
+import org.elasticsearch.common.xcontent.*;
 import org.elasticsearch.common.xcontent.ObjectParser.ValueType;
-import org.elasticsearch.common.xcontent.ToXContent;
-import org.elasticsearch.common.xcontent.ToXContentObject;
-import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentHelper;
-import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.index.mapper.MapperService;
 import org.elasticsearch.index.mapper.SourceFieldMapper;
 import org.elasticsearch.index.shard.ShardId;
@@ -49,23 +43,14 @@ import org.elasticsearch.search.lookup.SourceLookup;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
-import static java.util.Collections.emptyMap;
-import static java.util.Collections.singletonMap;
-import static java.util.Collections.unmodifiableMap;
+import static java.util.Collections.*;
 import static org.elasticsearch.common.lucene.Lucene.readExplanation;
 import static org.elasticsearch.common.lucene.Lucene.writeExplanation;
 import static org.elasticsearch.common.xcontent.ConstructingObjectParser.constructorArg;
 import static org.elasticsearch.common.xcontent.ConstructingObjectParser.optionalConstructorArg;
-import static org.elasticsearch.common.xcontent.XContentParserUtils.ensureExpectedToken;
-import static org.elasticsearch.common.xcontent.XContentParserUtils.parseStoredFieldsValue;
-import static org.elasticsearch.common.xcontent.XContentParserUtils.throwUnknownField;
+import static org.elasticsearch.common.xcontent.XContentParserUtils.*;
 import static org.elasticsearch.search.fetch.subphase.highlight.HighlightField.readHighlightField;
 
 /**
@@ -98,6 +83,8 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
     private String[] matchedQueries = Strings.EMPTY_ARRAY;
 
     private Explanation explanation;
+
+    private String segmentName;
 
     @Nullable
     private SearchShardTarget shard;
@@ -143,7 +130,8 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
     /**
      * The score.
-     * @deprecated  use {@link #getScore()} instead
+     *
+     * @deprecated use {@link #getScore()} instead
      */
     @Deprecated
     public float score() {
@@ -163,6 +151,7 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
     /**
      * The version of the hit.
+     *
      * @deprecated use {@link #getVersion()} instead
      */
     @Deprecated
@@ -179,6 +168,7 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
     /**
      * The index of the hit.
+     *
      * @deprecated use {@link #getIndex()} instead
      */
     @Deprecated
@@ -195,6 +185,7 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
     /**
      * The id of the document.
+     *
      * @deprecated use {@link #getId()} instead
      */
     @Deprecated
@@ -211,6 +202,7 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
     /**
      * The type of the document.
+     *
      * @deprecated use {@link #getType()} instead
      */
     @Deprecated
@@ -234,11 +226,16 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
     /**
      * Returns bytes reference, also un compress the source if needed.
+     *
      * @deprecated use {@link #getSourceRef()} instead
      */
     @Deprecated
     public BytesReference sourceRef() {
-       return getSourceRef();
+        return getSourceRef();
+    }
+
+    public void setSegmentName(String segmentName) {
+        this.segmentName = segmentName;
     }
 
     /**
@@ -300,6 +297,7 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
     /**
      * The source of the document as string (can be <tt>null</tt>).
+     *
      * @deprecated use {@link #getSourceAsString()} instead
      */
     @Deprecated
@@ -323,6 +321,7 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
     /**
      * The source of the document as a map (can be <tt>null</tt>).
+     *
      * @deprecated use {@link #getSourceAsMap()} instgead
      */
     @Deprecated
@@ -352,6 +351,7 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
     /**
      * The hit field matching the given field name.
+     *
      * @deprecated use {@link #getField(String)} instead
      */
     @Deprecated
@@ -369,6 +369,7 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
     /**
      * A map of hit fields (from field name to hit fields) if additional fields
      * were required to be loaded.
+     *
      * @deprecated use {@link #getFields()} instead
      */
     @Deprecated
@@ -395,6 +396,7 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
     /**
      * A map of highlighted fields.
+     *
      * @deprecated use {@link #getHighlightFields()} instead
      */
     @Deprecated
@@ -423,6 +425,7 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
     /**
      * An array of the sort values used.
+     *
      * @deprecated use {@link #getSortValues()} instead
      */
     @Deprecated
@@ -439,6 +442,7 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
     /**
      * If enabled, the explanation of the search hit.
+     *
      * @deprecated use {@link #getExplanation()} instead
      */
     @Deprecated
@@ -459,6 +463,7 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
     /**
      * The shard of the search hit.
+     *
      * @deprecated use {@link #getShard()} instead
      */
     @Deprecated
@@ -528,6 +533,8 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
         static final String INNER_HITS = "inner_hits";
         static final String _SHARD = "_shard";
         static final String _NODE = "_node";
+        static final String DOC_ID = "_docId";
+        static final String SEGMENT_NAME = "_segmentName";
     }
 
     @Override
@@ -628,6 +635,12 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
             }
             builder.endObject();
         }
+        if (docId != -1) {
+            builder.field(Fields.DOC_ID, docId);
+        }
+        if (segmentName != null) {
+            builder.field(Fields.SEGMENT_NAME, this.segmentName);
+        }
         return builder;
     }
 
@@ -658,28 +671,28 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
         parser.declareString((map, value) -> map.put(Fields._ID, value), new ParseField(Fields._ID));
         parser.declareString((map, value) -> map.put(Fields._NODE, value), new ParseField(Fields._NODE));
         parser.declareField((map, value) -> map.put(Fields._SCORE, value), SearchHit::parseScore, new ParseField(Fields._SCORE),
-                ValueType.FLOAT_OR_NULL);
+            ValueType.FLOAT_OR_NULL);
         parser.declareLong((map, value) -> map.put(Fields._VERSION, value), new ParseField(Fields._VERSION));
         parser.declareField((map, value) -> map.put(Fields._SHARD, value), (p, c) -> ShardId.fromString(p.text()),
-                new ParseField(Fields._SHARD), ValueType.STRING);
+            new ParseField(Fields._SHARD), ValueType.STRING);
         parser.declareObject((map, value) -> map.put(SourceFieldMapper.NAME, value), (p, c) -> parseSourceBytes(p),
-                new ParseField(SourceFieldMapper.NAME));
+            new ParseField(SourceFieldMapper.NAME));
         parser.declareObject((map, value) -> map.put(Fields.HIGHLIGHT, value), (p, c) -> parseHighlightFields(p),
-                new ParseField(Fields.HIGHLIGHT));
+            new ParseField(Fields.HIGHLIGHT));
         parser.declareObject((map, value) -> {
             Map<String, SearchHitField> fieldMap = get(Fields.FIELDS, map, new HashMap<String, SearchHitField>());
             fieldMap.putAll(value);
             map.put(Fields.FIELDS, fieldMap);
         }, (p, c) -> parseFields(p), new ParseField(Fields.FIELDS));
         parser.declareObject((map, value) -> map.put(Fields._EXPLANATION, value), (p, c) -> parseExplanation(p),
-                new ParseField(Fields._EXPLANATION));
+            new ParseField(Fields._EXPLANATION));
         parser.declareObject((map, value) -> map.put(NestedIdentity._NESTED, value), NestedIdentity::fromXContent,
-                new ParseField(NestedIdentity._NESTED));
-        parser.declareObject((map, value) -> map.put(Fields.INNER_HITS, value), (p,c) -> parseInnerHits(p),
-                new ParseField(Fields.INNER_HITS));
+            new ParseField(NestedIdentity._NESTED));
+        parser.declareObject((map, value) -> map.put(Fields.INNER_HITS, value), (p, c) -> parseInnerHits(p),
+            new ParseField(Fields.INNER_HITS));
         parser.declareStringArray((map, list) -> map.put(Fields.MATCHED_QUERIES, list), new ParseField(Fields.MATCHED_QUERIES));
         parser.declareField((map, list) -> map.put(Fields.SORT, list), SearchSortValues::fromXContent, new ParseField(Fields.SORT),
-                ValueType.OBJECT_ARRAY);
+            ValueType.OBJECT_ARRAY);
     }
 
     public static SearchHit createFromMap(Map<String, Object> values) {
@@ -740,11 +753,11 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
     private static void declareMetaDataFields(ObjectParser<Map<String, Object>, Void> parser) {
         for (String metadatafield : MapperService.getAllMetaFields()) {
             if (metadatafield.equals(Fields._ID) == false && metadatafield.equals(Fields._INDEX) == false
-                    && metadatafield.equals(Fields._TYPE) == false) {
+                && metadatafield.equals(Fields._TYPE) == false) {
                 parser.declareField((map, field) -> {
                     @SuppressWarnings("unchecked")
                     Map<String, SearchHitField> fieldMap = (Map<String, SearchHitField>) map.computeIfAbsent(Fields.FIELDS,
-                            v -> new HashMap<String, SearchHitField>());
+                        v -> new HashMap<String, SearchHitField>());
                     fieldMap.put(field.getName(), field);
                 }, (p, c) -> {
                     List<Object> values = new ArrayList<>();
@@ -781,7 +794,7 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
     private static Map<String, HighlightField> parseHighlightFields(XContentParser parser) throws IOException {
         Map<String, HighlightField> highlightFields = new HashMap<>();
-        while((parser.nextToken()) != XContentParser.Token.END_OBJECT) {
+        while ((parser.nextToken()) != XContentParser.Token.END_OBJECT) {
             HighlightField highlightField = HighlightField.fromXContent(parser);
             highlightFields.put(highlightField.getName(), highlightField);
         }
@@ -1000,7 +1013,7 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
 
         /**
          * Returns the next child nested level if there is any, otherwise <code>null</code> is returned.
-         *
+         * <p>
          * In the case of mappings with multiple levels of nested object fields
          */
         public NestedIdentity getChild() {
@@ -1040,8 +1053,9 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
         }
 
         private static final ConstructingObjectParser<NestedIdentity, Void> PARSER = new ConstructingObjectParser<>(
-                "nested_identity",
-                ctorArgs -> new NestedIdentity((String) ctorArgs[0], (int) ctorArgs[1], (NestedIdentity) ctorArgs[2]));
+            "nested_identity",
+            ctorArgs -> new NestedIdentity((String) ctorArgs[0], (int) ctorArgs[1], (NestedIdentity) ctorArgs[2]));
+
         static {
             PARSER.declareString(constructorArg(), new ParseField(FIELD));
             PARSER.declareInt(constructorArg(), new ParseField(OFFSET));
@@ -1066,8 +1080,8 @@ public class SearchHit implements Streamable, ToXContentObject, Iterable<SearchH
             }
             NestedIdentity other = (NestedIdentity) obj;
             return Objects.equals(field, other.field) &&
-                    Objects.equals(offset, other.offset) &&
-                    Objects.equals(child, other.child);
+                Objects.equals(offset, other.offset) &&
+                Objects.equals(child, other.child);
         }
 
         @Override

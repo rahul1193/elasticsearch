@@ -389,6 +389,10 @@ public abstract class MappedFieldType extends FieldType {
         return stats;
     }
 
+    public boolean isUpdatable() {
+        return false;
+    }
+
     /**
      * An enum used to describe the relation between the range of terms in a
      * shard when compared with a query range

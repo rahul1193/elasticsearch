@@ -30,6 +30,9 @@ import org.elasticsearch.http.HttpTransportSettings;
 import org.elasticsearch.plugins.PluginInfo;
 import org.elasticsearch.transport.TransportSettings;
 
+import javax.management.MBeanPermission;
+import javax.management.MBeanServerPermission;
+import javax.management.MBeanTrustPermission;
 import java.io.FilePermission;
 import java.io.IOException;
 import java.net.SocketPermission;
@@ -223,6 +226,9 @@ final class Security {
         addClasspathPermissions(policy);
         addFilePermissions(policy, environment);
         addBindPermissions(policy, environment.settings());
+        policy.add(new MBeanServerPermission("createMBeanServer"));
+        policy.add(new MBeanPermission("org.apache.commons.pool2.impl.GenericObjectPool","registerMBean"));
+        policy.add(new MBeanTrustPermission("register"));
         return policy;
     }
 

@@ -20,6 +20,7 @@
 package org.elasticsearch.search.lookup;
 
 import org.apache.lucene.index.LeafReaderContext;
+import org.elasticsearch.index.mapper.MapperService;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +32,7 @@ import static java.util.Collections.unmodifiableMap;
  */
 public class LeafSearchLookup {
 
+    private final MapperService mapperService;
     final LeafReaderContext ctx;
     final LeafDocLookup docMap;
     final SourceLookup sourceLookup;
@@ -38,8 +40,9 @@ public class LeafSearchLookup {
     final LeafIndexLookup indexLookup;
     final Map<String, Object> asMap;
 
-    public LeafSearchLookup(LeafReaderContext ctx, LeafDocLookup docMap, SourceLookup sourceLookup,
+    public LeafSearchLookup(MapperService mapperService, LeafReaderContext ctx, LeafDocLookup docMap, SourceLookup sourceLookup,
                             LeafFieldsLookup fieldsLookup, LeafIndexLookup indexLookup, Map<String, Object> topLevelMap) {
+        this.mapperService = mapperService;
         this.ctx = ctx;
         this.docMap = docMap;
         this.sourceLookup = sourceLookup;
@@ -82,7 +85,7 @@ public class LeafSearchLookup {
 
     public void setDocument(int docId) {
         docMap.setDocument(docId);
-        sourceLookup.setSegmentAndDocument(ctx, docId);
+        sourceLookup.setSegmentAndDocument(mapperService, ctx, docId);
         fieldsLookup.setDocument(docId);
         indexLookup.setDocument(docId);
     }

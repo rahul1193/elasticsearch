@@ -136,7 +136,7 @@ public final class PercolatorHighlightSubFetchPhase extends HighlightPhase {
         subSearchContext.highlight(new SearchContextHighlight(context.highlight().fields()));
         // Enforce highlighting by source, because MemoryIndex doesn't support stored fields.
         subSearchContext.highlight().globalForceSource(true);
-        subSearchContext.lookup().source().setSegmentAndDocument(leafReaderContext, 0);
+        subSearchContext.lookup().source().setSegmentAndDocument(context.mapperService(), leafReaderContext, 0);
         subSearchContext.lookup().source().setSource(source);
         return subSearchContext;
     }

@@ -22,37 +22,49 @@ package org.elasticsearch.index.mapper;
 import org.elasticsearch.common.collect.CopyOnWriteHashMap;
 import org.elasticsearch.common.regex.Regex;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.stream.Collectors;
 
 /**
  * An immutable container for looking up {@link MappedFieldType}s by their name.
  */
 class FieldTypeLookup implements Iterable<MappedFieldType> {
 
-    /** Full field name to field type */
+    /**
+     * Full field name to field type
+     */
     final CopyOnWriteHashMap<String, MappedFieldType> fullNameToFieldType;
 
-    /** Full field name to types containing a mapping for this full name. */
+    /**
+     * Full field name to types containing a mapping for this full name.
+     */
     final CopyOnWriteHashMap<String, Set<String>> fullNameToTypes;
 
-    /** Create a new empty instance. */
+    final CopyOnWriteArraySet<String> updatableFields;
+
+    /**
+     * Create a new empty instance.
+     */
     FieldTypeLookup() {
         fullNameToFieldType = new CopyOnWriteHashMap<>();
         fullNameToTypes = new CopyOnWriteHashMap<>();
+        updatableFields = new CopyOnWriteArraySet<>();
     }
 
     private FieldTypeLookup(
-            CopyOnWriteHashMap<String, MappedFieldType> fullName,
-            CopyOnWriteHashMap<String, Set<String>> fullNameToTypes) {
+        CopyOnWriteHashMap<String, MappedFieldType> fullName,
+        CopyOnWriteHashMap<String, Set<String>> fullNameToTypes) {
         this.fullNameToFieldType = fullName;
         this.fullNameToTypes = fullNameToTypes;
+        Set<String> updatableFields = new HashSet<>();
+        for (Map.Entry<String, MappedFieldType> entry : fullName.entrySet()) {
+            MappedFieldType value = entry.getValue();
+            if (value.isUpdatable()) {
+                updatableFields.add(entry.getKey());
+            }
+        }
+        this.updatableFields = new CopyOnWriteArraySet<>(updatableFields);
     }
 
     private static CopyOnWriteHashMap<String, Set<String>> addType(CopyOnWriteHashMap<String, Set<String>> map, String key, String type) {
@@ -132,12 +144,16 @@ class FieldTypeLookup implements Iterable<MappedFieldType> {
         }
     }
 
-    /** Returns the field for the given field */
+    /**
+     * Returns the field for the given field
+     */
     public MappedFieldType get(String field) {
         return fullNameToFieldType.get(field);
     }
 
-    /** Get the set of types that have a mapping for the given field. */
+    /**
+     * Get the set of types that have a mapping for the given field.
+     */
     public Set<String> getTypes(String field) {
         Set<String> types = fullNameToTypes.get(field);
         if (types == null) {
@@ -162,5 +178,9 @@ class FieldTypeLookup implements Iterable<MappedFieldType> {
     @Override
     public Iterator<MappedFieldType> iterator() {
         return fullNameToFieldType.values().iterator();
+    }
+
+    public List<String> updatableFields() {
+        return new ArrayList<>(updatableFields);
     }
 }

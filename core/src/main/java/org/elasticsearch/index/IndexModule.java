@@ -21,6 +21,7 @@ package org.elasticsearch.index;
 
 import com.spr.elasticsearch.index.query.ParsedQueryCache;
 import com.spr.elasticsearch.index.query.QueryBuilderRewriteCache;
+import com.spr.elasticsearch.redis.RedisIndicesService;
 import org.apache.lucene.util.SetOnce;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.service.ClusterService;
@@ -328,7 +329,7 @@ public final class IndexModule {
                                         IndexService.ShardStoreDeleter shardStoreDeleter, CircuitBreakerService circuitBreakerService, BigArrays bigArrays,
                                         ThreadPool threadPool, ScriptService scriptService,
                                         ClusterService clusterService, Client client, IndicesQueryCache indicesQueryCache, ParsedQueryCache parsedQueryCache, QueryBuilderRewriteCache queryBuilderRewriteCache, MapperRegistry mapperRegistry,
-                                        IndicesFieldDataCache indicesFieldDataCache) throws IOException {
+                                        IndicesFieldDataCache indicesFieldDataCache, RedisIndicesService redisIndicesService) throws IOException {
         final IndexEventListener eventListener = freeze();
         IndexSearcherWrapperFactory searcherWrapperFactory = indexSearcherWrapper.get() == null
             ? (shard) -> null : indexSearcherWrapper.get();
@@ -364,7 +365,7 @@ public final class IndexModule {
         return new IndexService(indexSettings, environment, xContentRegistry, new SimilarityService(indexSettings, similarities), shardStoreDeleter,
             analysisRegistry, engineFactory.get(), circuitBreakerService, bigArrays, threadPool, scriptService,
             clusterService, client, queryCache, parsedQueryCache, queryBuilderRewriteCache, store, eventListener, searcherWrapperFactory, mapperRegistry, indicesFieldDataCache,
-            searchOperationListeners, indexOperationListeners);
+            redisIndicesService, searchOperationListeners, indexOperationListeners);
     }
 
     /**

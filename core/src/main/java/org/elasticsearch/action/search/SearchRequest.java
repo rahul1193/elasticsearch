@@ -81,6 +81,8 @@ public final class SearchRequest extends ActionRequest implements IndicesRequest
 
     private Long slowQueryThresholdMs;
 
+    private boolean withDocId;
+
     public SearchRequest() {
     }
 
@@ -314,6 +316,15 @@ public final class SearchRequest extends ActionRequest implements IndicesRequest
         return source != null && source.isSuggestOnly();
     }
 
+    public boolean isWithDocId() {
+        return withDocId;
+    }
+
+    public SearchRequest withDocId(boolean withDocId) {
+        this.withDocId = withDocId;
+        return this;
+    }
+
     @Override
     public Task createTask(long id, String type, String action, TaskId parentTaskId) {
         // generating description in a lazy way since source can be quite big
@@ -328,6 +339,7 @@ public final class SearchRequest extends ActionRequest implements IndicesRequest
                 Strings.arrayToDelimitedString(types, ",", sb);
                 sb.append("], ");
                 sb.append("search_type[").append(searchType).append("], ");
+                sb.append("withDocId[").append(withDocId).append("], ");
                 if (source != null) {
                     sb.append("source[").append(source.toString(FORMAT_PARAMS)).append("]");
                 } else {
@@ -357,6 +369,7 @@ public final class SearchRequest extends ActionRequest implements IndicesRequest
             batchedReduceSize = in.readVInt();
         }
         slowQueryThresholdMs = in.readOptionalLong();
+        withDocId = in.readBoolean();
     }
 
     @Override
@@ -378,6 +391,7 @@ public final class SearchRequest extends ActionRequest implements IndicesRequest
             out.writeVInt(batchedReduceSize);
         }
         out.writeOptionalLong(slowQueryThresholdMs);
+        out.writeBoolean(withDocId);
     }
 
     @Override
@@ -390,33 +404,35 @@ public final class SearchRequest extends ActionRequest implements IndicesRequest
         }
         SearchRequest that = (SearchRequest) o;
         return searchType == that.searchType &&
-                Arrays.equals(indices, that.indices) &&
-                Objects.equals(routing, that.routing) &&
-                Objects.equals(preference, that.preference) &&
-                Objects.equals(source, that.source) &&
-                Objects.equals(requestCache, that.requestCache)  &&
-                Objects.equals(scroll, that.scroll) &&
-                Arrays.equals(types, that.types) &&
-                Objects.equals(indicesOptions, that.indicesOptions);
+            Arrays.equals(indices, that.indices) &&
+            Objects.equals(routing, that.routing) &&
+            Objects.equals(preference, that.preference) &&
+            Objects.equals(source, that.source) &&
+            Objects.equals(requestCache, that.requestCache) &&
+            Objects.equals(scroll, that.scroll) &&
+            Arrays.equals(types, that.types) &&
+            Objects.equals(withDocId, that.withDocId) &&
+            Objects.equals(indicesOptions, that.indicesOptions);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(searchType, Arrays.hashCode(indices), routing, preference, source, requestCache,
-                scroll, Arrays.hashCode(types), indicesOptions);
+            scroll, Arrays.hashCode(types), indicesOptions, withDocId);
     }
 
     @Override
     public String toString() {
         return "SearchRequest{" +
-                "searchType=" + searchType +
-                ", indices=" + Arrays.toString(indices) +
-                ", indicesOptions=" + indicesOptions +
-                ", types=" + Arrays.toString(types) +
-                ", routing='" + routing + '\'' +
-                ", preference='" + preference + '\'' +
-                ", requestCache=" + requestCache +
-                ", scroll=" + scroll +
-                ", source=" + source + '}';
+            "searchType=" + searchType +
+            ", indices=" + Arrays.toString(indices) +
+            ", indicesOptions=" + indicesOptions +
+            ", types=" + Arrays.toString(types) +
+            ", routing='" + routing + '\'' +
+            ", preference='" + preference + '\'' +
+            ", requestCache=" + requestCache +
+            ", scroll=" + scroll +
+            ", withDocId=" + withDocId +
+            ", source=" + source + '}';
     }
 }

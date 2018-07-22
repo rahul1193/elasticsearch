@@ -19,16 +19,19 @@
 
 package org.elasticsearch.index.codec;
 
+import com.spr.elasticsearch.redis.codec.RedisBackedDocValuesFormat;
+import com.spr.elasticsearch.redis.codec.RedisBackedPostingsFormat;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.lucene50.Lucene50StoredFieldsFormat;
 import org.apache.lucene.codecs.lucene62.Lucene62Codec;
 import org.elasticsearch.common.lucene.Lucene;
-import org.elasticsearch.index.mapper.CompletionFieldMapper;
-import org.elasticsearch.index.mapper.CompletionFieldMapper2x;
-import org.elasticsearch.index.mapper.MappedFieldType;
-import org.elasticsearch.index.mapper.MapperService;
+import org.elasticsearch.index.mapper.*;
+import org.elasticsearch.index.shard.ShardId;
+
+import java.util.Locale;
 
 /**
  * {@link PerFieldMappingPostingFormatCodec This postings format} is the default
@@ -42,14 +45,17 @@ import org.elasticsearch.index.mapper.MapperService;
 public class PerFieldMappingPostingFormatCodec extends Lucene62Codec {
     private final Logger logger;
     private final MapperService mapperService;
+    private final ShardId shardId;
 
     static {
         assert Codec.forName(Lucene.LATEST_CODEC).getClass().isAssignableFrom(PerFieldMappingPostingFormatCodec.class) : "PerFieldMappingPostingFormatCodec must subclass the latest lucene codec: " + Lucene.LATEST_CODEC;
     }
 
-    public PerFieldMappingPostingFormatCodec(Lucene50StoredFieldsFormat.Mode compressionMode, MapperService mapperService, Logger logger) {
+
+    public PerFieldMappingPostingFormatCodec(Lucene50StoredFieldsFormat.Mode compressionMode, MapperService mapperService, ShardId shardId, Logger logger) {
         super(compressionMode);
         this.mapperService = mapperService;
+        this.shardId = shardId;
         this.logger = logger;
     }
 
@@ -63,8 +69,22 @@ public class PerFieldMappingPostingFormatCodec extends Lucene62Codec {
         } else if (fieldType instanceof CompletionFieldMapper2x.CompletionFieldType) {
             return ((CompletionFieldMapper2x.CompletionFieldType) fieldType).postingsFormat(
                 super.getPostingsFormatForField(field));
+        } else if (fieldType instanceof NumberFieldMapper.NumberFieldType) {
+            if (NumberFieldMapper.NumberType.CUSTOM_LONG.name().toLowerCase(Locale.ROOT).equals(fieldType.typeName())) {
+                return new RedisBackedPostingsFormat(shardId, field);
+            }
         }
         return super.getPostingsFormatForField(field);
     }
 
+    @Override
+    public DocValuesFormat getDocValuesFormatForField(String field) {
+        final MappedFieldType fieldType = mapperService.fullName(field);
+        if (fieldType instanceof NumberFieldMapper.NumberFieldType) {
+            if (NumberFieldMapper.NumberType.CUSTOM_LONG.name().toLowerCase(Locale.ROOT).equals(fieldType.typeName())) {
+                return new RedisBackedDocValuesFormat(shardId, field);
+            }
+        }
+        return super.getDocValuesFormatForField(field);
+    }
 }

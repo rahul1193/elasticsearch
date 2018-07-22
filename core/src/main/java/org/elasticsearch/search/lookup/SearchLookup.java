@@ -34,20 +34,22 @@ public class SearchLookup {
     final SourceLookup sourceLookup;
 
     final FieldsLookup fieldsLookup;
+    private final MapperService mapperService;
 
     public SearchLookup(MapperService mapperService, IndexFieldDataService fieldDataService, @Nullable String[] types) {
+        this.mapperService = mapperService;
         docMap = new DocLookup(mapperService, fieldDataService, types);
         sourceLookup = new SourceLookup();
         fieldsLookup = new FieldsLookup(mapperService, types);
     }
 
     public LeafSearchLookup getLeafSearchLookup(LeafReaderContext context) {
-        return new LeafSearchLookup(context,
-                docMap.getLeafDocLookup(context),
-                sourceLookup,
-                fieldsLookup.getLeafFieldsLookup(context),
-                IndexLookup.getLeafIndexLookup(context),
-                IndexLookup.NAMES);
+        return new LeafSearchLookup(mapperService, context,
+            docMap.getLeafDocLookup(context),
+            sourceLookup,
+            fieldsLookup.getLeafFieldsLookup(context),
+            IndexLookup.getLeafIndexLookup(context),
+            IndexLookup.NAMES);
     }
 
     public DocLookup doc() {

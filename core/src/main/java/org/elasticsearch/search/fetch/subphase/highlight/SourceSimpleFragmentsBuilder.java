@@ -49,7 +49,7 @@ public class SourceSimpleFragmentsBuilder extends SimpleFragmentsBuilder {
     protected Field[] getFields(IndexReader reader, int docId, String fieldName) throws IOException {
         // we know its low level reader, and matching docId, since that's how we call the highlighter with
         SourceLookup sourceLookup = searchContext.lookup().source();
-        sourceLookup.setSegmentAndDocument((LeafReaderContext) reader.getContext(), docId);
+        sourceLookup.setSegmentAndDocument(searchContext.mapperService(), (LeafReaderContext) reader.getContext(), docId);
 
         List<Object> values = sourceLookup.extractRawValues(mapper.fieldType().name());
         if (values.isEmpty()) {

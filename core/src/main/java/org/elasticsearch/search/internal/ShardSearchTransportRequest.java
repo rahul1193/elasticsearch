@@ -50,7 +50,7 @@ public class ShardSearchTransportRequest extends TransportRequest implements Sha
 
     private ShardSearchLocalRequest shardSearchLocalRequest;
 
-    public ShardSearchTransportRequest(){
+    public ShardSearchTransportRequest() {
     }
 
     public ShardSearchTransportRequest(OriginalIndices originalIndices, SearchRequest searchRequest, ShardId shardId, int numberOfShards,
@@ -175,5 +175,10 @@ public class ShardSearchTransportRequest extends TransportRequest implements Sha
     public String getDescription() {
         // Shard id is enough here, the request itself can be found by looking at the parent task description
         return "shardId[" + shardSearchLocalRequest.shardId() + "]";
+    }
+
+    @Override
+    public boolean isWithDocId() {
+        return shardSearchLocalRequest.isWithDocId();
     }
 }

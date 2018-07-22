@@ -21,6 +21,7 @@ package org.elasticsearch.common.settings;
 import com.spr.elasticsearch.index.query.ParsedQueryCache;
 import com.spr.elasticsearch.index.query.QueryBuilderRewriteCache;
 import com.spr.elasticsearch.indices.CacheKeyLRUQueryCache;
+import com.spr.elasticsearch.redis.RedisIndicesService;
 import org.elasticsearch.action.admin.indices.close.TransportCloseIndexAction;
 import org.elasticsearch.action.search.RemoteClusterService;
 import org.elasticsearch.action.search.TransportSearchAction;

@@ -21,11 +21,13 @@ package org.elasticsearch.index.mapper;
 
 import com.carrotsearch.hppc.ObjectHashSet;
 import com.carrotsearch.hppc.cursors.ObjectCursor;
-
+import com.spr.elasticsearch.fields.UpdatableFieldHandler;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.DelegatingAnalyzerWrapper;
+import org.apache.lucene.index.LeafReader;
 import org.elasticsearch.ElasticsearchGenerationException;
+import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.Version;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
@@ -35,10 +37,7 @@ import org.elasticsearch.common.compress.CompressedXContent;
 import org.elasticsearch.common.regex.Regex;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Setting.Property;
-import org.elasticsearch.common.xcontent.NamedXContentRegistry;
-import org.elasticsearch.common.xcontent.XContentFactory;
-import org.elasticsearch.common.xcontent.XContentParser;
-import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.common.xcontent.*;
 import org.elasticsearch.index.AbstractIndexComponent;
 import org.elasticsearch.index.IndexSettings;
 import org.elasticsearch.index.analysis.IndexAnalyzers;
@@ -48,25 +47,17 @@ import org.elasticsearch.index.similarity.SimilarityService;
 import org.elasticsearch.indices.InvalidTypeNameException;
 import org.elasticsearch.indices.TypeMissingException;
 import org.elasticsearch.indices.mapper.MapperRegistry;
+import org.elasticsearch.search.lookup.SourceLookup;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static java.util.Collections.emptyMap;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.unmodifiableMap;
+import static java.util.Collections.*;
 
 public class MapperService extends AbstractIndexComponent implements Closeable {
 
@@ -92,13 +83,13 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
     public static final Setting<Long> INDEX_MAPPING_TOTAL_FIELDS_LIMIT_SETTING =
         Setting.longSetting("index.mapping.total_fields.limit", 1000L, 0, Property.Dynamic, Property.IndexScope);
     public static final Setting<Long> INDEX_MAPPING_DEPTH_LIMIT_SETTING =
-            Setting.longSetting("index.mapping.depth.limit", 20L, 1, Property.Dynamic, Property.IndexScope);
+        Setting.longSetting("index.mapping.depth.limit", 20L, 1, Property.Dynamic, Property.IndexScope);
     public static final boolean INDEX_MAPPER_DYNAMIC_DEFAULT = true;
     public static final Setting<Boolean> INDEX_MAPPER_DYNAMIC_SETTING =
         Setting.boolSetting("index.mapper.dynamic", INDEX_MAPPER_DYNAMIC_DEFAULT, Property.Dynamic, Property.IndexScope);
     private static ObjectHashSet<String> META_FIELDS = ObjectHashSet.from(
-            "_uid", "_id", "_type", "_all", "_parent", "_routing", "_index",
-            "_size", "_timestamp", "_ttl"
+        "_uid", "_id", "_type", "_all", "_parent", "_routing", "_index",
+        "_size", "_timestamp", "_ttl"
     );
     @Deprecated
     public static final String PERCOLATOR_LEGACY_TYPE_NAME = ".percolator";
@@ -131,6 +122,8 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
 
     final MapperRegistry mapperRegistry;
 
+    private volatile CopyOnWriteArrayList<UpdatableFieldHandler> updatableFieldHandlers = new CopyOnWriteArrayList<>();
+
     public MapperService(IndexSettings indexSettings, IndexAnalyzers indexAnalyzers, NamedXContentRegistry xContentRegistry,
                          SimilarityService similarityService, MapperRegistry mapperRegistry,
                          Supplier<QueryShardContext> queryShardContextSupplier) {
@@ -138,7 +131,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
         this.indexAnalyzers = indexAnalyzers;
         this.fieldTypes = new FieldTypeLookup();
         this.documentParser = new DocumentMapperParser(indexSettings, this, indexAnalyzers, xContentRegistry, similarityService,
-                mapperRegistry, queryShardContextSupplier);
+            mapperRegistry, queryShardContextSupplier);
         this.indexAnalyzer = new MapperAnalyzerWrapper(indexAnalyzers.getDefaultIndexAnalyzer(), p -> p.indexAnalyzer());
         this.searchAnalyzer = new MapperAnalyzerWrapper(indexAnalyzers.getDefaultSearchAnalyzer(), p -> p.searchAnalyzer());
         this.searchQuoteAnalyzer = new MapperAnalyzerWrapper(indexAnalyzers.getDefaultSearchQuoteAnalyzer(), p -> p.searchQuoteAnalyzer());
@@ -550,14 +543,14 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
         for (String fieldName : fieldNames) {
             if (fullPathObjectMappers.containsKey(fieldName)) {
                 throw new IllegalArgumentException("[" + fieldName + "] is defined as a field in mapping [" + type
-                        + "] but this name is already used for an object in other types");
+                    + "] but this name is already used for an object in other types");
             }
         }
 
         for (String objectPath : objectFullNames) {
             if (fieldTypes.get(objectPath) != null) {
                 throw new IllegalArgumentException("[" + objectPath + "] is defined as an object in mapping [" + type
-                        + "] but this name is already used for a field in other types");
+                    + "] but this name is already used for a field in other types");
             }
         }
     }
@@ -611,7 +604,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
         final int depth = numDots + 2;
         if (depth > maxDepth) {
             throw new IllegalArgumentException("Limit of mapping depth [" + maxDepth + "] in index [" + index().getName()
-                    + "] has been exceeded due to object field [" + objectPath + "]");
+                + "] has been exceeded due to object field [" + objectPath + "]");
         }
     }
 
@@ -619,12 +612,12 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
         if (indexSettings.getIndexMetaData().isRoutingPartitionedIndex()) {
             if (newMapper.parentFieldMapper().active()) {
                 throw new IllegalArgumentException("mapping type name [" + newMapper.type() + "] cannot have a "
-                        + "_parent field for the partitioned index [" + indexSettings.getIndex().getName() + "]");
+                    + "_parent field for the partitioned index [" + indexSettings.getIndex().getName() + "]");
             }
 
             if (!newMapper.routingFieldMapper().required()) {
                 throw new IllegalArgumentException("mapping type [" + newMapper.type() + "] must have routing "
-                        + "required for partitioned index [" + indexSettings.getIndex().getName() + "]");
+                    + "required for partitioned index [" + indexSettings.getIndex().getName() + "]");
             }
         }
     }
@@ -667,7 +660,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
         }
         if (!dynamic) {
             throw new TypeMissingException(index(),
-                    new IllegalStateException("trying to auto create mapping, but dynamic mapping is disabled"), type);
+                new IllegalStateException("trying to auto create mapping, but dynamic mapping is disabled"), type);
         }
         mapper = parse(type, null, true);
         return new DocumentMapperForType(mapper, mapper.mapping());
@@ -675,11 +668,15 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
 
     /**
      * Returns the {@link MappedFieldType} for the give fullName.
-     *
+     * <p>
      * If multiple types have fields with the same full name, the first is returned.
      */
     public MappedFieldType fullName(String fullName) {
         return fieldTypes.get(fullName);
+    }
+
+    public List<String> updatableFields(){
+        return fieldTypes.updatableFields();
     }
 
     /**
@@ -715,7 +712,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
             }
             final Mapper.Builder<?, ?> builder = typeParser.parse("__anonymous_" + type, emptyMap(), parserContext);
             final BuilderContext builderContext = new BuilderContext(indexSettings.getSettings(), new ContentPath(1));
-            fieldType = ((FieldMapper)builder.build(builderContext)).fieldType();
+            fieldType = ((FieldMapper) builder.build(builderContext)).fieldType();
 
             // There is no need to synchronize writes here. In the case of concurrent access, we could just
             // compute some mappers several times, which is not a big deal
@@ -743,6 +740,29 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
         return parentTypes;
     }
 
+    public void registerUpdatableFieldHandler(UpdatableFieldHandler updatableFieldHandler) {
+        updatableFieldHandlers.add(updatableFieldHandler);
+    }
+
+    public BytesReference populateUpdatableFields(LeafReader subReader, BytesReference source, int docId) {
+        if (this.updatableFieldHandlers == null || this.updatableFieldHandlers.isEmpty()) {
+            return source;
+        }
+        Map<String, Object> sourceAsMap = SourceLookup.sourceAsMap(source);
+        ArrayList<UpdatableFieldHandler> updatableFieldHandlers = new ArrayList<>(this.updatableFieldHandlers);
+        try {
+            for (UpdatableFieldHandler updatableFieldHandler : updatableFieldHandlers) {
+                updatableFieldHandler.update(sourceAsMap, subReader, docId);
+            }
+            XContentBuilder builder = XContentFactory.jsonBuilder();
+            builder.map(sourceAsMap);
+            return builder.bytes();
+        } catch (Exception e) {
+            throw ExceptionsHelper.convertToElastic(e);
+        }
+    }
+
+
     @Override
     public void close() throws IOException {
         indexAnalyzers.close();
@@ -759,7 +779,9 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
         return META_FIELDS.toArray(String.class);
     }
 
-    /** An analyzer wrapper that can lookup fields within the index mappings */
+    /**
+     * An analyzer wrapper that can lookup fields within the index mappings
+     */
     final class MapperAnalyzerWrapper extends DelegatingAnalyzerWrapper {
 
         private final Analyzer defaultAnalyzer;

@@ -40,7 +40,7 @@ import java.util.Optional;
 /**
  * Shard level search request that gets created and consumed on the local node.
  * Used by warmers and by api that need to create a search context within their execution.
- *
+ * <p>
  * Source structure:
  * <pre>
  * {
@@ -69,6 +69,7 @@ public class ShardSearchLocalRequest implements ShardSearchRequest {
     private SearchSourceBuilder source;
     private Boolean requestCache;
     private long nowInMillis;
+    private boolean withDocId;
 
     private boolean profile;
 
@@ -78,9 +79,10 @@ public class ShardSearchLocalRequest implements ShardSearchRequest {
     ShardSearchLocalRequest(SearchRequest searchRequest, ShardId shardId, int numberOfShards,
                             AliasFilter aliasFilter, float indexBoost, long nowInMillis) {
         this(shardId, numberOfShards, searchRequest.searchType(),
-                searchRequest.source(), searchRequest.types(), searchRequest.requestCache(), aliasFilter, indexBoost);
+            searchRequest.source(), searchRequest.types(), searchRequest.requestCache(), aliasFilter, indexBoost);
         this.scroll = searchRequest.scroll();
         this.nowInMillis = nowInMillis;
+        this.withDocId = searchRequest.isWithDocId();
     }
 
     public ShardSearchLocalRequest(ShardId shardId, String[] types, long nowInMillis, AliasFilter aliasFilter) {
@@ -92,7 +94,7 @@ public class ShardSearchLocalRequest implements ShardSearchRequest {
     }
 
     public ShardSearchLocalRequest(ShardId shardId, int numberOfShards, SearchType searchType, SearchSourceBuilder source, String[] types,
-            Boolean requestCache, AliasFilter aliasFilter, float indexBoost) {
+                                   Boolean requestCache, AliasFilter aliasFilter, float indexBoost) {
         this.shardId = shardId;
         this.numberOfShards = numberOfShards;
         this.searchType = searchType;
@@ -169,6 +171,11 @@ public class ShardSearchLocalRequest implements ShardSearchRequest {
         return profile;
     }
 
+    @Override
+    public boolean isWithDocId() {
+        return this.withDocId;
+    }
+
     protected void innerReadFrom(StreamInput in) throws IOException {
         shardId = ShardId.readShardId(in);
         searchType = SearchType.fromId(in.readByte());
@@ -193,6 +200,7 @@ public class ShardSearchLocalRequest implements ShardSearchRequest {
         }
         nowInMillis = in.readVLong();
         requestCache = in.readOptionalBoolean();
+        withDocId = in.readBoolean();
     }
 
     protected void innerWriteTo(StreamOutput out, boolean asKey) throws IOException {
@@ -212,6 +220,7 @@ public class ShardSearchLocalRequest implements ShardSearchRequest {
             out.writeVLong(nowInMillis);
         }
         out.writeOptionalBoolean(requestCache);
+        out.writeBoolean(withDocId);
     }
 
     @Override

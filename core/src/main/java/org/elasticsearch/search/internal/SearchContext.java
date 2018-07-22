@@ -397,6 +397,10 @@ public abstract class SearchContext extends AbstractRefCounted implements Releas
     /** Return a view of the additional query collectors that should be run for this context. */
     public abstract Map<Class<?>, Collector> queryCollectors();
 
+    public boolean isWithDocId() {
+        return false;
+    }
+
     /**
      * The life time of an object that is used during search execution.
      */

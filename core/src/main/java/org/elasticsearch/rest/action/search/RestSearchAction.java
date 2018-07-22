@@ -123,6 +123,7 @@ public class RestSearchAction extends BaseRestHandler {
         searchRequest.preference(request.param("preference"));
         searchRequest.indicesOptions(IndicesOptions.fromRequest(request, searchRequest.indicesOptions()));
         searchRequest.slowQueryThresholdMs(request.paramAsLong("slow_query_threshold_ms", -1L));
+        searchRequest.withDocId(request.paramAsBoolean("with_doc_id", false));
     }
 
     /**

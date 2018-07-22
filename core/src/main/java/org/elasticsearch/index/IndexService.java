@@ -21,6 +21,8 @@ package org.elasticsearch.index;
 
 import com.spr.elasticsearch.index.query.ParsedQueryCache;
 import com.spr.elasticsearch.index.query.QueryBuilderRewriteCache;
+import com.spr.elasticsearch.redis.RedisIndexService;
+import com.spr.elasticsearch.redis.RedisIndicesService;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.logging.log4j.util.Supplier;
 import org.apache.lucene.index.IndexReader;
@@ -93,6 +95,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
     private final SimilarityService similarityService;
     private final EngineFactory engineFactory;
     private final IndexWarmer warmer;
+    private final RedisIndexService redisIndexService;
     private volatile Map<Integer, IndexShard> shards = emptyMap();
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private final AtomicBoolean deleted = new AtomicBoolean(false);
@@ -127,6 +130,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                         IndexModule.IndexSearcherWrapperFactory wrapperFactory,
                         MapperRegistry mapperRegistry,
                         IndicesFieldDataCache indicesFieldDataCache,
+                        RedisIndicesService redisIndicesService,
                         List<SearchOperationListener> searchOperationListeners,
                         List<IndexingOperationListener> indexingOperationListeners) throws IOException {
         super(indexSettings);
@@ -140,6 +144,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 throw new IllegalArgumentException("Percolator queries are not allowed to use the current timestamp");
             }));
         this.indexFieldData = new IndexFieldDataService(indexSettings, indicesFieldDataCache, circuitBreakerService, mapperService);
+        this.redisIndexService = new RedisIndexService(indexSettings, redisIndicesService, mapperService, indexFieldData);
         this.shardStoreDeleter = shardStoreDeleter;
         this.bigArrays = bigArrays;
         this.threadPool = threadPool;
@@ -252,7 +257,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                     }
                 }
             } finally {
-                IOUtils.close(bitsetFilterCache, indexCache, indexFieldData, mapperService, refreshTask, fsyncTask);
+                IOUtils.close(bitsetFilterCache, indexCache, indexFieldData, mapperService, refreshTask, fsyncTask, redisIndexService);
             }
         }
     }
@@ -341,7 +346,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
             final boolean canDeleteShardContent = this.indexSettings.isOnSharedFilesystem() == false ||
                 (primary && this.indexSettings.isOnSharedFilesystem());
             final Engine.Warmer engineWarmer = (searcher) -> {
-                IndexShard shard =  getShardOrNull(shardId.getId());
+                IndexShard shard = getShardOrNull(shardId.getId());
                 if (shard != null) {
                     warmer.warm(searcher, shard, IndexService.this.indexSettings);
                 }
@@ -460,15 +465,15 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
     /**
      * Creates a new QueryShardContext. The context has not types set yet, if types are required set them via
      * {@link QueryShardContext#setTypes(String...)}.
-     *
+     * <p>
      * Passing a {@code null} {@link IndexReader} will return a valid context, however it won't be able to make
      * {@link IndexReader}-specific optimizations, such as rewriting containing range queries.
      */
     public QueryShardContext newQueryShardContext(int shardId, IndexReader indexReader, LongSupplier nowInMillis) {
         return new QueryShardContext(
             shardId, indexSettings, indexCache.bitsetFilterCache(), indexFieldData, mapperService(),
-                similarityService(), scriptService, xContentRegistry,
-                client, indexReader,
+            similarityService(), scriptService, xContentRegistry,
+            client, indexReader,
             nowInMillis, parsedQueryCache, queryBuilderRewriteCache);
     }
 
@@ -813,6 +818,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         protected String getThreadPool() {
             return ThreadPool.Names.FLUSH;
         }
+
         @Override
         protected void runInternal() {
             indexService.maybeFSyncTranslogs();

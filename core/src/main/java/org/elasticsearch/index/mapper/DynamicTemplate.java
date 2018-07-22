@@ -147,6 +147,17 @@ public class DynamicTemplate implements ToXContent {
             public String toString() {
                 return "binary";
             }
+        },
+        CUSTOM_LONG{
+            @Override
+            public String defaultMappingType() {
+                return null;
+            }
+
+            @Override
+            public String toString() {
+                return "custom_long";
+            }
         };
 
         public static XContentFieldType fromString(String value) {

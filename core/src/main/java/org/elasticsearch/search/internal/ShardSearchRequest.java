@@ -142,4 +142,5 @@ public interface ShardSearchRequest {
         }
     }
 
+    boolean isWithDocId();
 }

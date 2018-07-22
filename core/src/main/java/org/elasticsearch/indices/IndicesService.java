@@ -21,6 +21,7 @@ package org.elasticsearch.indices;
 
 import com.spr.elasticsearch.index.query.ParsedQueryCache;
 import com.spr.elasticsearch.index.query.QueryBuilderRewriteCache;
+import com.spr.elasticsearch.redis.RedisIndicesService;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.DirectoryReader;
@@ -159,6 +160,7 @@ public class IndicesService extends AbstractLifecycleComponent
     private final ParsedQueryCache parsedQueryCache;
     private final QueryBuilderRewriteCache queryBuilderRewriteCache;
     private final MetaStateService metaStateService;
+    private final RedisIndicesService redisIndicesService;
 
     @Override
     protected void doStart() {
@@ -219,6 +221,7 @@ public class IndicesService extends AbstractLifecycleComponent
         this.cleanInterval = INDICES_CACHE_CLEAN_INTERVAL_SETTING.get(settings);
         this.cacheCleaner = new CacheCleaner(indicesFieldDataCache, indicesRequestCache, logger, threadPool, this.cleanInterval);
         this.metaStateService = metaStateService;
+        this.redisIndicesService = new RedisIndicesService();
     }
 
     @Override
@@ -250,7 +253,7 @@ public class IndicesService extends AbstractLifecycleComponent
 
     @Override
     protected void doClose() {
-        IOUtils.closeWhileHandlingException(analysisRegistry, indexingMemoryController, indicesFieldDataCache, cacheCleaner, indicesRequestCache, indicesQueryCache);
+        IOUtils.closeWhileHandlingException(analysisRegistry, indexingMemoryController, indicesFieldDataCache, cacheCleaner, indicesRequestCache, indicesQueryCache, redisIndicesService);
     }
 
     /**
@@ -419,7 +422,7 @@ public class IndicesService extends AbstractLifecycleComponent
             indexModule.addIndexEventListener(listener);
         }
         return indexModule.newIndexService(nodeEnv, xContentRegistry, this, circuitBreakerService, bigArrays, threadPool, scriptService,
-            clusterService, client, indicesQueryCache, parsedQueryCache, queryBuilderRewriteCache, mapperRegistry, indicesFieldDataCache);
+            clusterService, client, indicesQueryCache, parsedQueryCache, queryBuilderRewriteCache, mapperRegistry, indicesFieldDataCache, redisIndicesService);
     }
 
     /**

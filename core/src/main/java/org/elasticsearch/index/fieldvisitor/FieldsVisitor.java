@@ -19,28 +19,16 @@
 package org.elasticsearch.index.fieldvisitor;
 
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.util.BytesRef;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.bytes.BytesReference;
-import org.elasticsearch.index.mapper.MappedFieldType;
-import org.elasticsearch.index.mapper.MapperService;
-import org.elasticsearch.index.mapper.ParentFieldMapper;
-import org.elasticsearch.index.mapper.RoutingFieldMapper;
-import org.elasticsearch.index.mapper.SourceFieldMapper;
-import org.elasticsearch.index.mapper.TTLFieldMapper;
-import org.elasticsearch.index.mapper.TimestampFieldMapper;
-import org.elasticsearch.index.mapper.Uid;
-import org.elasticsearch.index.mapper.UidFieldMapper;
+import org.elasticsearch.index.mapper.*;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.unmodifiableSet;
@@ -51,11 +39,11 @@ import static org.elasticsearch.common.util.set.Sets.newHashSet;
  */
 public class FieldsVisitor extends StoredFieldVisitor {
     private static final Set<String> BASE_REQUIRED_FIELDS = unmodifiableSet(newHashSet(
-            UidFieldMapper.NAME,
-            TimestampFieldMapper.NAME,
-            TTLFieldMapper.NAME,
-            RoutingFieldMapper.NAME,
-            ParentFieldMapper.NAME));
+        UidFieldMapper.NAME,
+        TimestampFieldMapper.NAME,
+        TTLFieldMapper.NAME,
+        RoutingFieldMapper.NAME,
+        ParentFieldMapper.NAME));
 
     private final boolean loadSource;
     private final Set<String> requiredFields;
@@ -77,11 +65,11 @@ public class FieldsVisitor extends StoredFieldVisitor {
         // All these fields are single-valued so we can stop when the set is
         // empty
         return requiredFields.isEmpty()
-                ? Status.STOP
-                : Status.NO;
+            ? Status.STOP
+            : Status.NO;
     }
 
-    public void postProcess(MapperService mapperService) {
+    public void postProcess(MapperService mapperService, LeafReader subReader, int docId) {
         for (Map.Entry<String, List<Object>> entry : fields().entrySet()) {
             MappedFieldType fieldType = mapperService.fullName(entry.getKey());
             if (fieldType == null) {
@@ -92,6 +80,9 @@ public class FieldsVisitor extends StoredFieldVisitor {
             for (int i = 0; i < fieldValues.size(); i++) {
                 fieldValues.set(i, fieldType.valueForDisplay(fieldValues.get(i)));
             }
+        }
+        if (subReader != null && source != null && docId > -1) {
+            source = mapperService.populateUpdatableFields(subReader, source, docId);
         }
     }
 
