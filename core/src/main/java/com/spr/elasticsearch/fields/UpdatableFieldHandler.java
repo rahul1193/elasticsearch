@@ -2,7 +2,7 @@ package com.spr.elasticsearch.fields;
 
 import org.apache.lucene.index.LeafReader;
 
-import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -11,5 +11,17 @@ import java.util.Map;
  */
 public interface UpdatableFieldHandler {
 
-    void update(Map<String, Object> source, LeafReader leafReader, int docId) throws Exception;
+    void updateSource(Map<String, Object> source, LeafReader leafReader, int docId) throws Exception;
+
+    public static void setValueAtField(Map<String, Object> source, String field, Object value) {
+        String[] keys = field.split("\\.");
+        Map<String, Object> lastObj = source;
+        for (int i = 0; i < keys.length - 1; i++) {
+            Object o = source.computeIfAbsent(keys[i], k -> new HashMap<>());
+            assert o instanceof Map;
+            //noinspection unchecked
+            lastObj = (Map<String, Object>) o;
+        }
+        lastObj.put(keys[keys.length - 1], value);
+    }
 }

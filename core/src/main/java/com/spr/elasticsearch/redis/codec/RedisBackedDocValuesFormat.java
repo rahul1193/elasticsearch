@@ -59,7 +59,8 @@ public class RedisBackedDocValuesFormat extends DocValuesFormat {
             String redisPrefixStr = indexInput.readString();
             String field = indexInput.readString();
             RedisPrefix redisPrefix = RedisPrefix.fromString(redisPrefixStr);
-            RedisIndexService indexService = RedisIndicesService.getInstance().getIndexService(shardId.getIndex());
+            assert redisPrefix != null;
+            RedisIndexService indexService = RedisIndicesService.getInstance().getIndexService(redisPrefix.getShardId().getIndex());
             indexService.registerSegment(redisPrefix, segmentReadState.segmentInfo.getId());
             return new RedisBackedDocValuesProducer(redisPrefix, field, indexService, segmentReadState);
         } finally {

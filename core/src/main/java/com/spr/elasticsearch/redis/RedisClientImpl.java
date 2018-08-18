@@ -4,6 +4,7 @@ import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
 import java.io.IOException;
 import java.util.*;
@@ -19,9 +20,8 @@ public class RedisClientImpl implements RedisClient {
 
     private final JedisPool jedis;
 
-    public RedisClientImpl(HostAndPort hostAndPort) {
-        new GenericObjectPoolConfig<>();
-        this.jedis = new JedisPool(hostAndPort.getHost(), hostAndPort.getPort());
+    public RedisClientImpl(HostAndPort hostAndPort, JedisPoolConfig jedisPoolConfig) {
+        this.jedis = new JedisPool(jedisPoolConfig, hostAndPort.getHost(), hostAndPort.getPort());
     }
 
     @Override

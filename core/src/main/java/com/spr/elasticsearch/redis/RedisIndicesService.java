@@ -9,6 +9,7 @@ import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.index.IndexSettings;
 import redis.clients.jedis.HostAndPort;
+import redis.clients.jedis.JedisPoolConfig;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -31,13 +32,25 @@ public class RedisIndicesService implements Closeable {
      */
     public static final Setting.AffixSetting<String> REDIS_CLUSTERS_SEEDS = Setting.affixKeySetting("index.redis.cluster.",
         "seeds", s -> Setting.simpleString(s, Setting.Property.Dynamic, Setting.Property.IndexScope));
+    public static final Setting.AffixSetting<Integer> REDIS_CLUSTER_MAX_CONNECTIONS = Setting.affixKeySetting("index.redis.cluster.",
+        "max.connections", s -> Setting.intSetting(s, 2 * Runtime.getRuntime().availableProcessors(), Setting.Property.Dynamic, Setting.Property.IndexScope));
+    public static final Setting.AffixSetting<Integer> REDIS_CLUSTER_MAX_IDLE_CONNECTIONS = Setting.affixKeySetting("index.redis.cluster.",
+        "max.idle.connections", s -> Setting.intSetting(s, 2 * Runtime.getRuntime().availableProcessors(), Setting.Property.Dynamic, Setting.Property.IndexScope));
+    public static final Setting.AffixSetting<Integer> REDIS_CLUSTER_MIN_IDLE_CONNECTIONS = Setting.affixKeySetting("index.redis.cluster.",
+        "min.idle.connections", s -> Setting.intSetting(s, 0, Setting.Property.Dynamic, Setting.Property.IndexScope));
 
 
     private final AtomicReference<ConcurrentMap<String, RedisClientLookup>> clientCache = new AtomicReference<>(new ConcurrentHashMap<>());
     private final ConcurrentMap<String, RedisIndexService> indicesRegistry = new ConcurrentHashMap<>();
 
     public RedisIndicesService() {
-        instance.set(this);
+        this(false);
+    }
+
+    public RedisIndicesService(boolean metadataVerification) {
+        if (!metadataVerification) {
+            instance.set(this);
+        }
     }
 
     public static RedisIndicesService getInstance() {
@@ -60,7 +73,13 @@ public class RedisIndicesService implements Closeable {
             if (Strings.isEmpty(hostAndPortStr)) {
                 throw new IllegalStateException("No Redis Cluster Settings found for cluster : " + clusterName);
             }
-            redisClient = new RedisClientLookup(HostAndPort.parseString(hostAndPortStr));
+            JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
+            jedisPoolConfig.setJmxEnabled(false);
+            jedisPoolConfig.setTimeBetweenEvictionRunsMillis(-1);
+            jedisPoolConfig.setMaxTotal(indexSettings.getScopedSettings().get(REDIS_CLUSTER_MAX_CONNECTIONS.getConcreteSettingForNamespace(clusterName)));
+            jedisPoolConfig.setMinIdle(indexSettings.getScopedSettings().get(REDIS_CLUSTER_MAX_CONNECTIONS.getConcreteSettingForNamespace(clusterName)));
+            jedisPoolConfig.setMaxIdle(indexSettings.getScopedSettings().get(REDIS_CLUSTER_MAX_CONNECTIONS.getConcreteSettingForNamespace(clusterName)));
+            redisClient = new RedisClientLookup(HostAndPort.parseString(hostAndPortStr), jedisPoolConfig);
             RedisClientLookup existing = clientCache.get().putIfAbsent(key, redisClient);
             if (existing != null) {
                 IOUtils.closeWhileHandlingException(redisClient);
@@ -114,8 +133,8 @@ public class RedisIndicesService implements Closeable {
         public AtomicBoolean closed = new AtomicBoolean(false);
         private final AtomicInteger refCount = new AtomicInteger(0);
 
-        RedisClientLookup(HostAndPort hostAndPort) {
-            super(param -> new RedisClientImpl(hostAndPort));
+        RedisClientLookup(HostAndPort hostAndPort, JedisPoolConfig jedisPoolConfig) {
+            super(param -> new RedisClientImpl(hostAndPort, jedisPoolConfig));
         }
 
         @Override

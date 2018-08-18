@@ -55,7 +55,8 @@ public class RedisBackedPostingsFormat extends PostingsFormat {
         String redisPrefixKey = indexInput.readString();
         String field = indexInput.readString();
         RedisPrefix redisPrefix = RedisPrefix.fromString(redisPrefixKey);
-        RedisIndexService indexService = RedisIndicesService.getInstance().getIndexService(shardId.getIndex());
+        assert redisPrefix != null;
+        RedisIndexService indexService = RedisIndicesService.getInstance().getIndexService(redisPrefix.getShardId().getIndex());
         indexService.registerSegment(redisPrefix, segmentReadState.segmentInfo.getId());
         return new RedisBackedFieldsProducer(redisPrefix, field, indexService, segmentReadState);
     }

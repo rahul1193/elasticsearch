@@ -752,7 +752,7 @@ public class MapperService extends AbstractIndexComponent implements Closeable {
         ArrayList<UpdatableFieldHandler> updatableFieldHandlers = new ArrayList<>(this.updatableFieldHandlers);
         try {
             for (UpdatableFieldHandler updatableFieldHandler : updatableFieldHandlers) {
-                updatableFieldHandler.update(sourceAsMap, subReader, docId);
+                updatableFieldHandler.updateSource(sourceAsMap, subReader, docId);
             }
             XContentBuilder builder = XContentFactory.jsonBuilder();
             builder.map(sourceAsMap);

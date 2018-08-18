@@ -10,12 +10,20 @@ import java.util.Objects;
  * @since 18/08/18.
  */
 public final class RedisPrefix {
-    private ShardId shardId;
-    private String id;
+    private final String shardId;
+    private final String id;
 
     public RedisPrefix(ShardId shardId, String id) {
-        this.shardId = Objects.requireNonNull(shardId, "shardId cannot be null");
+        this.shardId = Objects.requireNonNull(shardId, "shardId cannot be null").toString();
         this.id = Objects.requireNonNull(id, "id cannot be null");
+    }
+
+    public ShardId getShardId() {
+        return ShardId.fromString(shardId);
+    }
+
+    public String getId() {
+        return id;
     }
 
     @Override
@@ -50,7 +58,7 @@ public final class RedisPrefix {
             throw new IllegalArgumentException("Invalid sytax for redis prefix");
         }
         ShardId shardId = ShardId.fromString(redisPrefixStr.substring(0, index));
-        String id = redisPrefixStr.substring(index);
+        String id = redisPrefixStr.substring(index + 1);
         return new RedisPrefix(shardId, id);
     }
 }

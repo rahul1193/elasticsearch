@@ -386,7 +386,7 @@ public class IndicesService extends AbstractLifecycleComponent
         };
         finalListeners.add(onStoreClose);
         finalListeners.add(oldShardsStats);
-        final IndexService indexService = createIndexService("create index", indexMetaData, indicesQueryCache, parsedQueryCache, queryBuilderRewriteCache, indicesFieldDataCache, finalListeners, indexingMemoryController);
+        final IndexService indexService = createIndexService("create index", indexMetaData, indicesQueryCache, parsedQueryCache, queryBuilderRewriteCache, indicesFieldDataCache, redisIndicesService, finalListeners, indexingMemoryController);
         boolean success = false;
         try {
             indexService.getIndexEventListener().afterIndexCreated(indexService);
@@ -403,7 +403,7 @@ public class IndicesService extends AbstractLifecycleComponent
     /**
      * This creates a new IndexService without registering it
      */
-    private synchronized IndexService createIndexService(final String reason, IndexMetaData indexMetaData, IndicesQueryCache indicesQueryCache, ParsedQueryCache parsedQueryCache, QueryBuilderRewriteCache queryBuilderRewriteCache, IndicesFieldDataCache indicesFieldDataCache, List<IndexEventListener> builtInListeners, IndexingOperationListener... indexingOperationListeners) throws IOException {
+    private synchronized IndexService createIndexService(final String reason, IndexMetaData indexMetaData, IndicesQueryCache indicesQueryCache, ParsedQueryCache parsedQueryCache, QueryBuilderRewriteCache queryBuilderRewriteCache, IndicesFieldDataCache indicesFieldDataCache, RedisIndicesService redisIndicesService, List<IndexEventListener> builtInListeners, IndexingOperationListener... indexingOperationListeners) throws IOException {
         final Index index = indexMetaData.getIndex();
         final Predicate<String> indexNameMatcher = (indexExpression) -> indexNameExpressionResolver.matchesIndex(index.getName(), indexExpression, clusterService.state());
         final IndexSettings idxSettings = new IndexSettings(indexMetaData, this.settings, indexNameMatcher, indexScopeSetting);
@@ -454,9 +454,10 @@ public class IndicesService extends AbstractLifecycleComponent
             closeables.add(indicesFieldDataCache);
             IndicesQueryCache indicesQueryCache = new IndicesQueryCache(settings);
             closeables.add(indicesQueryCache);
+            RedisIndicesService redisIndicesService = new RedisIndicesService(true);
+            closeables.add(redisIndicesService);
             // this will also fail if some plugin fails etc. which is nice since we can verify that early
-            final IndexService service = createIndexService("metadata verification", metaData, indicesQueryCache, parsedQueryCache, queryBuilderRewriteCache, indicesFieldDataCache,
-                emptyList());
+            final IndexService service = createIndexService("metadata verification", metaData, indicesQueryCache, parsedQueryCache, queryBuilderRewriteCache, indicesFieldDataCache, redisIndicesService, emptyList());
             closeables.add(() -> service.close("metadata verification", false));
             service.mapperService().merge(metaData, MapperService.MergeReason.MAPPING_RECOVERY, true);
             if (metaData.equals(metaDataUpdate) == false) {

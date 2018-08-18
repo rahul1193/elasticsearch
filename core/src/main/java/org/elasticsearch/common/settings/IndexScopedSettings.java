@@ -148,6 +148,9 @@ public final class IndexScopedSettings extends AbstractScopedSettings {
         EngineConfig.INDEX_OPTIMIZE_AUTO_GENERATED_IDS,
         IndexMetaData.SETTING_WAIT_FOR_ACTIVE_SHARDS,
         RedisIndicesService.REDIS_CLUSTERS_SEEDS,
+        RedisIndicesService.REDIS_CLUSTER_MAX_CONNECTIONS,
+        RedisIndicesService.REDIS_CLUSTER_MAX_IDLE_CONNECTIONS,
+        RedisIndicesService.REDIS_CLUSTER_MIN_IDLE_CONNECTIONS,
         // validate that built-in similarities don't get redefined
         Setting.groupSetting("index.similarity.", (s) -> {
             Map<String, Settings> groups = s.getAsGroups();

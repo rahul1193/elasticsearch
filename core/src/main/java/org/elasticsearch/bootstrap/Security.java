@@ -226,9 +226,6 @@ final class Security {
         addClasspathPermissions(policy);
         addFilePermissions(policy, environment);
         addBindPermissions(policy, environment.settings());
-        policy.add(new MBeanServerPermission("createMBeanServer"));
-        policy.add(new MBeanPermission("org.apache.commons.pool2.impl.GenericObjectPool","registerMBean"));
-        policy.add(new MBeanTrustPermission("register"));
         return policy;
     }
 

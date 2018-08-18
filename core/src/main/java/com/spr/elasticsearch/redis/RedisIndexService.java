@@ -29,42 +29,34 @@ import java.util.stream.Collectors;
  */
 public class RedisIndexService implements UpdatableFieldHandler, Closeable {
 
-    private final RedisIndicesService redisClientProvider;
     private final MapperService mapperService;
     private final IndexFieldDataService indexFieldData;
 
-    private final ConcurrentMap<byte[], RedisPrefix> segmentsRegistry = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, RedisPrefix> segmentsRegistry = new ConcurrentHashMap<>();
     private final AtomicReference<ConcurrentMap<String, String>> fieldToClusterCache = new AtomicReference<>(new ConcurrentHashMap<>());
     private final IndexSettings indexSettings;
+    private final RedisIndicesService redisIndicesService;
 
-    public RedisIndexService(IndexSettings indexSettings, RedisIndicesService redisClientProvider, MapperService mapperService, IndexFieldDataService indexFieldData) {
+    public RedisIndexService(IndexSettings indexSettings, RedisIndicesService redisIndicesService, MapperService mapperService, IndexFieldDataService indexFieldData) {
         this.mapperService = mapperService;
-        this.redisClientProvider = redisClientProvider;
         this.indexSettings = indexSettings;
-        this.redisClientProvider.register(indexSettings.getIndex(), this);
-        this.mapperService.registerUpdatableFieldHandler(this);
+        this.redisIndicesService = redisIndicesService;
         this.indexFieldData = indexFieldData;
+        this.mapperService.registerUpdatableFieldHandler(this);
+        redisIndicesService.register(indexSettings.getIndex(), this);
     }
 
     @Override
-    public void update(Map<String, Object> source, LeafReader leafReader, int docId) throws Exception {
+    public void updateSource(Map<String, Object> source, LeafReader leafReader, int docId) throws Exception {
         for (String field : mapperService.updatableFields()) {
             MappedFieldType fieldType = mapperService.fullName(field);
             if (fieldType.hasDocValues() && fieldType instanceof NumberFieldMapper.NumberFieldType) {
                 if (NumberFieldMapper.NumberType.CUSTOM_LONG.name().toLowerCase(Locale.ROOT).equals(fieldType.typeName())) {
                     List<?> values = fetchDocValues(fieldType, leafReader, docId);
-                    if (values == null || values.isEmpty()) {
+                    if (values == null) {
                         continue;
                     }
-                    String[] keys = field.split("\\.");
-                    Map<String, Object> lastObj = source;
-                    for (int i = 0; i < keys.length - 1; i++) {
-                        Object o = source.computeIfAbsent(keys[i], k -> new HashMap<>());
-                        assert o instanceof Map;
-                        //noinspection unchecked
-                        lastObj = (Map<String, Object>) o;
-                    }
-                    lastObj.put(keys[keys.length - 1], values);
+                    UpdatableFieldHandler.setValueAtField(source, field, values);
                 }
             }
         }
@@ -239,16 +231,16 @@ public class RedisIndexService implements UpdatableFieldHandler, Closeable {
                 return String.valueOf(redisClusterSeeds);
             }
         });
-        return redisClientProvider.getOrCreateRedisClient(indexSettings, String.valueOf(redisClusterSeeds));
+        return redisIndicesService.getOrCreateRedisClient(indexSettings, String.valueOf(redisClusterSeeds));
     }
 
     @Override
     public void close() throws IOException {
         ConcurrentMap<String, String> cache = fieldToClusterCache.getAndSet(null);
         for (String clusterName : cache.values()) {
-            redisClientProvider.tryRemoveUnused(clusterName);
+            redisIndicesService.tryRemoveUnused(clusterName);
         }
-        redisClientProvider.unregisterIndexService(indexSettings.getIndex());
+        redisIndicesService.unregisterIndexService(indexSettings.getIndex());
     }
 
     private static long[] toLongArray(Collection<Long> doubles) {
@@ -258,17 +250,29 @@ public class RedisIndexService implements UpdatableFieldHandler, Closeable {
 
     public RedisPrefix getOrCreatePrefix(ShardId shardId, byte[] segmentId) {
         Objects.requireNonNull(shardId, "shardId cannot be null");
-        return segmentsRegistry.computeIfAbsent(segmentId, bytes -> new RedisPrefix(shardId, UUIDs.base64UUID()));
+        String key = createSegmentKey(shardId, segmentId);
+        RedisPrefix redisPrefix = segmentsRegistry.get(key);
+        if (redisPrefix == null) {
+            redisPrefix = new RedisPrefix(shardId, UUIDs.base64UUID());
+            RedisPrefix existing = segmentsRegistry.putIfAbsent(key, redisPrefix);
+            if (existing != null) {
+                redisPrefix = existing;
+            }
+        }
+        return redisPrefix;
     }
 
     public void registerSegment(RedisPrefix redisPrefix, byte[] segmentId) {
-        RedisPrefix existing = segmentsRegistry.putIfAbsent(segmentId, redisPrefix);
+        RedisPrefix existing = segmentsRegistry.putIfAbsent(createSegmentKey(redisPrefix.getShardId(), segmentId), redisPrefix);
         if (existing != null) {
             assert existing.equals(redisPrefix);
             if (!existing.equals(redisPrefix)) {
                 throw new IllegalStateException("Rahul You Screwed up!");
             }
         }
+    }
 
+    private String createSegmentKey(ShardId shardId, byte[] segmentId) {
+        return shardId + "_" + new String(segmentId);
     }
 }
