@@ -2,6 +2,7 @@ package com.spr.elasticsearch.redis;
 
 import com.spr.elasticsearch.fields.UpdatableFieldHandler;
 import org.apache.lucene.index.LeafReader;
+import org.elasticsearch.common.UUIDs;
 import org.elasticsearch.common.util.CollectionUtils;
 import org.elasticsearch.index.IndexSettings;
 import org.elasticsearch.index.fielddata.AtomicFieldData;
@@ -17,6 +18,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -31,7 +33,8 @@ public class RedisIndexService implements UpdatableFieldHandler, Closeable {
     private final MapperService mapperService;
     private final IndexFieldDataService indexFieldData;
 
-    private final AtomicReference<ConcurrentHashMap<String, String>> fieldToClusterCache = new AtomicReference<>(new ConcurrentHashMap<>());
+    private final ConcurrentMap<byte[], RedisPrefix> segmentsRegistry = new ConcurrentHashMap<>();
+    private final AtomicReference<ConcurrentMap<String, String>> fieldToClusterCache = new AtomicReference<>(new ConcurrentHashMap<>());
     private final IndexSettings indexSettings;
 
     public RedisIndexService(IndexSettings indexSettings, RedisIndicesService redisClientProvider, MapperService mapperService, IndexFieldDataService indexFieldData) {
@@ -75,31 +78,31 @@ public class RedisIndexService implements UpdatableFieldHandler, Closeable {
         return scriptValues.getValues();
     }
 
-    public void consumeSegment(ShardId shardId, String segmentName, String field, Map<String, List<Integer>> index) {
+    public void consumeSegment(RedisPrefix redisPrefix, String segmentName, String field, Map<String, List<Integer>> index) {
         RedisIndicesService.RedisClientLookup client = getRedisClient(field);
         client.incRef();
         try {
             for (Map.Entry<String, List<Integer>> entry : index.entrySet()) {
-                String indexKey = RedisUtils.createIndexKey(shardId, RedisUtils.createName(segmentName, field), entry.getKey());
+                String indexKey = RedisUtils.createIndexKey(redisPrefix, segmentName, field, entry.getKey());
                 if (entry.getValue().isEmpty()) {
                     continue;
                 }
                 client.getOrCreate().zAdd(indexKey, CollectionUtils.toArray(entry.getValue()));
             }
-            String termsKey = RedisUtils.createTermsKey(shardId, RedisUtils.createName(segmentName, field));
+            String termsKey = RedisUtils.createTermsKey(redisPrefix, segmentName, field);
             client.getOrCreate().zAdd(termsKey, index.keySet().toArray(new String[0]));
             Set<Integer> docs = index.values().stream().flatMap(List::stream).collect(Collectors.toSet());
-            client.getOrCreate().set(RedisUtils.createSegmentKey(shardId, RedisUtils.createName(segmentName, field)), String.valueOf(docs.size()));
+            client.getOrCreate().set(RedisUtils.createSegmentKey(redisPrefix, segmentName, field), String.valueOf(docs.size()));
         } finally {
             client.decRef();
         }
     }
 
-    public int getDocCount(ShardId shardId, String segmentName, String field) {
+    public int getDocCount(RedisPrefix redisPrefix, String segmentName, String field) {
         RedisIndicesService.RedisClientLookup client = getRedisClient(field);
         client.incRef();
         try {
-            String value = client.getOrCreate().get(RedisUtils.createSegmentKey(shardId, RedisUtils.createName(segmentName, field)));
+            String value = client.getOrCreate().get(RedisUtils.createSegmentKey(redisPrefix, segmentName, field));
             if (value == null) {
                 return -1;
             }
@@ -109,17 +112,17 @@ public class RedisIndexService implements UpdatableFieldHandler, Closeable {
         }
     }
 
-    public int getDocCountForTerm(ShardId shardId, String segmentName, String field, String term) {
+    public int getDocCountForTerm(RedisPrefix redisPrefix, String segmentName, String field, String term) {
         RedisIndicesService.RedisClientLookup client = getRedisClient(field);
         client.incRef();
         try {
-            return (int) client.getOrCreate().zCount(RedisUtils.createIndexKey(shardId, RedisUtils.createName(segmentName, field), term));
+            return (int) client.getOrCreate().zCount(RedisUtils.createIndexKey(redisPrefix, segmentName, field, term));
         } finally {
             client.decRef();
         }
     }
 
-    public void consumeDocValues(ShardId shardId, String segmentName, String field, Map<Integer, List<String>> docVsValues) {
+    public void consumeDocValues(RedisPrefix redisPrefix, String segmentName, String field, Map<Integer, List<String>> docVsValues) {
         if (docVsValues.isEmpty()) {
             return;
         }
@@ -127,7 +130,7 @@ public class RedisIndexService implements UpdatableFieldHandler, Closeable {
         client.incRef();
         try {
             for (Map.Entry<Integer, List<String>> entry : docVsValues.entrySet()) {
-                String docValuesKey = RedisUtils.createDocValuesKey(shardId, RedisUtils.createName(segmentName, field), entry.getKey());
+                String docValuesKey = RedisUtils.createDocValuesKey(redisPrefix, segmentName, field, entry.getKey());
                 client.getOrCreate().sAdd(docValuesKey, entry.getValue().toArray(new String[0]));
             }
         } finally {
@@ -135,7 +138,7 @@ public class RedisIndexService implements UpdatableFieldHandler, Closeable {
         }
     }
 
-    public void consumeNumericDocValues(ShardId shardId, String segmentName, String field, Map<Integer, List<Long>> docVsValues) {
+    public void consumeNumericDocValues(RedisPrefix redisPrefix, String segmentName, String field, Map<Integer, List<Long>> docVsValues) {
         if (docVsValues.isEmpty()) {
             return;
         }
@@ -143,7 +146,7 @@ public class RedisIndexService implements UpdatableFieldHandler, Closeable {
         client.incRef();
         try {
             for (Map.Entry<Integer, List<Long>> entry : docVsValues.entrySet()) {
-                String docValuesKey = RedisUtils.createDocValuesKey(shardId, RedisUtils.createName(segmentName, field), entry.getKey());
+                String docValuesKey = RedisUtils.createDocValuesKey(redisPrefix, segmentName, field, entry.getKey());
                 client.getOrCreate().sAdd(docValuesKey, toLongArray(entry.getValue()));
             }
         } finally {
@@ -151,36 +154,36 @@ public class RedisIndexService implements UpdatableFieldHandler, Closeable {
         }
     }
 
-    public List<String> fetchDocValues(ShardId shardId, String segmentName, String field, int docId) {
+    public List<String> fetchDocValues(RedisPrefix redisPrefix, String segmentName, String field, int docId) {
         RedisIndicesService.RedisClientLookup client = getRedisClient(field);
         client.incRef();
         try {
-            String docValuesKey = RedisUtils.createDocValuesKey(shardId, RedisUtils.createName(segmentName, field), docId);
+            String docValuesKey = RedisUtils.createDocValuesKey(redisPrefix, segmentName, field, docId);
             return client.getOrCreate().sMembers(docValuesKey);
         } finally {
             client.decRef();
         }
     }
 
-    public long termsSize(ShardId shardId, String segmentName, String field) {
+    public long termsSize(RedisPrefix redisPrefix, String segmentName, String field) {
         RedisIndicesService.RedisClientLookup redisClient = getRedisClient(field);
         redisClient.incRef();
         try {
-            return redisClient.getOrCreate().zCount(RedisUtils.createTermsKey(shardId, RedisUtils.createName(segmentName, field)));
+            return redisClient.getOrCreate().zCount(RedisUtils.createTermsKey(redisPrefix, segmentName, field));
         } finally {
             redisClient.decRef();
         }
     }
 
-    public String seekCeil(ShardId shardId, String segmentName, String field, String term) {
-        return fetchTermFrom(shardId, segmentName, field, term, true);
+    public String seekCeil(RedisPrefix redisPrefix, String segmentName, String field, String term) {
+        return fetchTermFrom(redisPrefix, segmentName, field, term, true);
     }
 
-    public String next(ShardId shardId, String segmentName, String field, String term) {
-        return fetchTermFrom(shardId, segmentName, field, term, false);
+    public String next(RedisPrefix redisPrefix, String segmentName, String field, String term) {
+        return fetchTermFrom(redisPrefix, segmentName, field, term, false);
     }
 
-    public int[] getDocAfter(ShardId shardId, String segmentName, String field, String term, Integer docId, int batchSize) {
+    public int[] getDocAfter(RedisPrefix redisPrefix, String segmentName, String field, String term, Integer docId, int batchSize) {
         long min = 0;
         if (docId != null) {
             min = docId + 1;
@@ -188,7 +191,7 @@ public class RedisIndexService implements UpdatableFieldHandler, Closeable {
         RedisIndicesService.RedisClientLookup redisClient = getRedisClient(field);
         redisClient.incRef();
         try {
-            String key = RedisUtils.createIndexKey(shardId, RedisUtils.createName(segmentName, field), term);
+            String key = RedisUtils.createIndexKey(redisPrefix, segmentName, field, term);
             Set<String> values = redisClient.getOrCreate().zRange(key, min, Long.MAX_VALUE);
             if (values == null || values.isEmpty()) {
                 return new int[0];
@@ -199,11 +202,11 @@ public class RedisIndexService implements UpdatableFieldHandler, Closeable {
         }
     }
 
-    private String fetchTermFrom(ShardId shardId, String segmentName, String field, String term, boolean inclusive) {
+    private String fetchTermFrom(RedisPrefix redisPrefix, String segmentName, String field, String term, boolean inclusive) {
         RedisIndicesService.RedisClientLookup client = getRedisClient(field);
         client.incRef();
         try {
-            String key = RedisUtils.createTermsKey(shardId, RedisUtils.createName(segmentName, field));
+            String key = RedisUtils.createTermsKey(redisPrefix, segmentName, field);
             String min = "-";
             if (term != null) {
                 min = (inclusive ? "[" : "(") + term;
@@ -241,7 +244,7 @@ public class RedisIndexService implements UpdatableFieldHandler, Closeable {
 
     @Override
     public void close() throws IOException {
-        ConcurrentHashMap<String, String> cache = fieldToClusterCache.getAndSet(null);
+        ConcurrentMap<String, String> cache = fieldToClusterCache.getAndSet(null);
         for (String clusterName : cache.values()) {
             redisClientProvider.tryRemoveUnused(clusterName);
         }
@@ -251,5 +254,21 @@ public class RedisIndexService implements UpdatableFieldHandler, Closeable {
     private static long[] toLongArray(Collection<Long> doubles) {
         Objects.requireNonNull(doubles);
         return doubles.stream().mapToLong(s -> s).toArray();
+    }
+
+    public RedisPrefix getOrCreatePrefix(ShardId shardId, byte[] segmentId) {
+        Objects.requireNonNull(shardId, "shardId cannot be null");
+        return segmentsRegistry.computeIfAbsent(segmentId, bytes -> new RedisPrefix(shardId, UUIDs.base64UUID()));
+    }
+
+    public void registerSegment(RedisPrefix redisPrefix, byte[] segmentId) {
+        RedisPrefix existing = segmentsRegistry.putIfAbsent(segmentId, redisPrefix);
+        if (existing != null) {
+            assert existing.equals(redisPrefix);
+            if (!existing.equals(redisPrefix)) {
+                throw new IllegalStateException("Rahul You Screwed up!");
+            }
+        }
+
     }
 }

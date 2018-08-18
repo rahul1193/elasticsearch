@@ -1,6 +1,7 @@
 package com.spr.elasticsearch.redis.codec;
 
 import com.spr.elasticsearch.redis.RedisIndexService;
+import com.spr.elasticsearch.redis.RedisPrefix;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.index.FieldInfo;
@@ -24,13 +25,13 @@ import static com.spr.elasticsearch.redis.codec.RedisBackedPostingsFormat.VERSIO
  */
 public class RedisBackedDocValuesConsumer extends DocValuesConsumer {
 
-    private final ShardId shardId;
+    private final RedisPrefix redisPrefix;
     private final String field;
     private final RedisIndexService redisIndexService;
     private final SegmentWriteState segmentWriteState;
 
-    public RedisBackedDocValuesConsumer(ShardId shardId, String field, RedisIndexService redisIndexService, SegmentWriteState segmentWriteState) {
-        this.shardId = shardId;
+    public RedisBackedDocValuesConsumer(RedisPrefix redisPrefix, String field, RedisIndexService redisIndexService, SegmentWriteState segmentWriteState) {
+        this.redisPrefix = redisPrefix;
         this.field = field;
         this.redisIndexService = redisIndexService;
         this.segmentWriteState = segmentWriteState;
@@ -46,7 +47,7 @@ public class RedisBackedDocValuesConsumer extends DocValuesConsumer {
             }
             docId++;
         }
-        this.redisIndexService.consumeNumericDocValues(shardId, segmentWriteState.segmentInfo.name, field, docVsValues);
+        this.redisIndexService.consumeNumericDocValues(redisPrefix, segmentWriteState.segmentInfo.name, field, docVsValues);
     }
 
     @Override
@@ -66,7 +67,7 @@ public class RedisBackedDocValuesConsumer extends DocValuesConsumer {
             }
             docId++;
         }
-        this.redisIndexService.consumeNumericDocValues(shardId, segmentWriteState.segmentInfo.name, field, docVsValues);
+        this.redisIndexService.consumeNumericDocValues(redisPrefix, segmentWriteState.segmentInfo.name, field, docVsValues);
     }
 
     @Override
@@ -79,7 +80,7 @@ public class RedisBackedDocValuesConsumer extends DocValuesConsumer {
             }
             docId++;
         }
-        this.redisIndexService.consumeDocValues(shardId, segmentWriteState.segmentInfo.name, field, docVsValues);
+        this.redisIndexService.consumeDocValues(redisPrefix, segmentWriteState.segmentInfo.name, field, docVsValues);
     }
 
     @Override
@@ -97,7 +98,7 @@ public class RedisBackedDocValuesConsumer extends DocValuesConsumer {
         String fileName = IndexFileNames.segmentFileName(segmentWriteState.segmentInfo.name, segmentWriteState.segmentSuffix, EXTENSION);
         IndexOutput output = segmentWriteState.directory.createOutput(fileName, segmentWriteState.context);
         CodecUtil.writeIndexHeader(output, CODEC_NAME, VERSION_CURRENT, segmentWriteState.segmentInfo.getId(), segmentWriteState.segmentSuffix);
-        output.writeString(this.shardId.toString());
+        output.writeString(this.redisPrefix.toString());
         output.writeString(this.field);
         CodecUtil.writeFooter(output);
         output.close();

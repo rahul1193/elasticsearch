@@ -28,6 +28,7 @@ subprojects {
   group = 'org.elasticsearch'
   version = org.elasticsearch.gradle.VersionProperties.elasticsearch
   description = "Elasticsearch subproject ${project.path}"
+  tasks.withType(Javadoc).all { enabled = false }
 }
 
 Path rootPath = rootDir.toPath()

@@ -1,6 +1,7 @@
 package com.spr.elasticsearch.redis.codec;
 
 import com.spr.elasticsearch.redis.RedisIndexService;
+import com.spr.elasticsearch.redis.RedisPrefix;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
@@ -8,7 +9,6 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.elasticsearch.index.shard.ShardId;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -21,14 +21,14 @@ import java.util.Iterator;
  */
 public class RedisBackedFieldsProducer extends FieldsProducer {
 
-    private final ShardId shardId;
+    private final RedisPrefix redisPrefix;
     private final String field;
     private final RedisIndexService redisIndexService;
     private final SegmentReadState segmentReadState;
     private final Terms terms;
 
-    public RedisBackedFieldsProducer(ShardId shardId, String field, RedisIndexService redisIndexService, SegmentReadState segmentReadState) {
-        this.shardId = shardId;
+    public RedisBackedFieldsProducer(RedisPrefix redisPrefix, String field, RedisIndexService redisIndexService, SegmentReadState segmentReadState) {
+        this.redisPrefix = redisPrefix;
         this.field = field;
         this.redisIndexService = redisIndexService;
         this.segmentReadState = segmentReadState;
@@ -73,12 +73,12 @@ public class RedisBackedFieldsProducer extends FieldsProducer {
 
         @Override
         public long size() {
-            return redisIndexService.termsSize(shardId, segmentReadState.segmentInfo.name, field);
+            return redisIndexService.termsSize(redisPrefix, segmentReadState.segmentInfo.name, field);
         }
 
         @Override
         public int getDocCount() {
-            return redisIndexService.getDocCount(shardId, segmentReadState.segmentInfo.name, field);
+            return redisIndexService.getDocCount(redisPrefix, segmentReadState.segmentInfo.name, field);
         }
 
         @Override
@@ -120,7 +120,7 @@ public class RedisBackedFieldsProducer extends FieldsProducer {
 
             @Override
             public SeekStatus seekCeil(BytesRef bytesRef) {
-                String ceil = redisIndexService.seekCeil(shardId, segmentReadState.segmentInfo.name, field, bytesRef.utf8ToString());
+                String ceil = redisIndexService.seekCeil(redisPrefix, segmentReadState.segmentInfo.name, field, bytesRef.utf8ToString());
                 if (ceil == null) {
                     ended = true;
                     currentTerm = null;
@@ -140,7 +140,7 @@ public class RedisBackedFieldsProducer extends FieldsProducer {
             @Override
             public int docFreq() {
                 initIfRequired();
-                return redisIndexService.getDocCountForTerm(shardId, segmentReadState.segmentInfo.name, field, currentTerm);
+                return redisIndexService.getDocCountForTerm(redisPrefix, segmentReadState.segmentInfo.name, field, currentTerm);
             }
 
             @Override
@@ -158,7 +158,7 @@ public class RedisBackedFieldsProducer extends FieldsProducer {
                 if (initialized) {
                     return new BytesRef(currentTerm);
                 }
-                String next = redisIndexService.next(shardId, segmentReadState.segmentInfo.name, field, currentTerm);
+                String next = redisIndexService.next(redisPrefix, segmentReadState.segmentInfo.name, field, currentTerm);
                 if (next == null) {
                     ended = true;
                     currentTerm = null;
@@ -175,7 +175,7 @@ public class RedisBackedFieldsProducer extends FieldsProducer {
                 if (currentTerm != null) {
                     return false;
                 }
-                currentTerm = redisIndexService.seekCeil(shardId, segmentReadState.segmentInfo.name, field, null);
+                currentTerm = redisIndexService.seekCeil(redisPrefix, segmentReadState.segmentInfo.name, field, null);
                 return true;
             }
 
@@ -264,7 +264,7 @@ public class RedisBackedFieldsProducer extends FieldsProducer {
             @Override
             public long cost() {
                 if (cost == -1) {
-                    cost = redisIndexService.getDocCountForTerm(shardId, segmentReadState.segmentInfo.name, field, term);
+                    cost = redisIndexService.getDocCountForTerm(redisPrefix, segmentReadState.segmentInfo.name, field, term);
                 }
                 return cost;
             }
@@ -282,7 +282,7 @@ public class RedisBackedFieldsProducer extends FieldsProducer {
             }
 
             private void fetchDocs(Integer currentDocId) {
-                int[] docIds = redisIndexService.getDocAfter(shardId, segmentReadState.segmentInfo.name, field, term, currentDocId, BATCH_SIZE);
+                int[] docIds = redisIndexService.getDocAfter(redisPrefix, segmentReadState.segmentInfo.name, field, term, currentDocId, BATCH_SIZE);
                 if (docIds == null) {
                     docs = new int[0];
                     return;

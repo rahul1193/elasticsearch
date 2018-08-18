@@ -1,6 +1,7 @@
 package com.spr.elasticsearch.redis.codec;
 
 import com.spr.elasticsearch.redis.RedisIndexService;
+import com.spr.elasticsearch.redis.RedisPrefix;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.*;
 import org.apache.lucene.util.Bits;
@@ -21,13 +22,13 @@ import static com.spr.elasticsearch.redis.codec.RedisBackedDocValuesFormat.creat
  */
 public class RedisBackedDocValuesProducer extends DocValuesProducer {
 
-    private final ShardId shardId;
+    private final RedisPrefix redisPrefix;
     private final String field;
     private final RedisIndexService redisIndexService;
     private final SegmentReadState segmentReadState;
 
-    public RedisBackedDocValuesProducer(ShardId shardId, String field, RedisIndexService redisIndexService, SegmentReadState segmentReadState) {
-        this.shardId = shardId;
+    public RedisBackedDocValuesProducer(RedisPrefix redisPrefix, String field, RedisIndexService redisIndexService, SegmentReadState segmentReadState) {
+        this.redisPrefix = redisPrefix;
         this.field = field;
         this.redisIndexService = redisIndexService;
         this.segmentReadState = segmentReadState;
@@ -45,7 +46,7 @@ public class RedisBackedDocValuesProducer extends DocValuesProducer {
                     return value;
                 }
                 currentDoc = docId;
-                List<String> values = redisIndexService.fetchDocValues(shardId, segmentReadState.segmentInfo.name, field, docId);
+                List<String> values = redisIndexService.fetchDocValues(redisPrefix, segmentReadState.segmentInfo.name, field, docId);
                 if (values == null || values.isEmpty()) {
                     return 0;
                 }
@@ -90,7 +91,7 @@ public class RedisBackedDocValuesProducer extends DocValuesProducer {
             }
 
             private void initValues() {
-                List<String> values = redisIndexService.fetchDocValues(shardId, segmentReadState.segmentInfo.name, field, currentDoc);
+                List<String> values = redisIndexService.fetchDocValues(redisPrefix, segmentReadState.segmentInfo.name, field, currentDoc);
                 if (values == null || values.isEmpty()) {
                     this.values = Collections.emptyList();
                     return;
@@ -113,7 +114,7 @@ public class RedisBackedDocValuesProducer extends DocValuesProducer {
                     return value;
                 }
                 currentDoc = docId;
-                List<String> values = redisIndexService.fetchDocValues(shardId, segmentReadState.segmentInfo.name, field, docId);
+                List<String> values = redisIndexService.fetchDocValues(redisPrefix, segmentReadState.segmentInfo.name, field, docId);
                 if (values == null || values.isEmpty()) {
                     return null;
                 }
@@ -143,7 +144,7 @@ public class RedisBackedDocValuesProducer extends DocValuesProducer {
                 return new Bits() {
                     @Override
                     public boolean get(int docId) {
-                        List<String> docValues = redisIndexService.fetchDocValues(shardId, segmentReadState.segmentInfo.name, field, docId);
+                        List<String> docValues = redisIndexService.fetchDocValues(redisPrefix, segmentReadState.segmentInfo.name, field, docId);
                         return docValues != null && !docValues.isEmpty();
                     }
 
